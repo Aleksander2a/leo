@@ -70,6 +70,12 @@ target-version = "py312"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "ASYNC", "RUF"]
 
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's dependency-injection idiom calls Depends()/Query() in argument defaults by
+# design; this tells bugbear's B008 that those specific calls are not the mutable-default
+# footgun it otherwise guards against.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Path"]
+
 [tool.ruff.format]
 quote-style = "double"
 

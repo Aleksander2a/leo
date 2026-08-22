@@ -257,9 +257,11 @@ def test_clean_install_environment_excludes_credentials_and_import_overrides(
 def test_ci_and_docs_use_the_single_cross_platform_quality_command() -> None:
     workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
     readme = Path("README.md").read_text(encoding="utf-8")
-    web_placeholder = Path("web/README.md").read_text(encoding="utf-8")
+    web_readme = Path("web/README.md").read_text(encoding="utf-8")
 
     assert 'python-version: ["3.12", "3.13"]' in workflow
     assert "uv run python scripts/quality.py" in workflow
     assert "uv run python scripts/quality.py" in readme
-    assert "No frontend dependencies" in web_placeholder
+    # M6's dashboard is real now, not the earlier placeholder; it must still declare the
+    # same boundary the placeholder asserted: read-only, no privileged DB credential of its own.
+    assert "no privileged database credential of its own" in web_readme
