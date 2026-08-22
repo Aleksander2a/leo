@@ -1,0 +1,13 @@
+{
+  "symbol": "US:AAPL",
+  "bid": 230.48,
+  "ask": 230.52,
+  "bid_size": 1200,
+  "ask_size": 800,
+  "last_price": 230.5,
+  "last_size": 400,
+  "last_timestamp": 1787227200000,
+  "prev_close": 226.0,
+  "change": 4.5,
+  "change_percent": 1.9912
+}

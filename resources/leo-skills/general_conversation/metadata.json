@@ -1,0 +1,15 @@
+{
+  "schema_version": "leo-skill-v1",
+  "id": "general_conversation",
+  "version": "1.0.0",
+  "summary": "Answer arbitrary conversational questions from exact scoped context, clarifying only when needed.",
+  "domains": ["conversation", "context"],
+  "required_evidence": ["scoped_context_or_explicit_no_external_evidence"],
+  "stop_rules": ["missing_material_choice", "inaccessible_context", "unsupported_current_fact"],
+  "allowed_capabilities": [],
+  "compatible_profiles": ["research"],
+  "child_compatible": false,
+  "procedure_trust": "untrusted_instruction_data",
+  "procedure_file": "procedure.md",
+  "procedure_sha256": "1b8480f820081d3ebb50aef0deca6351f91adfd31be33626952090aa10f8f5ee"
+}

@@ -1,0 +1,37 @@
+{
+  "version": "v1",
+  "fixed_now": "2026-01-02T15:04:05Z",
+  "organization_id": "demo-org",
+  "strategies": [
+    {
+      "id": "technology-ls",
+      "name": "Technology Long/Short",
+      "thesis": "NVDA benefits from sustained accelerator demand and disciplined platform investment.",
+      "constraint": "Keep single-name exposure below 35 percent and require a current primary-source check.",
+      "asset_views": [
+        {
+          "asset_id": "asset-nvda",
+          "symbol": "NVDA",
+          "stance": "constructive",
+          "thesis": "The synthetic technology strategy expects durable accelerator demand.",
+          "target_weight": 0.25
+        }
+      ]
+    },
+    {
+      "id": "conservative",
+      "name": "Conservative Income",
+      "thesis": "NVDA valuation and concentration risk require a defensive, limited position.",
+      "constraint": "Keep single-name exposure below 5 percent and require a stale-data abstention.",
+      "asset_views": [
+        {
+          "asset_id": "asset-nvda",
+          "symbol": "NVDA",
+          "stance": "cautious",
+          "thesis": "The synthetic conservative strategy treats concentration and valuation as dominant risks.",
+          "target_weight": 0.03
+        }
+      ]
+    }
+  ]
+}

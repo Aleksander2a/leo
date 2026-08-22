@@ -1,0 +1,15 @@
+{
+  "schema_version": "leo-skill-v1",
+  "id": "thesis_challenge",
+  "version": "1.0.0",
+  "summary": "Compare a synthetic thesis with primary-source evidence and counter-evidence.",
+  "domains": ["market", "research"],
+  "required_evidence": ["primary_source", "counter_evidence", "freshness"],
+  "stop_rules": ["scope_mismatch", "insufficient_evidence", "conflict_unresolved"],
+  "allowed_capabilities": ["market.quote", "research.sec_filing"],
+  "compatible_profiles": ["research"],
+  "child_compatible": true,
+  "procedure_trust": "untrusted_instruction_data",
+  "procedure_file": "procedure.md",
+  "procedure_sha256": "043dc4539719f2350e66176e39445e729d9298a7d76a5738b7ce25f986329563"
+}

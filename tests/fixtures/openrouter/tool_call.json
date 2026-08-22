@@ -1,0 +1,29 @@
+{
+  "id": "fixture-tool-generation",
+  "model": "test/model",
+  "choices": [
+    {
+      "finish_reason": "tool_calls",
+      "native_finish_reason": "tool_calls",
+      "message": {
+        "content": null,
+        "tool_calls": [
+          {
+            "id": "fixture-tool-call",
+            "type": "function",
+            "function": {
+              "name": "market_get_quote",
+              "arguments": "{\"symbol\":\"NVDA\"}"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 10,
+    "completion_tokens": 3,
+    "total_tokens": 13,
+    "cost": 0.001
+  }
+}

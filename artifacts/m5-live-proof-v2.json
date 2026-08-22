@@ -1,0 +1,963 @@
+{
+  "version": "proof-v2",
+  "code_version": "working-tree:revised-m5-19-scenarios",
+  "fixture_versions": [
+    "budget_boundary:v1",
+    "channel_isolation:v1",
+    "contextual_conversation:v1",
+    "conversational_terminal_recovery:v1",
+    "delegated_dependency_plan:v1",
+    "dm_context_union:v1",
+    "elastic_deliberation:v1",
+    "fault_recovery_matrix:v1",
+    "long_thread_compaction:v1",
+    "memory_lifecycle:v1",
+    "parallel_read_batch:v1",
+    "quote_control:v1",
+    "restart_replay_idempotency:v1",
+    "safe_failure:v1",
+    "shared_group_external_scope:v1",
+    "slack_thread_context_authority:v1",
+    "tavily_verified_research:v1",
+    "tool_recall_progressive:v1",
+    "verifier_correction:v1"
+  ],
+  "model_catalog_version": "offline-model-catalog-v1",
+  "tool_catalog_version": "offline-tool-catalog-v1",
+  "policy_versions": [
+    "baseline-v2",
+    "event-v2",
+    "verifier-v1"
+  ],
+  "artifacts": [
+    {
+      "id": "arbitrary_conversational_golden",
+      "kind": "deterministic_golden",
+      "command": "python -m leo.evals --id contextual_conversation",
+      "digest": "78d5588c2e4e66cb6bd34aaea23bc1f6d82fa644b1e0925ce9e7d416699621a8",
+      "scenario_ids": [
+        "contextual_conversation"
+      ],
+      "fixture_digests": [
+        "8478b73fd477c874efa5b517f88bbe2a1510fee48154400890185b1008aa42c1"
+      ],
+      "provider_label": "offline",
+      "sanitized_run_ids": [],
+      "metadata": {
+        "result_replay_pointers": {
+          "contextual_conversation": "scenario:contextual_conversation:v1:eval-contextual"
+        }
+      }
+    },
+    {
+      "id": "nvda_source_golden",
+      "kind": "deterministic_golden",
+      "command": "python -m leo.evals --id quote_control",
+      "digest": "7eb6d7fbe4b87d2f6275695ef48a58a33e2aba1a6e672f094749794038734439",
+      "scenario_ids": [
+        "quote_control"
+      ],
+      "fixture_digests": [
+        "878f82ff47549b1273dd8b24d332fb96aff2144f3eee15a7b7f4b00928f3833d"
+      ],
+      "provider_label": "offline",
+      "sanitized_run_ids": [],
+      "metadata": {
+        "result_replay_pointers": {
+          "quote_control": "scenario:quote_control:v1:eval-quote"
+        }
+      }
+    },
+    {
+      "id": "delegated_replanning_golden",
+      "kind": "deterministic_golden",
+      "command": "python -m leo.evals --id delegated_dependency_plan --id verifier_correction",
+      "digest": "3f687e88337994d165540c3670d46e0aea4ea8f46d4381303415db87cf3c0ce9",
+      "scenario_ids": [
+        "delegated_dependency_plan",
+        "verifier_correction"
+      ],
+      "fixture_digests": [
+        "8ae8015ddc6ff04f2a8972bf1d25ae96e124f4caf95f5acdde2de54ffcb005ba",
+        "a43a17308c243e7ace0e6f99a2a0b8433e347dad782a3806217d4ed5ab83aa88"
+      ],
+      "provider_label": "offline",
+      "sanitized_run_ids": [],
+      "metadata": {
+        "result_replay_pointers": {
+          "delegated_dependency_plan": "scenario:delegated_dependency_plan:v1:eval-plan",
+          "verifier_correction": "scenario:verifier_correction:v1:eval-correction"
+        }
+      }
+    },
+    {
+      "id": "restart_recovery",
+      "kind": "deterministic_golden",
+      "command": "python -m leo.evals --id restart_replay_idempotency",
+      "digest": "60d287b94b47cc23cff7b2ca7e6cf91d302bed4f7c90c22518702235a2b511e8",
+      "scenario_ids": [
+        "restart_replay_idempotency"
+      ],
+      "fixture_digests": [
+        "db9bc86b3f78965991a61076c09c39c5e4d5091158ab22888d8d483c8c7bf33b"
+      ],
+      "provider_label": "offline",
+      "sanitized_run_ids": [],
+      "metadata": {
+        "result_replay_pointers": {
+          "restart_replay_idempotency": "scenario:restart_replay_idempotency:v1:eval-replay"
+        }
+      }
+    },
+    {
+      "id": "duplicate_suppression",
+      "kind": "deterministic_golden",
+      "command": "python -m leo.evals --id restart_replay_idempotency",
+      "digest": "831d889d7271f22df40e710d50dc3e933d724d977302675da8ffac745b792aac",
+      "scenario_ids": [
+        "restart_replay_idempotency"
+      ],
+      "fixture_digests": [
+        "db9bc86b3f78965991a61076c09c39c5e4d5091158ab22888d8d483c8c7bf33b"
+      ],
+      "provider_label": "offline",
+      "sanitized_run_ids": [],
+      "metadata": {
+        "result_replay_pointers": {
+          "restart_replay_idempotency": "scenario:restart_replay_idempotency:v1:eval-replay"
+        }
+      }
+    },
+    {
+      "id": "dm_membership_exclusion",
+      "kind": "deterministic_golden",
+      "command": "python -m leo.evals --id dm_context_union",
+      "digest": "3da1012dbf1f624391be1109a18bb70e2a09361cd7d49ed5d194370efde66b3f",
+      "scenario_ids": [
+        "dm_context_union"
+      ],
+      "fixture_digests": [
+        "5a8530fd7781cb9aad3cb815d08504bcb80a59aeeb2c59011ece6c453db67c4f"
+      ],
+      "provider_label": "offline",
+      "sanitized_run_ids": [],
+      "metadata": {
+        "result_replay_pointers": {
+          "dm_context_union": "scenario:dm_context_union:v1:eval-dm-union"
+        }
+      }
+    },
+    {
+      "id": "verifier_rejection",
+      "kind": "deterministic_golden",
+      "command": "python -m leo.evals --id safe_failure",
+      "digest": "598e51e7cd485928f0d79ffece8074527b8e3527516902b6de57b40ce9b793eb",
+      "scenario_ids": [
+        "safe_failure"
+      ],
+      "fixture_digests": [
+        "bb4c277477b1319edc00990847dc7e2253cea36ccb9f966730dc0f0fc6bb8a92"
+      ],
+      "provider_label": "offline",
+      "sanitized_run_ids": [],
+      "metadata": {
+        "result_replay_pointers": {
+          "safe_failure": "scenario:safe_failure:v1:eval-safe"
+        }
+      }
+    },
+    {
+      "id": "memory_lifecycle",
+      "kind": "deterministic_golden",
+      "command": "python -m leo.evals --id memory_lifecycle",
+      "digest": "a0f8baea4e566fc529c09059a7c7cff4ff35c3f4974ce09e69c54b4b96a6db12",
+      "scenario_ids": [
+        "memory_lifecycle"
+      ],
+      "fixture_digests": [
+        "1a5445850440ab07a36c4079ad37bd50e753dce92badc496dc50174c0301a1c1"
+      ],
+      "provider_label": "offline",
+      "sanitized_run_ids": [],
+      "metadata": {
+        "result_replay_pointers": {
+          "memory_lifecycle": "scenario:memory_lifecycle:v1:eval-memory"
+        }
+      }
+    },
+    {
+      "id": "long_thread_compaction",
+      "kind": "deterministic_golden",
+      "command": "python -m leo.evals --id long_thread_compaction",
+      "digest": "e548d6373cb70b79aaf2c459a493406bba5089bd01908fcb4496569c4939cfae",
+      "scenario_ids": [
+        "long_thread_compaction"
+      ],
+      "fixture_digests": [
+        "b455cc4c9e09644eb9b8ad54f2a311d7b66bd2fc3c4e4daca1afb17dd0b4ff87"
+      ],
+      "provider_label": "offline",
+      "sanitized_run_ids": [],
+      "metadata": {
+        "result_replay_pointers": {
+          "long_thread_compaction": "scenario:long_thread_compaction:v1:eval-long-thread"
+        }
+      }
+    },
+    {
+      "id": "tool_recall_no_progress",
+      "kind": "deterministic_golden",
+      "command": "python -m leo.evals --id tool_recall_progressive",
+      "digest": "a756607418f668d9e5aa5604a48c3c52435e9be618300380e10ec55d54490dc8",
+      "scenario_ids": [
+        "tool_recall_progressive"
+      ],
+      "fixture_digests": [
+        "483a39a554734b02712dd45c4402f4b97caaec9ad65a259e2fbb13091ab6d063"
+      ],
+      "provider_label": "offline",
+      "sanitized_run_ids": [],
+      "metadata": {
+        "result_replay_pointers": {
+          "tool_recall_progressive": "scenario:tool_recall_progressive:v1:eval-tool-recall"
+        }
+      }
+    },
+    {
+      "id": "shared_group_external_authority",
+      "kind": "deterministic_golden",
+      "command": "python -m leo.evals --id shared_group_external_scope",
+      "digest": "591d0fa31048a6f0e0fd02067d59ba4383b556c4cdaccadfd94164b10f59cf7f",
+      "scenario_ids": [
+        "shared_group_external_scope"
+      ],
+      "fixture_digests": [
+        "1b0b741585f19721895a351bca3de67533dc5438fb730f772958f35d17cf44e1"
+      ],
+      "provider_label": "offline",
+      "sanitized_run_ids": [],
+      "metadata": {
+        "result_replay_pointers": {
+          "shared_group_external_scope": "scenario:shared_group_external_scope:v1:eval-conversation-kinds"
+        }
+      }
+    },
+    {
+      "id": "budget_boundary",
+      "kind": "deterministic_golden",
+      "command": "python -m leo.evals --id budget_boundary",
+      "digest": "c362ca9e8ae818775f9ef7772742857fa88e3c6dd4db1a4ae374757c6c665a3c",
+      "scenario_ids": [
+        "budget_boundary"
+      ],
+      "fixture_digests": [
+        "950946578142410747495c50c5554a74fa16fa23c57042da6186cac6b79bb022"
+      ],
+      "provider_label": "offline",
+      "sanitized_run_ids": [],
+      "metadata": {
+        "result_replay_pointers": {
+          "budget_boundary": "scenario:budget_boundary:v1:eval-budget"
+        }
+      }
+    },
+    {
+      "id": "fault_recovery_matrix",
+      "kind": "deterministic_golden",
+      "command": "python -m leo.evals --id fault_recovery_matrix",
+      "digest": "8f956b252df48059f920e6bf662301cfe631087f7c913a5ae32bb9598bf1d01d",
+      "scenario_ids": [
+        "fault_recovery_matrix"
+      ],
+      "fixture_digests": [
+        "912f9e3cf80805e1a31ae8712aa828162dd317bfc90b6375357414f1641039a5"
+      ],
+      "provider_label": "offline",
+      "sanitized_run_ids": [],
+      "metadata": {
+        "result_replay_pointers": {
+          "fault_recovery_matrix": "scenario:fault_recovery_matrix:v1:eval-fault-recovery"
+        }
+      }
+    },
+    {
+      "id": "conversational_terminal_recovery",
+      "kind": "deterministic_golden",
+      "command": "python -m leo.evals --id conversational_terminal_recovery",
+      "digest": "5b48e7e7f78d4ecf77047febb52869df57d8e91b85b5301950aea1bd02a9edd8",
+      "scenario_ids": [
+        "conversational_terminal_recovery"
+      ],
+      "fixture_digests": [
+        "1607e29975719881dd0e1e3cfe09add92f56965de3b5f3b4650dd6e3e0a87165"
+      ],
+      "provider_label": "offline",
+      "sanitized_run_ids": [],
+      "metadata": {
+        "result_replay_pointers": {
+          "conversational_terminal_recovery": "scenario:conversational_terminal_recovery:v1:eval-terminal-recovery"
+        }
+      }
+    },
+    {
+      "id": "elastic_deliberation",
+      "kind": "deterministic_golden",
+      "command": "python -m leo.evals --id elastic_deliberation",
+      "digest": "a73e9ce69bdb119247fdf89714caff51efee23a3e388e6750659cea72b5cf57b",
+      "scenario_ids": [
+        "elastic_deliberation"
+      ],
+      "fixture_digests": [
+        "9eb1f2564913a46525bf9a80b9b245d70bb4b41c212ca9b1c92c087539bf1f97"
+      ],
+      "provider_label": "offline",
+      "sanitized_run_ids": [],
+      "metadata": {
+        "result_replay_pointers": {
+          "elastic_deliberation": "scenario:elastic_deliberation:v1:eval-elastic-deliberation"
+        }
+      }
+    },
+    {
+      "id": "slack_thread_context_authority",
+      "kind": "deterministic_golden",
+      "command": "python -m leo.evals --id slack_thread_context_authority",
+      "digest": "3a980186b35c2a25a96ee299936c267c82b523cf525ff0b4eff65495394a06a1",
+      "scenario_ids": [
+        "slack_thread_context_authority"
+      ],
+      "fixture_digests": [
+        "bb55ad7041f1967a6bec28acb373ff2396819f93f151d535b3af021b51c3487e"
+      ],
+      "provider_label": "offline",
+      "sanitized_run_ids": [],
+      "metadata": {
+        "result_replay_pointers": {
+          "slack_thread_context_authority": "scenario:slack_thread_context_authority:v1:eval-thread-authority"
+        }
+      }
+    },
+    {
+      "id": "tavily_verified_research",
+      "kind": "deterministic_golden",
+      "command": "python -m leo.evals --id tavily_verified_research",
+      "digest": "a7ef4d9f7b7a85fc6e5b516c6867a674300bc541be98c5cef6483103e5f043c0",
+      "scenario_ids": [
+        "tavily_verified_research"
+      ],
+      "fixture_digests": [
+        "df776d908dc82bd15a6bbe16928aeca38d4fa85a25fb994846cc81bdbe9ac93b"
+      ],
+      "provider_label": "offline",
+      "sanitized_run_ids": [],
+      "metadata": {
+        "result_replay_pointers": {
+          "tavily_verified_research": "scenario:tavily_verified_research:v1:eval-tavily-verified"
+        }
+      }
+    },
+    {
+      "id": "paired_baseline_report",
+      "kind": "paired_baseline_report",
+      "command": "python -m leo.evals --baseline",
+      "digest": "b953384887209355b78ab45c001f15b035957550c1bc8fa2691caadcb36319cc",
+      "scenario_ids": [
+        "budget_boundary",
+        "channel_isolation",
+        "contextual_conversation",
+        "conversational_terminal_recovery",
+        "delegated_dependency_plan",
+        "dm_context_union",
+        "elastic_deliberation",
+        "fault_recovery_matrix",
+        "long_thread_compaction",
+        "memory_lifecycle",
+        "parallel_read_batch",
+        "quote_control",
+        "restart_replay_idempotency",
+        "safe_failure",
+        "shared_group_external_scope",
+        "slack_thread_context_authority",
+        "tavily_verified_research",
+        "tool_recall_progressive",
+        "verifier_correction"
+      ],
+      "fixture_digests": [
+        "950946578142410747495c50c5554a74fa16fa23c57042da6186cac6b79bb022",
+        "da837fdcd2558d950a915aebae87268ba5eec0872f5bd51e66e3e5baab73b686",
+        "8478b73fd477c874efa5b517f88bbe2a1510fee48154400890185b1008aa42c1",
+        "1607e29975719881dd0e1e3cfe09add92f56965de3b5f3b4650dd6e3e0a87165",
+        "8ae8015ddc6ff04f2a8972bf1d25ae96e124f4caf95f5acdde2de54ffcb005ba",
+        "5a8530fd7781cb9aad3cb815d08504bcb80a59aeeb2c59011ece6c453db67c4f",
+        "9eb1f2564913a46525bf9a80b9b245d70bb4b41c212ca9b1c92c087539bf1f97",
+        "912f9e3cf80805e1a31ae8712aa828162dd317bfc90b6375357414f1641039a5",
+        "b455cc4c9e09644eb9b8ad54f2a311d7b66bd2fc3c4e4daca1afb17dd0b4ff87",
+        "1a5445850440ab07a36c4079ad37bd50e753dce92badc496dc50174c0301a1c1",
+        "d611c1f0d611995a833c175e0226c56a4bb0f4e1d6ecce9c482392c586de5809",
+        "878f82ff47549b1273dd8b24d332fb96aff2144f3eee15a7b7f4b00928f3833d",
+        "db9bc86b3f78965991a61076c09c39c5e4d5091158ab22888d8d483c8c7bf33b",
+        "bb4c277477b1319edc00990847dc7e2253cea36ccb9f966730dc0f0fc6bb8a92",
+        "1b0b741585f19721895a351bca3de67533dc5438fb730f772958f35d17cf44e1",
+        "bb55ad7041f1967a6bec28acb373ff2396819f93f151d535b3af021b51c3487e",
+        "df776d908dc82bd15a6bbe16928aeca38d4fa85a25fb994846cc81bdbe9ac93b",
+        "483a39a554734b02712dd45c4402f4b97caaec9ad65a259e2fbb13091ab6d063",
+        "a43a17308c243e7ace0e6f99a2a0b8433e347dad782a3806217d4ed5ab83aa88"
+      ],
+      "provider_label": "offline",
+      "sanitized_run_ids": [],
+      "metadata": {
+        "result_replay_pointers": {
+          "budget_boundary": "scenario:budget_boundary:v1:eval-budget",
+          "channel_isolation": "scenario:channel_isolation:v1:eval-isolation",
+          "contextual_conversation": "scenario:contextual_conversation:v1:eval-contextual",
+          "conversational_terminal_recovery": "scenario:conversational_terminal_recovery:v1:eval-terminal-recovery",
+          "delegated_dependency_plan": "scenario:delegated_dependency_plan:v1:eval-plan",
+          "dm_context_union": "scenario:dm_context_union:v1:eval-dm-union",
+          "elastic_deliberation": "scenario:elastic_deliberation:v1:eval-elastic-deliberation",
+          "fault_recovery_matrix": "scenario:fault_recovery_matrix:v1:eval-fault-recovery",
+          "long_thread_compaction": "scenario:long_thread_compaction:v1:eval-long-thread",
+          "memory_lifecycle": "scenario:memory_lifecycle:v1:eval-memory",
+          "parallel_read_batch": "scenario:parallel_read_batch:v1:eval-parallel",
+          "quote_control": "scenario:quote_control:v1:eval-quote",
+          "restart_replay_idempotency": "scenario:restart_replay_idempotency:v1:eval-replay",
+          "safe_failure": "scenario:safe_failure:v1:eval-safe",
+          "shared_group_external_scope": "scenario:shared_group_external_scope:v1:eval-conversation-kinds",
+          "slack_thread_context_authority": "scenario:slack_thread_context_authority:v1:eval-thread-authority",
+          "tavily_verified_research": "scenario:tavily_verified_research:v1:eval-tavily-verified",
+          "tool_recall_progressive": "scenario:tool_recall_progressive:v1:eval-tool-recall",
+          "verifier_correction": "scenario:verifier_correction:v1:eval-correction"
+        },
+        "comparison_digest": "86aa189cf570ed475e99cdcf207d822cc14e387b75500841a9b55a710b51a26c",
+        "paired_delta_count": 208
+      }
+    },
+    {
+      "id": "live_slack_supabase_reconciliation",
+      "kind": "live_slack_supabase_reconciliation",
+      "command": "python -m leo.evals.live_proof_operator",
+      "digest": "c63424e70e699c6de75fa266d287c8fcd42757e22900f888bac99507e4aae967",
+      "scenario_ids": [
+        "cross_channel_negative",
+        "delegated_replanning",
+        "dm_membership_union",
+        "group_dm",
+        "memory_recall",
+        "memory_write",
+        "private_channel",
+        "quote",
+        "sec"
+      ],
+      "fixture_digests": [
+        "0f357cfb5dfc5d175d59aa90f91b0ab3c6eba270012361fab740a80fc50d6f41",
+        "8dfb3e40079dd02f696bc1f5cf6c29f6cd0241519b30b858531005aebf75f97a",
+        "00d977e9a78f7fc2f0e2a47d5dd38e00a85acfd72ba08e87a1ad37ada77598c7",
+        "f8b1753a4702751ca11c3cf9ab360c9c9270a6a2e2f91a3b6a4747e9b4747a58",
+        "5c518a2a3e4afe90b9a100fe8f22e20bec34a7e57fc03558e11a4381cde86176",
+        "c17864e892a3bfcdb053ad84f957eaa01ad4135c2fbf9231a7c88918d029c98f",
+        "a7b92555d80ff5314a314e0df383146a68465d8ebe351438bf7b47d55d032aa1",
+        "3eaed8398ed86e4919108e812570f6dd222460cc3cf32bf63acd7ea6cd8219a4",
+        "b76b734bd5e67121e7ccc5f580622f7f6e07a92d2ebe29b6df8120d246b72f1e"
+      ],
+      "provider_label": "slack-supabase-live",
+      "sanitized_run_ids": [
+        "run-a1b1507c-b715-43e3-ad46-b9d70497a555",
+        "run-8ef0f54b-58be-4283-9a33-a6b59b040f7b",
+        "run-f674ab09-9d4a-4216-b393-54f86810353c",
+        "run-c7e42598-8ebe-46c9-aa40-fa2ff6daa4fc",
+        "run-7c88d564-f6ae-42fc-bedc-63b41df9cf9b",
+        "run-72d346ce-120d-47e0-affc-e6bd40aac805",
+        "run-1c0baefa-c29e-4e30-8b1d-bade2473bf27",
+        "run-6b64e0c6-d0b7-4b49-9e25-4580d1bbcd7b",
+        "run-4dce384e-0a33-429e-8675-6c48bfeab631"
+      ],
+      "metadata": {
+        "authority_digest": "6e1e63df840268f0cdf75b76542b4338c770777f4cfa4ae113cf2c48037ed785",
+        "case_summaries": [
+          {
+            "evidence_id": "cross_channel_negative",
+            "binding_digest": "0f357cfb5dfc5d175d59aa90f91b0ab3c6eba270012361fab740a80fc50d6f41",
+            "message_ts": "1787357962.645609",
+            "run_id": "run-a1b1507c-b715-43e3-ad46-b9d70497a555",
+            "task_id": "task-6c82fd89-fea8-4427-aa34-c4c3bb281f3f",
+            "channel_id": "C0BRKQU4EL9",
+            "conversation_kind": "ordinary_internal",
+            "slack_response_ts": "1787357980.190389",
+            "objective_digest": "e48814df1c752ef345aea93296d85d19b5a4ef1ff0f34daa9c90cb8b65b27dbd",
+            "final_output_digest": "78838929fe3234f5bac7c954cd66aee90fcab27a6c7205baef4608dcee72ee1c",
+            "task_terminal_state": "completed",
+            "run_terminal_state": "completed",
+            "event_terminal_state": "run_completed",
+            "event_count": 13,
+            "last_event_sequence": 13,
+            "event_timeline_digest": "1fb149448c4b7fb7cb13345d7b40c178a83d3e39dd74b0a56509c80464a05785",
+            "context_access_hash": "840fb0707e783541e24904f636c121b0b94320a1445c1dd842998057a5a3f059",
+            "context_projection_source": "exact_destination",
+            "context_conversation_count": 1,
+            "conversation_source_set_digest": "85bdd558b5d9573c3f4be17444ae119e72bb4a24e63f6e68d2ae8fdcdf32e8c7",
+            "context_snapshot_digest": "637884fd9e9ca885e039917753426ca898167d112f05e31612fc3d565d4cf520",
+            "current_membership_count": 0,
+            "current_membership_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "context_manifest_digest": "0cca16333b4bfdf193a09fe252e1605f8e3f45706fdfd49078163041075606df",
+            "message_plane_digest": "ef91b687b9be487af4133c21c265fa817e5900ae035d12088a8a53d7c0ee6718",
+            "memory_recall_verified": false,
+            "memory_recall_source_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "memory_recall_observation_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "grounded_memory_claim_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "case_invariant_digest": "37e98dfde6746ff5f503b0287c1591493f7b77b8d4971b9b9ef7d8c6c07322a2",
+            "observed_evidence_count": 1,
+            "grounded_claim_count": 1,
+            "memory_mutation_record_count": 0,
+            "memory_mutation_revision_count": 0,
+            "memory_mutation_source_count": 0,
+            "memory_mutation_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "delegated_child_count": 0,
+            "delegated_overlap_verified": false,
+            "delegated_evidence_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "plan_present": false,
+            "plan_terminal_state": "absent",
+            "plan_revision_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "plan_snapshot_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "plan_node_count": 0,
+            "delegation_count": 0,
+            "delivery_state": "delivered",
+            "outbox_count": 2,
+            "outbox_digest": "dd70afc9944bb8273f7463ca83ddfaaadb17602a629ef5aef1840b63dd7492ed",
+            "ingress_digest": "8f3000b8a59bfea6c542b35aa0a3b4dfd67505e96bb6bba93ec2d9f08a919692",
+            "task_run_digest": "edf98a14ea1237246b8a9b6cb1fdb20a9508d46d5e5b58f9e9e440b90869f72a",
+            "row_snapshot_digest": "426bd5703d0ec50babae1e74f26e8a0f8d54021027001196a8c821b38996a62e"
+          },
+          {
+            "evidence_id": "delegated_replanning",
+            "binding_digest": "8dfb3e40079dd02f696bc1f5cf6c29f6cd0241519b30b858531005aebf75f97a",
+            "message_ts": "1787359727.983069",
+            "run_id": "run-8ef0f54b-58be-4283-9a33-a6b59b040f7b",
+            "task_id": "task-48379fb9-0b41-48e7-acf5-a390cf9bf37f",
+            "channel_id": "C0BRHRPTJ2W",
+            "conversation_kind": "ordinary_internal",
+            "slack_response_ts": "1787359839.470059",
+            "objective_digest": "85e998adf01bf502cf881904680bfdd07d09b01d1a66527194604d08e6491174",
+            "final_output_digest": "3d20e558421ee94f189443ab3e2dcd04f742a1933ccfdd61cd1535c625d22186",
+            "task_terminal_state": "completed",
+            "run_terminal_state": "completed",
+            "event_terminal_state": "run_completed",
+            "event_count": 13,
+            "last_event_sequence": 13,
+            "event_timeline_digest": "5d3a3954fd8ed94750253ffcc2ef799edc985903213f62017a59be4ef7a71d3e",
+            "context_access_hash": "9354e02fbe1b0e73936a009eba316069e4696b66ac3d17a454e3c9524b0f0f1b",
+            "context_projection_source": "exact_destination",
+            "context_conversation_count": 1,
+            "conversation_source_set_digest": "aae1e3feb26674ffb6af196927aeff979697e41d666280a9bc4b0ded076c6dd1",
+            "context_snapshot_digest": "a32361a9c18718306a001dc5bb83b74ed37aab947ffc0a6d360746bb33b81103",
+            "current_membership_count": 0,
+            "current_membership_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "context_manifest_digest": "e14d7d84d66d4f8462749d4a51fb9cf012998b26baa04ffdec46f7ede9dd9a49",
+            "message_plane_digest": "2bcf4842c39d7692493cdf234078e0d145f1d61487ec7a0240e76978d6441b1a",
+            "memory_recall_verified": false,
+            "memory_recall_source_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "memory_recall_observation_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "grounded_memory_claim_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "case_invariant_digest": "72eefa39905256251ebdb351b554dec5051bfe2bd74b1d986a018c2c3c7ec945",
+            "observed_evidence_count": 1,
+            "grounded_claim_count": 4,
+            "memory_mutation_record_count": 0,
+            "memory_mutation_revision_count": 0,
+            "memory_mutation_source_count": 0,
+            "memory_mutation_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "delegated_child_count": 2,
+            "delegated_overlap_verified": true,
+            "delegated_evidence_digest": "e648c3ea905eceacb2dc8fde3dd2982b2015ae7fd22d0ebd31835dffaadaec61",
+            "plan_present": true,
+            "plan_terminal_state": "completed",
+            "plan_revision_digest": "c633d032a9ff2de4663a710b26fe1a1cb20baffddf417fa4dc3ed9b11b5ae710",
+            "plan_snapshot_digest": "d48a6ccf93511cea0c3054181956df05fc1712874ac28d62e7479ba172c1dded",
+            "plan_node_count": 2,
+            "delegation_count": 2,
+            "delivery_state": "delivered",
+            "outbox_count": 2,
+            "outbox_digest": "a1c167136301733e412d63402fd6b9cd57666f877c0a9700a356261213f66749",
+            "ingress_digest": "a3f41df8be36098959bc0ebdc9de40988fcf539c5d5a82cf50211f3e4434953a",
+            "task_run_digest": "e87ad5232d3c84e17f879b88835029f5ce7854e6a4d94417fc3f180bac6eed0c",
+            "row_snapshot_digest": "62a4db53b7eab24a53f3faa8fa9b56eb37f012eefd5fcc2367c06ac57cf27bdb"
+          },
+          {
+            "evidence_id": "dm_membership_union",
+            "binding_digest": "00d977e9a78f7fc2f0e2a47d5dd38e00a85acfd72ba08e87a1ad37ada77598c7",
+            "message_ts": "1787395348.850019",
+            "run_id": "run-f674ab09-9d4a-4216-b393-54f86810353c",
+            "task_id": "task-0ebef8e2-a4c8-49d3-bc5a-4e5fd9e29b92",
+            "channel_id": "D0BRMS9FSG1",
+            "conversation_kind": "dm",
+            "slack_response_ts": "1787395374.275729",
+            "objective_digest": "a405df7315c3667eed7a7eade1ee31e2c89a53f23d641bd33976102ee4e6ee26",
+            "final_output_digest": "b479367339ed77c733b961a4c9f69cf5587266f4d2a95bd10b383878b12de078",
+            "task_terminal_state": "completed",
+            "run_terminal_state": "completed",
+            "event_terminal_state": "run_completed",
+            "event_count": 13,
+            "last_event_sequence": 13,
+            "event_timeline_digest": "2b5694d9f45c83c90bad66f9e40eed2107d1eb974a7f37db912db5f21399139d",
+            "context_access_hash": "1269a0f5e9e966ec359a56af1add54ae4db27b837f5c354552a72cd154341c14",
+            "context_projection_source": "dm_membership_intersection",
+            "context_conversation_count": 6,
+            "conversation_source_set_digest": "a63de13149e155fcd7f9df501fcf5b29ec57caeb54e0481d34b14f7e43d5be9b",
+            "context_snapshot_digest": "d8c1e94e93437d83efa64eb3287b2cb2925b3ab284aa2eb02f695f742afd8907",
+            "current_membership_count": 6,
+            "current_membership_digest": "c775b03f9d5a6b1f2bdb8c0a853126da31dbb28172b36a8a15a8cdb009601dda",
+            "context_manifest_digest": "18ca7847d386f9b6387593fe392c768ae2548406829ca0db8ef54d579ddb82e2",
+            "message_plane_digest": "1e2f90e1e6a2468fa5d0e055fe100dd52e7086ec329f6d1c4106139583799d2a",
+            "memory_recall_verified": true,
+            "memory_recall_source_digest": "f92b5ea397b76c22139bb4a07369c822f5c2925e11dd883cc15fb5c8bf4bf9d6",
+            "memory_recall_observation_digest": "e7cad0d106b2a12a09ef7e0198c6e9cee2e6360d547560b0b956495c8e530bd8",
+            "grounded_memory_claim_digest": "c791d35f3e38c385b2bc1fc69b0c5485a3cdf9b7d52114a185e99f61662705e6",
+            "case_invariant_digest": "4d5b7d0177eab87b15391adbe336e8c939a4d1b76b81989a94852520481c343d",
+            "observed_evidence_count": 1,
+            "grounded_claim_count": 1,
+            "memory_mutation_record_count": 0,
+            "memory_mutation_revision_count": 0,
+            "memory_mutation_source_count": 0,
+            "memory_mutation_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "delegated_child_count": 0,
+            "delegated_overlap_verified": false,
+            "delegated_evidence_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "plan_present": false,
+            "plan_terminal_state": "absent",
+            "plan_revision_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "plan_snapshot_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "plan_node_count": 0,
+            "delegation_count": 0,
+            "delivery_state": "delivered",
+            "outbox_count": 2,
+            "outbox_digest": "be48c927609409436ca24a51f6bf3c75af29109ff10092fda308eedeb4ad1eca",
+            "ingress_digest": "f761e631adb2e1e6d0bec5a25b31468358d3e3bd249495c03fa884e4a2ca9d7d",
+            "task_run_digest": "192aba582276cad050bad50e7865f87cb01557aeae445760e57d952999d3d699",
+            "row_snapshot_digest": "107276261cf567e8f79cdb917790eb16bc2e982e5a351d4361fdcb7d69b8d0e5"
+          },
+          {
+            "evidence_id": "group_dm",
+            "binding_digest": "f8b1753a4702751ca11c3cf9ab360c9c9270a6a2e2f91a3b6a4747e9b4747a58",
+            "message_ts": "1787358086.900129",
+            "run_id": "run-c7e42598-8ebe-46c9-aa40-fa2ff6daa4fc",
+            "task_id": "task-ab33eebf-200c-4ebe-abfc-7c5f2a9a41e6",
+            "channel_id": "C0BRV1MQMAS",
+            "conversation_kind": "mpim",
+            "slack_response_ts": "1787358098.477119",
+            "objective_digest": "68999cafda548d041bfb61c059ebf2d3bcae6c5152a04b6d37ce9e42a2a4199b",
+            "final_output_digest": "710c0b7ddb616b429e45a458165ab516b861cd8eca41ee3e6b8cfee12014c54c",
+            "task_terminal_state": "completed",
+            "run_terminal_state": "completed",
+            "event_terminal_state": "run_completed",
+            "event_count": 7,
+            "last_event_sequence": 7,
+            "event_timeline_digest": "01eef4b1d51f5dbdac0b250d6e6b7aa62a0094c5e9b2091e70f9f32df6a49a8b",
+            "context_access_hash": "e64153089a83c084d0602e8479a948b40ebb3ffd8c9436dba6ef90d94649731f",
+            "context_projection_source": "exact_destination",
+            "context_conversation_count": 1,
+            "conversation_source_set_digest": "7fefe2021d529d72eec2eec5697df3f06b231b41f478d7d134aaca068bae5973",
+            "context_snapshot_digest": "9cbaf6f96fd26091cc62338588517f8147f3cf86a79dff5683895d4e5f48c114",
+            "current_membership_count": 0,
+            "current_membership_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "context_manifest_digest": "227e40ed39006db388fc2c22edccae9dbaa1e9e9b55b396c5b85290f10ffcaa1",
+            "message_plane_digest": "22257d55be343de938986b9ec27e825dd2d7694c6576352334ea6bb243ba716f",
+            "memory_recall_verified": false,
+            "memory_recall_source_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "memory_recall_observation_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "grounded_memory_claim_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "case_invariant_digest": "af0b90b4526c5f51a6ced14806a0ff0f32fb273653932fe06ca4bc24bf47d9ec",
+            "observed_evidence_count": 0,
+            "grounded_claim_count": 0,
+            "memory_mutation_record_count": 0,
+            "memory_mutation_revision_count": 0,
+            "memory_mutation_source_count": 0,
+            "memory_mutation_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "delegated_child_count": 0,
+            "delegated_overlap_verified": false,
+            "delegated_evidence_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "plan_present": false,
+            "plan_terminal_state": "absent",
+            "plan_revision_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "plan_snapshot_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "plan_node_count": 0,
+            "delegation_count": 0,
+            "delivery_state": "delivered",
+            "outbox_count": 2,
+            "outbox_digest": "2c3af09264b35623b2d2bead6e2f96c2297d0964cf4a548d30cc80711b1019e1",
+            "ingress_digest": "f489d68ee3664e39f0c3d6a7140e4efc2cae03f7e510b94e24be54e985dcd4b2",
+            "task_run_digest": "26980c5c3b94d8c9dd0c49b40bcde7c5fadb71d80fd38bdab94abe97064436d0",
+            "row_snapshot_digest": "cc7a7363a6f9d4bea5cfacd0e15620eeb19afc3bb9c0d2236d7633e17e8c85f8"
+          },
+          {
+            "evidence_id": "memory_recall",
+            "binding_digest": "5c518a2a3e4afe90b9a100fe8f22e20bec34a7e57fc03558e11a4381cde86176",
+            "message_ts": "1787357936.027889",
+            "run_id": "run-7c88d564-f6ae-42fc-bedc-63b41df9cf9b",
+            "task_id": "task-ff746a65-8232-4049-96ac-418d39d4dc93",
+            "channel_id": "C0BRFU0LQF8",
+            "conversation_kind": "ordinary_internal",
+            "slack_response_ts": "1787357950.654349",
+            "objective_digest": "9101d70724aca5efe00a58a206fd508fec9e2d35d804c74891076148ff4916f9",
+            "final_output_digest": "6886ad2efd008a633c55098601b8e69700d6c45e18a7c29e0252738b5e0bd315",
+            "task_terminal_state": "completed",
+            "run_terminal_state": "completed",
+            "event_terminal_state": "run_completed",
+            "event_count": 13,
+            "last_event_sequence": 13,
+            "event_timeline_digest": "a55996787c275e8f35291908dc6deba03e64dfc32faaa756331451cb8f781f8c",
+            "context_access_hash": "175137cd7a76b2a70f9ee9666c0af5760ec936fcb4701dccea3dd9a5e91441c1",
+            "context_projection_source": "exact_destination",
+            "context_conversation_count": 1,
+            "conversation_source_set_digest": "4ad4c43aa2558edf75d0cf34cec22349eaae26fa04e422573283202af97b8927",
+            "context_snapshot_digest": "910c7e667cef3ccb8fdcba167c7bd3dfd98755985771ce55e23ea110ada8c53c",
+            "current_membership_count": 0,
+            "current_membership_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "context_manifest_digest": "71ddd4f33ca0af82316b490aac74e0eddb994975ad8f224286699c0963b9fc23",
+            "message_plane_digest": "1188c02d5fd56b6d56cd73e392a270dcc412aa6bf1f1011f8eccec369328791a",
+            "memory_recall_verified": true,
+            "memory_recall_source_digest": "f92b5ea397b76c22139bb4a07369c822f5c2925e11dd883cc15fb5c8bf4bf9d6",
+            "memory_recall_observation_digest": "a7e55e057882d7ab036bfb9cff0658de26984ebfca565027b851096cf3c1de10",
+            "grounded_memory_claim_digest": "328c909cd3012c12ccdb8da911d729ecdcbc8bb7158538889a67790da6218e84",
+            "case_invariant_digest": "ed47da8b37bcb548f85210309b029d8cf80ce7351bb7c4143f66accd6b25830c",
+            "observed_evidence_count": 1,
+            "grounded_claim_count": 1,
+            "memory_mutation_record_count": 0,
+            "memory_mutation_revision_count": 0,
+            "memory_mutation_source_count": 0,
+            "memory_mutation_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "delegated_child_count": 0,
+            "delegated_overlap_verified": false,
+            "delegated_evidence_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "plan_present": false,
+            "plan_terminal_state": "absent",
+            "plan_revision_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "plan_snapshot_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "plan_node_count": 0,
+            "delegation_count": 0,
+            "delivery_state": "delivered",
+            "outbox_count": 2,
+            "outbox_digest": "fcc0b3c15680976f353871d0b5a345c3cc101073d4b81b8cfd9c2522cd1c2a1d",
+            "ingress_digest": "5a5ad88bd09309bcc81cd21e9537ce3ff3b784344de949fd2bc917cc81459911",
+            "task_run_digest": "e4a969feb2ed3c16be8e2d4e067252fb7091d565f5a7083032196450901fbc4e",
+            "row_snapshot_digest": "2a1b577ffa4c5328737f7787f1f7b4a86a9916b56d4328c40c3399620cfbe8ee"
+          },
+          {
+            "evidence_id": "memory_write",
+            "binding_digest": "c17864e892a3bfcdb053ad84f957eaa01ad4135c2fbf9231a7c88918d029c98f",
+            "message_ts": "1787357909.119159",
+            "run_id": "run-72d346ce-120d-47e0-affc-e6bd40aac805",
+            "task_id": "task-8721adff-49aa-44ac-9cad-425d0c1238bd",
+            "channel_id": "C0BRFU0LQF8",
+            "conversation_kind": "ordinary_internal",
+            "slack_response_ts": "1787357924.223139",
+            "objective_digest": "de36351a86b5ce3a8b46a84c1b9a2476c7c426b4d88acf113a376b8b2a8f2800",
+            "final_output_digest": "d075aa4d24f79e52ecadbee22b8742f2a9a501f9cab16dc50426b5fd38d1e5a9",
+            "task_terminal_state": "completed",
+            "run_terminal_state": "completed",
+            "event_terminal_state": "run_completed",
+            "event_count": 13,
+            "last_event_sequence": 13,
+            "event_timeline_digest": "dbce1d1641dcbc5aa3151e4e5fb187776292ef621576a77c52d43192c2eae120",
+            "context_access_hash": "175137cd7a76b2a70f9ee9666c0af5760ec936fcb4701dccea3dd9a5e91441c1",
+            "context_projection_source": "exact_destination",
+            "context_conversation_count": 1,
+            "conversation_source_set_digest": "4ad4c43aa2558edf75d0cf34cec22349eaae26fa04e422573283202af97b8927",
+            "context_snapshot_digest": "910c7e667cef3ccb8fdcba167c7bd3dfd98755985771ce55e23ea110ada8c53c",
+            "current_membership_count": 0,
+            "current_membership_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "context_manifest_digest": "5d950af18a4b8f0ba162fe3af8985d8594da69f96e73322e1fe48dab9d98df73",
+            "message_plane_digest": "4f1fd91045c0fb94d9e8b8e6d5cfd07b3f95e1234f95203dd7e75c05022810ba",
+            "memory_recall_verified": false,
+            "memory_recall_source_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "memory_recall_observation_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "grounded_memory_claim_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "case_invariant_digest": "dc2218355796d07081b831987a8a80162d8e10d6601a69f93e4152f067671c51",
+            "observed_evidence_count": 1,
+            "grounded_claim_count": 0,
+            "memory_mutation_record_count": 1,
+            "memory_mutation_revision_count": 1,
+            "memory_mutation_source_count": 3,
+            "memory_mutation_digest": "ab852b86d0d0d4ed878f71c7734cb08fdb85bb5d4564ab90b38fb0e5672d034d",
+            "delegated_child_count": 0,
+            "delegated_overlap_verified": false,
+            "delegated_evidence_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "plan_present": false,
+            "plan_terminal_state": "absent",
+            "plan_revision_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "plan_snapshot_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "plan_node_count": 0,
+            "delegation_count": 0,
+            "delivery_state": "delivered",
+            "outbox_count": 2,
+            "outbox_digest": "22432c06c5a922ac4e38d368d58e7e40e0f399f1c96923de62d04136724e3eba",
+            "ingress_digest": "16e549c1fdd82253bd193dc2ca9e112ac1b67d0f874cd8be0a1f21e96ce5281b",
+            "task_run_digest": "4f51ede5e98609d8562b2ffe468dfa5d82b0cfea8a943ffc07dbaa0233315c3b",
+            "row_snapshot_digest": "5bd239630a80e383556b86d3cdd89701c68126fca9fdf6a316ca2a7ad63e8d00"
+          },
+          {
+            "evidence_id": "private_channel",
+            "binding_digest": "a7b92555d80ff5314a314e0df383146a68465d8ebe351438bf7b47d55d032aa1",
+            "message_ts": "1787358059.502109",
+            "run_id": "run-1c0baefa-c29e-4e30-8b1d-bade2473bf27",
+            "task_id": "task-f66c36ed-1931-4676-b0d2-3caa012caa0b",
+            "channel_id": "C0BRYTMPDQR",
+            "conversation_kind": "ordinary_internal",
+            "slack_response_ts": "1787358074.314639",
+            "objective_digest": "2aa5a5d5d437ed5cd7dd342f6cff99753a5a22afcff4c90fd1d0be585149860e",
+            "final_output_digest": "0fcf7d2a4fed1ff08cc8deed5150b5bd337bd6f952ee223070e0b050fb90abc6",
+            "task_terminal_state": "completed",
+            "run_terminal_state": "completed",
+            "event_terminal_state": "run_completed",
+            "event_count": 12,
+            "last_event_sequence": 12,
+            "event_timeline_digest": "7c79638e81a72207a80f08488bfb900bfee99d8f0e617efe4fb124c138a1b55a",
+            "context_access_hash": "26935c3a37e6948a3bf32c5575c5954a28da3f55d70a7ca491ca89a91a0f4aa7",
+            "context_projection_source": "exact_destination",
+            "context_conversation_count": 1,
+            "conversation_source_set_digest": "1e3510593be9c1e7c833ab30935de3e4ac3d6051b9d723a72426c5923d623bcd",
+            "context_snapshot_digest": "0c9c6174339a10f43288f47f6a70aeeef8a15d8c7faaf7d64d13e0b462e08417",
+            "current_membership_count": 0,
+            "current_membership_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "context_manifest_digest": "9664966ae070e4505cd0144853255730d300ae8c8bebfe752e363f8eedd6ea03",
+            "message_plane_digest": "a49ec5b4e2ab052a729533a3e78c8809090f827609da13593741af577fa41a7a",
+            "memory_recall_verified": false,
+            "memory_recall_source_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "memory_recall_observation_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "grounded_memory_claim_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "case_invariant_digest": "c294f36858f47cc2a4bfe52b1f20860d845f3926b221f3a18fb3d2652e56d61b",
+            "observed_evidence_count": 0,
+            "grounded_claim_count": 0,
+            "memory_mutation_record_count": 0,
+            "memory_mutation_revision_count": 0,
+            "memory_mutation_source_count": 0,
+            "memory_mutation_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "delegated_child_count": 0,
+            "delegated_overlap_verified": false,
+            "delegated_evidence_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "plan_present": false,
+            "plan_terminal_state": "absent",
+            "plan_revision_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "plan_snapshot_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "plan_node_count": 0,
+            "delegation_count": 0,
+            "delivery_state": "delivered",
+            "outbox_count": 2,
+            "outbox_digest": "5d8e459d907e5c79b04eefbdd4f4e724aa79dc1b9afd2efb2fd3c0f079d0d89e",
+            "ingress_digest": "b6df5675e9a1895dad5c56d1b88898be2b3046dd1d86b0c359b3181033cbd8b4",
+            "task_run_digest": "8f99b373c6d92ac92275b67c28295dc3b82b13d05db4f6cc4b45c9598273dc48",
+            "row_snapshot_digest": "f26a654bc28b37cda5d65d6d0dc961b986fd3b84c57a5645fcc398c740723556"
+          },
+          {
+            "evidence_id": "quote",
+            "binding_digest": "3eaed8398ed86e4919108e812570f6dd222460cc3cf32bf63acd7ea6cd8219a4",
+            "message_ts": "1787357988.215809",
+            "run_id": "run-6b64e0c6-d0b7-4b49-9e25-4580d1bbcd7b",
+            "task_id": "task-ea514fbe-ff80-49fd-9cdf-1b3364740e71",
+            "channel_id": "C0BRHRPTJ2W",
+            "conversation_kind": "ordinary_internal",
+            "slack_response_ts": "1787358001.416349",
+            "objective_digest": "1912cf1a84db96d33a5c15212550733e410e724b62fde01397cf6fc3286d83cc",
+            "final_output_digest": "0f5b3cd061f946c1f64274610ce6f8d680bfa4acb72a6da67cd8411cd554738f",
+            "task_terminal_state": "completed",
+            "run_terminal_state": "completed",
+            "event_terminal_state": "run_completed",
+            "event_count": 13,
+            "last_event_sequence": 13,
+            "event_timeline_digest": "9e4dcaa4d2a98d6c2973c23f60c3bafb162b834a886dc419fc9c5b3e0ba3a1b1",
+            "context_access_hash": "9354e02fbe1b0e73936a009eba316069e4696b66ac3d17a454e3c9524b0f0f1b",
+            "context_projection_source": "exact_destination",
+            "context_conversation_count": 1,
+            "conversation_source_set_digest": "aae1e3feb26674ffb6af196927aeff979697e41d666280a9bc4b0ded076c6dd1",
+            "context_snapshot_digest": "a32361a9c18718306a001dc5bb83b74ed37aab947ffc0a6d360746bb33b81103",
+            "current_membership_count": 0,
+            "current_membership_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "context_manifest_digest": "bd8714f8012cf08a5c88ef8b36dbc0ce90af628b24ef58804d8a932b0281c29a",
+            "message_plane_digest": "4a0b45e99abefd78e6b324193996dab5842fcb743593c75eb01091a486a9e77d",
+            "memory_recall_verified": false,
+            "memory_recall_source_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "memory_recall_observation_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "grounded_memory_claim_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "case_invariant_digest": "1b6648344b768c04adc604de4eeff0eb4f4b9326e413db47c31c9ba2c47a86b2",
+            "observed_evidence_count": 1,
+            "grounded_claim_count": 1,
+            "memory_mutation_record_count": 0,
+            "memory_mutation_revision_count": 0,
+            "memory_mutation_source_count": 0,
+            "memory_mutation_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "delegated_child_count": 0,
+            "delegated_overlap_verified": false,
+            "delegated_evidence_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "plan_present": false,
+            "plan_terminal_state": "absent",
+            "plan_revision_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "plan_snapshot_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "plan_node_count": 0,
+            "delegation_count": 0,
+            "delivery_state": "delivered",
+            "outbox_count": 2,
+            "outbox_digest": "00289a1e54420cfbf145c7ca69b39fe08c20f0a94f2b9a02a5e8d9e643ced048",
+            "ingress_digest": "2ff3c210d4f73eb38b0fbcc063a91f81211d601f412409fc7e9f9034e2bae24d",
+            "task_run_digest": "79581a75da8d36ea58f8d24a405ebdb2d49b98336c8c51cf01f692976e838ca1",
+            "row_snapshot_digest": "f64bcb0d8e55a41b571b6d7a049d4d5563a614b0015ec99737cb93d1e002bbb0"
+          },
+          {
+            "evidence_id": "sec",
+            "binding_digest": "b76b734bd5e67121e7ccc5f580622f7f6e07a92d2ebe29b6df8120d246b72f1e",
+            "message_ts": "1787358023.707739",
+            "run_id": "run-4dce384e-0a33-429e-8675-6c48bfeab631",
+            "task_id": "task-cbbca132-3a34-49ed-b193-c610a9078a1e",
+            "channel_id": "C0BRHRPTJ2W",
+            "conversation_kind": "ordinary_internal",
+            "slack_response_ts": "1787358036.649789",
+            "objective_digest": "9831de58a7940e41fdd8bb210c2a2ba63e3039b22700c0947049a3131b9d1835",
+            "final_output_digest": "190cf37d04678b0af92f69e384bcbaa9fa0d898c237c7f4ca697c2cd4cb3ecbe",
+            "task_terminal_state": "completed",
+            "run_terminal_state": "completed",
+            "event_terminal_state": "run_completed",
+            "event_count": 13,
+            "last_event_sequence": 13,
+            "event_timeline_digest": "cffdce335d1f2c9e9c1f43ec58afd1b10a011a99452b9cd6ef794a94d6b4c4fc",
+            "context_access_hash": "9354e02fbe1b0e73936a009eba316069e4696b66ac3d17a454e3c9524b0f0f1b",
+            "context_projection_source": "exact_destination",
+            "context_conversation_count": 1,
+            "conversation_source_set_digest": "aae1e3feb26674ffb6af196927aeff979697e41d666280a9bc4b0ded076c6dd1",
+            "context_snapshot_digest": "a32361a9c18718306a001dc5bb83b74ed37aab947ffc0a6d360746bb33b81103",
+            "current_membership_count": 0,
+            "current_membership_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "context_manifest_digest": "9346864569ed02c1de74c4148462365f242d75f9d6972378d8449b81d460991e",
+            "message_plane_digest": "f803e40d2a4513c4c22a9a610b8e875c1a2dcfeb6a3063fe4fa481bdca21e611",
+            "memory_recall_verified": false,
+            "memory_recall_source_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "memory_recall_observation_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "grounded_memory_claim_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "case_invariant_digest": "ca8f09b00fc91839f7c678c04bdf7241552b96db34df46c3c2d27fc1848c54ee",
+            "observed_evidence_count": 1,
+            "grounded_claim_count": 1,
+            "memory_mutation_record_count": 0,
+            "memory_mutation_revision_count": 0,
+            "memory_mutation_source_count": 0,
+            "memory_mutation_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "delegated_child_count": 0,
+            "delegated_overlap_verified": false,
+            "delegated_evidence_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "plan_present": false,
+            "plan_terminal_state": "absent",
+            "plan_revision_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "plan_snapshot_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "plan_node_count": 0,
+            "delegation_count": 0,
+            "delivery_state": "delivered",
+            "outbox_count": 2,
+            "outbox_digest": "2c2cf95925b6e6d5fedaf40836a590210f687db56c84ff4b5c0d5013354d06a5",
+            "ingress_digest": "f75456b657b7df2e68669c96e3a84b4e9b75480c8ca93713e25c5b6b40e23df8",
+            "task_run_digest": "f270246cbefd8a561f92fc1901d99855a2b48539d9ec0f476b1e8b1c77d7b937",
+            "row_snapshot_digest": "05459604a9fb956414ff547c23d202b80fdd3ac074e1c9014b112743adbdb25e"
+          }
+        ],
+        "collection_digest": "e30684c55bae621ebfbf0cd5e323ed0a2b060fb3d8cd23bf7fcd1f59be82bfd6",
+        "pending_evidence_ids": [],
+        "profile": "m5-live-v1",
+        "status": "complete",
+        "version": "live-proof-v1"
+      }
+    }
+  ],
+  "final_golden_bound": true
+}

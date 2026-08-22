@@ -1,0 +1,15 @@
+{
+  "id": "restart_replay_idempotency",
+  "version": "v1",
+  "purpose": "Verify durable replay performs no additional model, tool, event, or final-delivery side effect.",
+  "provider_mode": "offline",
+  "fixture_digest": "db9bc86b3f78965991a61076c09c39c5e4d5091158ab22888d8d483c8c7bf33b",
+  "fixed_clock": "2026-01-02T15:04:05Z",
+  "deterministic_id_prefix": "eval-replay",
+  "execution_variant": "restart_replay_idempotency",
+  "budget": {"max_model_calls": 2, "max_tool_calls": 1, "max_elapsed_seconds": 10},
+  "inputs": {"delivery_key": "run_scoped"},
+  "expected_hard_invariants": ["scope_is_pinned", "provider_calls_accounted", "budget_is_respected", "restart_replay_idempotent", "delivery_idempotent"],
+  "expected_quality_metrics": ["replay_event_delta", "duplicate_delivery_attempt_count", "duplicate_delivery_count", "physical_delivery_count"],
+  "allowed_nondeterminism": []
+}

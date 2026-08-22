@@ -1,0 +1,15 @@
+{
+  "id": "conversational_terminal_recovery",
+  "version": "v2",
+  "purpose": "Execute the Slack terminal renderer for budget, reasoning, tool, and context failures and prove actionable category-specific recovery without exposing internal metadata or spending another call.",
+  "provider_mode": "offline",
+  "fixture_digest": "e4e22f1a49ac7bdc02becfcbeb5fe4c110b02b71c9dd0ec2d04286bddae4e4d4",
+  "fixed_clock": "2026-08-22T12:00:00Z",
+  "deterministic_id_prefix": "eval-terminal-recovery",
+  "execution_variant": "conversational_terminal_recovery",
+  "budget": {"max_model_calls": 0, "max_tool_calls": 0, "max_elapsed_seconds": 5},
+  "inputs": {"terminal_cases": ["budget_exhausted", "model_failed", "tool_failed", "context_failed"]},
+  "expected_hard_invariants": ["terminal_failure_is_conversational", "terminal_raw_status_is_suppressed", "terminal_partial_truth_is_bounded", "terminal_internal_ids_are_hidden", "terminal_useless_boilerplate_is_suppressed", "terminal_recovery_is_actionable_and_category_specific", "terminal_recovery_uses_zero_model_or_tool_calls"],
+  "expected_quality_metrics": ["terminal_recovery_render_count", "terminal_bare_status_count", "terminal_internal_id_count", "terminal_useless_boilerplate_count", "terminal_actionable_category_count", "terminal_model_calls", "terminal_tool_calls", "terminal_verified_partial_count"],
+  "allowed_nondeterminism": []
+}

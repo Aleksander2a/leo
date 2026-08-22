@@ -1,0 +1,37 @@
+_metadata:
+  major_version: 1
+display_information:
+  name: Leo
+  description: Conversational research agent with a durable custom harness
+features:
+  bot_user:
+    display_name: Leo
+    always_online: false
+oauth_config:
+  scopes:
+    bot:
+      - app_mentions:read
+      - chat:write
+      - channels:read
+      - channels:history
+      - groups:read
+      - groups:history
+      - mpim:read
+      - mpim:history
+      - im:read
+      - im:history
+    user:
+      - channels:history
+      - groups:history
+settings:
+  event_subscriptions:
+    bot_events:
+      - app_mention
+      - message.channels
+      - message.groups
+      - message.im
+      - message.mpim
+  socket_mode_enabled: true
+  org_deploy_enabled: false
+  is_hosted: false
+  token_rotation_enabled: false

@@ -1,0 +1,15 @@
+{
+  "id": "dm_context_union",
+  "version": "v1",
+  "purpose": "Prove that a one-to-one DM receives the exact authorized union of two shared conversations and no inaccessible candidate.",
+  "provider_mode": "offline",
+  "fixture_digest": "5a8530fd7781cb9aad3cb815d08504bcb80a59aeeb2c59011ece6c453db67c4f",
+  "fixed_clock": "2026-01-02T15:04:05Z",
+  "deterministic_id_prefix": "eval-dm-union",
+  "execution_variant": "dm_context_union",
+  "budget": {"max_model_calls": 1, "max_tool_calls": 0, "max_elapsed_seconds": 5},
+  "inputs": {"prompt": "In our DM, summarize the decisions I can access across my shared conversations."},
+  "expected_hard_invariants": ["scope_is_pinned", "provider_calls_accounted", "budget_is_respected", "dm_exact_union_recalled", "context_projection_exact"],
+  "expected_quality_metrics": ["context_items_seen", "context_leakage_count", "expected_dm_recall_count"],
+  "allowed_nondeterminism": []
+}

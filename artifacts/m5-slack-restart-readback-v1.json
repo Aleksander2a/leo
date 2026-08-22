@@ -1,0 +1,71 @@
+{
+  "version": "slack-live-restart-readback-v1",
+  "listener_epoch_digest": "67d30197894dfbc05b410d291d1136b3b02d58d2ba080980f680c540d261cc61",
+  "live_collection_digest": "e30684c55bae621ebfbf0cd5e323ed0a2b060fb3d8cd23bf7fcd1f59be82bfd6",
+  "observed_at": "2026-08-22T12:15:11.255000+00:00",
+  "cases": [
+    {
+      "evidence_id": "cross_channel_negative",
+      "run_id": "run-a1b1507c-b715-43e3-ad46-b9d70497a555",
+      "slack_response_ts": "1787357980.190389",
+      "matching_message_count": 1,
+      "readback_digest": "18881630c843a68dbc5fc4f7b94a020aca9c644f35f0aabd0109dcc1d6f706c1"
+    },
+    {
+      "evidence_id": "delegated_replanning",
+      "run_id": "run-8ef0f54b-58be-4283-9a33-a6b59b040f7b",
+      "slack_response_ts": "1787359839.470059",
+      "matching_message_count": 1,
+      "readback_digest": "fecc726006b44e0f76b66ea1819e09f1e902a9e363d3c7d4de3594ab5f261bcb"
+    },
+    {
+      "evidence_id": "dm_membership_union",
+      "run_id": "run-f674ab09-9d4a-4216-b393-54f86810353c",
+      "slack_response_ts": "1787395374.275729",
+      "matching_message_count": 1,
+      "readback_digest": "6396ec5da561b1a97718e463fd6d75a3249ca024a4cf45cf9cb4d8fcc612d9d8"
+    },
+    {
+      "evidence_id": "group_dm",
+      "run_id": "run-c7e42598-8ebe-46c9-aa40-fa2ff6daa4fc",
+      "slack_response_ts": "1787358098.477119",
+      "matching_message_count": 1,
+      "readback_digest": "dc10e2496066716ca541797905a33f16da6a6657a279669888bc9a24fa771061"
+    },
+    {
+      "evidence_id": "memory_recall",
+      "run_id": "run-7c88d564-f6ae-42fc-bedc-63b41df9cf9b",
+      "slack_response_ts": "1787357950.654349",
+      "matching_message_count": 1,
+      "readback_digest": "86ffd5e4b377bb3407cb56f683f8bd87b5024dd11de75b40e618a33bdb5731be"
+    },
+    {
+      "evidence_id": "memory_write",
+      "run_id": "run-72d346ce-120d-47e0-affc-e6bd40aac805",
+      "slack_response_ts": "1787357924.223139",
+      "matching_message_count": 1,
+      "readback_digest": "dc90e0addd652fb17415e72972441d20f5da0c61e8fc2e8f058f2d63c10e26de"
+    },
+    {
+      "evidence_id": "private_channel",
+      "run_id": "run-1c0baefa-c29e-4e30-8b1d-bade2473bf27",
+      "slack_response_ts": "1787358074.314639",
+      "matching_message_count": 1,
+      "readback_digest": "ec3e758ae8ddf12e7f371b6e56673c051471745ae91acabaa33e4d293be2f1d5"
+    },
+    {
+      "evidence_id": "quote",
+      "run_id": "run-6b64e0c6-d0b7-4b49-9e25-4580d1bbcd7b",
+      "slack_response_ts": "1787358001.416349",
+      "matching_message_count": 1,
+      "readback_digest": "3b6c4dbcd735c7d7262908948ba06894a3c60638f8b81b081fa071315719c1c7"
+    },
+    {
+      "evidence_id": "sec",
+      "run_id": "run-4dce384e-0a33-429e-8675-6c48bfeab631",
+      "slack_response_ts": "1787358036.649789",
+      "matching_message_count": 1,
+      "readback_digest": "b3ec5f4e6eef9dfd0b87c7dde1d89ae2905ba0d90ee3275b7679a77049855216"
+    }
+  ]
+}

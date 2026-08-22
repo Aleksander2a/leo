@@ -1,0 +1,15 @@
+{
+  "id": "safe_failure",
+  "version": "v1",
+  "purpose": "Verify unsupported input becomes a visible safe failure.",
+  "provider_mode": "offline",
+  "fixture_digest": "bb4c277477b1319edc00990847dc7e2253cea36ccb9f966730dc0f0fc6bb8a92",
+  "fixed_clock": "2026-01-02T15:04:05Z",
+  "deterministic_id_prefix": "eval-safe",
+  "execution_variant": "safe_failure",
+  "budget": {"max_model_calls": 2, "max_tool_calls": 0, "max_elapsed_seconds": 5},
+  "inputs": {"prompt": "unsupported synthetic request"},
+  "expected_hard_invariants": ["scope_is_pinned", "no_false_success", "rejection_is_recorded", "terminal_failure_is_recorded", "provider_calls_accounted", "budget_is_respected"],
+  "expected_quality_metrics": ["turns", "provider_calls", "tool_calls", "observation_count"],
+  "allowed_nondeterminism": []
+}

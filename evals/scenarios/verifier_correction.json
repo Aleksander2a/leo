@@ -1,0 +1,15 @@
+{
+  "id": "verifier_correction",
+  "version": "v1",
+  "purpose": "Verify that a rejected completion triggers a visible correction and replanned evidence call without false success.",
+  "provider_mode": "offline",
+  "fixture_digest": "a43a17308c243e7ace0e6f99a2a0b8433e347dad782a3806217d4ed5ab83aa88",
+  "fixed_clock": "2026-01-02T15:04:05Z",
+  "deterministic_id_prefix": "eval-correction",
+  "execution_variant": "verifier_correction",
+  "budget": {"max_model_calls": 4, "max_tool_calls": 2, "max_elapsed_seconds": 10},
+  "inputs": {"symbol": "NVDA"},
+  "expected_hard_invariants": ["scope_is_pinned", "provider_calls_accounted", "budget_is_respected", "verifier_correction_recorded", "replan_after_rejection", "no_false_success"],
+  "expected_quality_metrics": ["turns", "tool_calls", "retry_count", "replan_tool_call_count"],
+  "allowed_nondeterminism": []
+}

@@ -49,6 +49,7 @@ coverage.xml
 *.py.cover
 .hypothesis/
 .pytest_cache/
+.pytest-tmp*/
 cover/
 
 # Translations
@@ -205,6 +206,8 @@ tempCodeRunnerFile.py
 
 # Ruff stuff:
 .ruff_cache/
+/.uv-cache/
+/.uv-python/
 
 # PyPI configuration file
 .pypirc
@@ -216,3 +219,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Leo local planning and design records (intentionally not published)
+/.leo-planning/
+/leo_vision.md

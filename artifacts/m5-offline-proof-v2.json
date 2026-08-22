@@ -1,0 +1,436 @@
+{
+  "version": "proof-v2",
+  "code_version": "working-tree:revised-m5-19-scenarios",
+  "fixture_versions": [
+    "budget_boundary:v1",
+    "channel_isolation:v1",
+    "contextual_conversation:v1",
+    "conversational_terminal_recovery:v1",
+    "delegated_dependency_plan:v1",
+    "dm_context_union:v1",
+    "elastic_deliberation:v1",
+    "fault_recovery_matrix:v1",
+    "long_thread_compaction:v1",
+    "memory_lifecycle:v1",
+    "parallel_read_batch:v1",
+    "quote_control:v1",
+    "restart_replay_idempotency:v1",
+    "safe_failure:v1",
+    "shared_group_external_scope:v1",
+    "slack_thread_context_authority:v1",
+    "tavily_verified_research:v1",
+    "tool_recall_progressive:v1",
+    "verifier_correction:v1"
+  ],
+  "model_catalog_version": "offline-model-catalog-v1",
+  "tool_catalog_version": "offline-tool-catalog-v1",
+  "policy_versions": [
+    "baseline-v2",
+    "event-v2",
+    "verifier-v1"
+  ],
+  "artifacts": [
+    {
+      "id": "arbitrary_conversational_golden",
+      "kind": "deterministic_golden",
+      "command": "python -m leo.evals --id contextual_conversation",
+      "digest": "78d5588c2e4e66cb6bd34aaea23bc1f6d82fa644b1e0925ce9e7d416699621a8",
+      "scenario_ids": [
+        "contextual_conversation"
+      ],
+      "fixture_digests": [
+        "8478b73fd477c874efa5b517f88bbe2a1510fee48154400890185b1008aa42c1"
+      ],
+      "provider_label": "offline",
+      "sanitized_run_ids": [],
+      "metadata": {
+        "result_replay_pointers": {
+          "contextual_conversation": "scenario:contextual_conversation:v1:eval-contextual"
+        }
+      }
+    },
+    {
+      "id": "nvda_source_golden",
+      "kind": "deterministic_golden",
+      "command": "python -m leo.evals --id quote_control",
+      "digest": "7eb6d7fbe4b87d2f6275695ef48a58a33e2aba1a6e672f094749794038734439",
+      "scenario_ids": [
+        "quote_control"
+      ],
+      "fixture_digests": [
+        "878f82ff47549b1273dd8b24d332fb96aff2144f3eee15a7b7f4b00928f3833d"
+      ],
+      "provider_label": "offline",
+      "sanitized_run_ids": [],
+      "metadata": {
+        "result_replay_pointers": {
+          "quote_control": "scenario:quote_control:v1:eval-quote"
+        }
+      }
+    },
+    {
+      "id": "delegated_replanning_golden",
+      "kind": "deterministic_golden",
+      "command": "python -m leo.evals --id delegated_dependency_plan --id verifier_correction",
+      "digest": "3f687e88337994d165540c3670d46e0aea4ea8f46d4381303415db87cf3c0ce9",
+      "scenario_ids": [
+        "delegated_dependency_plan",
+        "verifier_correction"
+      ],
+      "fixture_digests": [
+        "8ae8015ddc6ff04f2a8972bf1d25ae96e124f4caf95f5acdde2de54ffcb005ba",
+        "a43a17308c243e7ace0e6f99a2a0b8433e347dad782a3806217d4ed5ab83aa88"
+      ],
+      "provider_label": "offline",
+      "sanitized_run_ids": [],
+      "metadata": {
+        "result_replay_pointers": {
+          "delegated_dependency_plan": "scenario:delegated_dependency_plan:v1:eval-plan",
+          "verifier_correction": "scenario:verifier_correction:v1:eval-correction"
+        }
+      }
+    },
+    {
+      "id": "restart_recovery",
+      "kind": "deterministic_golden",
+      "command": "python -m leo.evals --id restart_replay_idempotency",
+      "digest": "60d287b94b47cc23cff7b2ca7e6cf91d302bed4f7c90c22518702235a2b511e8",
+      "scenario_ids": [
+        "restart_replay_idempotency"
+      ],
+      "fixture_digests": [
+        "db9bc86b3f78965991a61076c09c39c5e4d5091158ab22888d8d483c8c7bf33b"
+      ],
+      "provider_label": "offline",
+      "sanitized_run_ids": [],
+      "metadata": {
+        "result_replay_pointers": {
+          "restart_replay_idempotency": "scenario:restart_replay_idempotency:v1:eval-replay"
+        }
+      }
+    },
+    {
+      "id": "duplicate_suppression",
+      "kind": "deterministic_golden",
+      "command": "python -m leo.evals --id restart_replay_idempotency",
+      "digest": "831d889d7271f22df40e710d50dc3e933d724d977302675da8ffac745b792aac",
+      "scenario_ids": [
+        "restart_replay_idempotency"
+      ],
+      "fixture_digests": [
+        "db9bc86b3f78965991a61076c09c39c5e4d5091158ab22888d8d483c8c7bf33b"
+      ],
+      "provider_label": "offline",
+      "sanitized_run_ids": [],
+      "metadata": {
+        "result_replay_pointers": {
+          "restart_replay_idempotency": "scenario:restart_replay_idempotency:v1:eval-replay"
+        }
+      }
+    },
+    {
+      "id": "dm_membership_exclusion",
+      "kind": "deterministic_golden",
+      "command": "python -m leo.evals --id dm_context_union",
+      "digest": "3da1012dbf1f624391be1109a18bb70e2a09361cd7d49ed5d194370efde66b3f",
+      "scenario_ids": [
+        "dm_context_union"
+      ],
+      "fixture_digests": [
+        "5a8530fd7781cb9aad3cb815d08504bcb80a59aeeb2c59011ece6c453db67c4f"
+      ],
+      "provider_label": "offline",
+      "sanitized_run_ids": [],
+      "metadata": {
+        "result_replay_pointers": {
+          "dm_context_union": "scenario:dm_context_union:v1:eval-dm-union"
+        }
+      }
+    },
+    {
+      "id": "verifier_rejection",
+      "kind": "deterministic_golden",
+      "command": "python -m leo.evals --id safe_failure",
+      "digest": "598e51e7cd485928f0d79ffece8074527b8e3527516902b6de57b40ce9b793eb",
+      "scenario_ids": [
+        "safe_failure"
+      ],
+      "fixture_digests": [
+        "bb4c277477b1319edc00990847dc7e2253cea36ccb9f966730dc0f0fc6bb8a92"
+      ],
+      "provider_label": "offline",
+      "sanitized_run_ids": [],
+      "metadata": {
+        "result_replay_pointers": {
+          "safe_failure": "scenario:safe_failure:v1:eval-safe"
+        }
+      }
+    },
+    {
+      "id": "memory_lifecycle",
+      "kind": "deterministic_golden",
+      "command": "python -m leo.evals --id memory_lifecycle",
+      "digest": "a0f8baea4e566fc529c09059a7c7cff4ff35c3f4974ce09e69c54b4b96a6db12",
+      "scenario_ids": [
+        "memory_lifecycle"
+      ],
+      "fixture_digests": [
+        "1a5445850440ab07a36c4079ad37bd50e753dce92badc496dc50174c0301a1c1"
+      ],
+      "provider_label": "offline",
+      "sanitized_run_ids": [],
+      "metadata": {
+        "result_replay_pointers": {
+          "memory_lifecycle": "scenario:memory_lifecycle:v1:eval-memory"
+        }
+      }
+    },
+    {
+      "id": "long_thread_compaction",
+      "kind": "deterministic_golden",
+      "command": "python -m leo.evals --id long_thread_compaction",
+      "digest": "e548d6373cb70b79aaf2c459a493406bba5089bd01908fcb4496569c4939cfae",
+      "scenario_ids": [
+        "long_thread_compaction"
+      ],
+      "fixture_digests": [
+        "b455cc4c9e09644eb9b8ad54f2a311d7b66bd2fc3c4e4daca1afb17dd0b4ff87"
+      ],
+      "provider_label": "offline",
+      "sanitized_run_ids": [],
+      "metadata": {
+        "result_replay_pointers": {
+          "long_thread_compaction": "scenario:long_thread_compaction:v1:eval-long-thread"
+        }
+      }
+    },
+    {
+      "id": "tool_recall_no_progress",
+      "kind": "deterministic_golden",
+      "command": "python -m leo.evals --id tool_recall_progressive",
+      "digest": "a756607418f668d9e5aa5604a48c3c52435e9be618300380e10ec55d54490dc8",
+      "scenario_ids": [
+        "tool_recall_progressive"
+      ],
+      "fixture_digests": [
+        "483a39a554734b02712dd45c4402f4b97caaec9ad65a259e2fbb13091ab6d063"
+      ],
+      "provider_label": "offline",
+      "sanitized_run_ids": [],
+      "metadata": {
+        "result_replay_pointers": {
+          "tool_recall_progressive": "scenario:tool_recall_progressive:v1:eval-tool-recall"
+        }
+      }
+    },
+    {
+      "id": "shared_group_external_authority",
+      "kind": "deterministic_golden",
+      "command": "python -m leo.evals --id shared_group_external_scope",
+      "digest": "591d0fa31048a6f0e0fd02067d59ba4383b556c4cdaccadfd94164b10f59cf7f",
+      "scenario_ids": [
+        "shared_group_external_scope"
+      ],
+      "fixture_digests": [
+        "1b0b741585f19721895a351bca3de67533dc5438fb730f772958f35d17cf44e1"
+      ],
+      "provider_label": "offline",
+      "sanitized_run_ids": [],
+      "metadata": {
+        "result_replay_pointers": {
+          "shared_group_external_scope": "scenario:shared_group_external_scope:v1:eval-conversation-kinds"
+        }
+      }
+    },
+    {
+      "id": "budget_boundary",
+      "kind": "deterministic_golden",
+      "command": "python -m leo.evals --id budget_boundary",
+      "digest": "c362ca9e8ae818775f9ef7772742857fa88e3c6dd4db1a4ae374757c6c665a3c",
+      "scenario_ids": [
+        "budget_boundary"
+      ],
+      "fixture_digests": [
+        "950946578142410747495c50c5554a74fa16fa23c57042da6186cac6b79bb022"
+      ],
+      "provider_label": "offline",
+      "sanitized_run_ids": [],
+      "metadata": {
+        "result_replay_pointers": {
+          "budget_boundary": "scenario:budget_boundary:v1:eval-budget"
+        }
+      }
+    },
+    {
+      "id": "fault_recovery_matrix",
+      "kind": "deterministic_golden",
+      "command": "python -m leo.evals --id fault_recovery_matrix",
+      "digest": "8f956b252df48059f920e6bf662301cfe631087f7c913a5ae32bb9598bf1d01d",
+      "scenario_ids": [
+        "fault_recovery_matrix"
+      ],
+      "fixture_digests": [
+        "912f9e3cf80805e1a31ae8712aa828162dd317bfc90b6375357414f1641039a5"
+      ],
+      "provider_label": "offline",
+      "sanitized_run_ids": [],
+      "metadata": {
+        "result_replay_pointers": {
+          "fault_recovery_matrix": "scenario:fault_recovery_matrix:v1:eval-fault-recovery"
+        }
+      }
+    },
+    {
+      "id": "conversational_terminal_recovery",
+      "kind": "deterministic_golden",
+      "command": "python -m leo.evals --id conversational_terminal_recovery",
+      "digest": "5b48e7e7f78d4ecf77047febb52869df57d8e91b85b5301950aea1bd02a9edd8",
+      "scenario_ids": [
+        "conversational_terminal_recovery"
+      ],
+      "fixture_digests": [
+        "1607e29975719881dd0e1e3cfe09add92f56965de3b5f3b4650dd6e3e0a87165"
+      ],
+      "provider_label": "offline",
+      "sanitized_run_ids": [],
+      "metadata": {
+        "result_replay_pointers": {
+          "conversational_terminal_recovery": "scenario:conversational_terminal_recovery:v1:eval-terminal-recovery"
+        }
+      }
+    },
+    {
+      "id": "elastic_deliberation",
+      "kind": "deterministic_golden",
+      "command": "python -m leo.evals --id elastic_deliberation",
+      "digest": "a73e9ce69bdb119247fdf89714caff51efee23a3e388e6750659cea72b5cf57b",
+      "scenario_ids": [
+        "elastic_deliberation"
+      ],
+      "fixture_digests": [
+        "9eb1f2564913a46525bf9a80b9b245d70bb4b41c212ca9b1c92c087539bf1f97"
+      ],
+      "provider_label": "offline",
+      "sanitized_run_ids": [],
+      "metadata": {
+        "result_replay_pointers": {
+          "elastic_deliberation": "scenario:elastic_deliberation:v1:eval-elastic-deliberation"
+        }
+      }
+    },
+    {
+      "id": "slack_thread_context_authority",
+      "kind": "deterministic_golden",
+      "command": "python -m leo.evals --id slack_thread_context_authority",
+      "digest": "3a980186b35c2a25a96ee299936c267c82b523cf525ff0b4eff65495394a06a1",
+      "scenario_ids": [
+        "slack_thread_context_authority"
+      ],
+      "fixture_digests": [
+        "bb55ad7041f1967a6bec28acb373ff2396819f93f151d535b3af021b51c3487e"
+      ],
+      "provider_label": "offline",
+      "sanitized_run_ids": [],
+      "metadata": {
+        "result_replay_pointers": {
+          "slack_thread_context_authority": "scenario:slack_thread_context_authority:v1:eval-thread-authority"
+        }
+      }
+    },
+    {
+      "id": "tavily_verified_research",
+      "kind": "deterministic_golden",
+      "command": "python -m leo.evals --id tavily_verified_research",
+      "digest": "a7ef4d9f7b7a85fc6e5b516c6867a674300bc541be98c5cef6483103e5f043c0",
+      "scenario_ids": [
+        "tavily_verified_research"
+      ],
+      "fixture_digests": [
+        "df776d908dc82bd15a6bbe16928aeca38d4fa85a25fb994846cc81bdbe9ac93b"
+      ],
+      "provider_label": "offline",
+      "sanitized_run_ids": [],
+      "metadata": {
+        "result_replay_pointers": {
+          "tavily_verified_research": "scenario:tavily_verified_research:v1:eval-tavily-verified"
+        }
+      }
+    },
+    {
+      "id": "paired_baseline_report",
+      "kind": "paired_baseline_report",
+      "command": "python -m leo.evals --baseline",
+      "digest": "b953384887209355b78ab45c001f15b035957550c1bc8fa2691caadcb36319cc",
+      "scenario_ids": [
+        "budget_boundary",
+        "channel_isolation",
+        "contextual_conversation",
+        "conversational_terminal_recovery",
+        "delegated_dependency_plan",
+        "dm_context_union",
+        "elastic_deliberation",
+        "fault_recovery_matrix",
+        "long_thread_compaction",
+        "memory_lifecycle",
+        "parallel_read_batch",
+        "quote_control",
+        "restart_replay_idempotency",
+        "safe_failure",
+        "shared_group_external_scope",
+        "slack_thread_context_authority",
+        "tavily_verified_research",
+        "tool_recall_progressive",
+        "verifier_correction"
+      ],
+      "fixture_digests": [
+        "950946578142410747495c50c5554a74fa16fa23c57042da6186cac6b79bb022",
+        "da837fdcd2558d950a915aebae87268ba5eec0872f5bd51e66e3e5baab73b686",
+        "8478b73fd477c874efa5b517f88bbe2a1510fee48154400890185b1008aa42c1",
+        "1607e29975719881dd0e1e3cfe09add92f56965de3b5f3b4650dd6e3e0a87165",
+        "8ae8015ddc6ff04f2a8972bf1d25ae96e124f4caf95f5acdde2de54ffcb005ba",
+        "5a8530fd7781cb9aad3cb815d08504bcb80a59aeeb2c59011ece6c453db67c4f",
+        "9eb1f2564913a46525bf9a80b9b245d70bb4b41c212ca9b1c92c087539bf1f97",
+        "912f9e3cf80805e1a31ae8712aa828162dd317bfc90b6375357414f1641039a5",
+        "b455cc4c9e09644eb9b8ad54f2a311d7b66bd2fc3c4e4daca1afb17dd0b4ff87",
+        "1a5445850440ab07a36c4079ad37bd50e753dce92badc496dc50174c0301a1c1",
+        "d611c1f0d611995a833c175e0226c56a4bb0f4e1d6ecce9c482392c586de5809",
+        "878f82ff47549b1273dd8b24d332fb96aff2144f3eee15a7b7f4b00928f3833d",
+        "db9bc86b3f78965991a61076c09c39c5e4d5091158ab22888d8d483c8c7bf33b",
+        "bb4c277477b1319edc00990847dc7e2253cea36ccb9f966730dc0f0fc6bb8a92",
+        "1b0b741585f19721895a351bca3de67533dc5438fb730f772958f35d17cf44e1",
+        "bb55ad7041f1967a6bec28acb373ff2396819f93f151d535b3af021b51c3487e",
+        "df776d908dc82bd15a6bbe16928aeca38d4fa85a25fb994846cc81bdbe9ac93b",
+        "483a39a554734b02712dd45c4402f4b97caaec9ad65a259e2fbb13091ab6d063",
+        "a43a17308c243e7ace0e6f99a2a0b8433e347dad782a3806217d4ed5ab83aa88"
+      ],
+      "provider_label": "offline",
+      "sanitized_run_ids": [],
+      "metadata": {
+        "result_replay_pointers": {
+          "budget_boundary": "scenario:budget_boundary:v1:eval-budget",
+          "channel_isolation": "scenario:channel_isolation:v1:eval-isolation",
+          "contextual_conversation": "scenario:contextual_conversation:v1:eval-contextual",
+          "conversational_terminal_recovery": "scenario:conversational_terminal_recovery:v1:eval-terminal-recovery",
+          "delegated_dependency_plan": "scenario:delegated_dependency_plan:v1:eval-plan",
+          "dm_context_union": "scenario:dm_context_union:v1:eval-dm-union",
+          "elastic_deliberation": "scenario:elastic_deliberation:v1:eval-elastic-deliberation",
+          "fault_recovery_matrix": "scenario:fault_recovery_matrix:v1:eval-fault-recovery",
+          "long_thread_compaction": "scenario:long_thread_compaction:v1:eval-long-thread",
+          "memory_lifecycle": "scenario:memory_lifecycle:v1:eval-memory",
+          "parallel_read_batch": "scenario:parallel_read_batch:v1:eval-parallel",
+          "quote_control": "scenario:quote_control:v1:eval-quote",
+          "restart_replay_idempotency": "scenario:restart_replay_idempotency:v1:eval-replay",
+          "safe_failure": "scenario:safe_failure:v1:eval-safe",
+          "shared_group_external_scope": "scenario:shared_group_external_scope:v1:eval-conversation-kinds",
+          "slack_thread_context_authority": "scenario:slack_thread_context_authority:v1:eval-thread-authority",
+          "tavily_verified_research": "scenario:tavily_verified_research:v1:eval-tavily-verified",
+          "tool_recall_progressive": "scenario:tool_recall_progressive:v1:eval-tool-recall",
+          "verifier_correction": "scenario:verifier_correction:v1:eval-correction"
+        },
+        "comparison_digest": "86aa189cf570ed475e99cdcf207d822cc14e387b75500841a9b55a710b51a26c",
+        "paired_delta_count": 208
+      }
+    }
+  ],
+  "final_golden_bound": true
+}

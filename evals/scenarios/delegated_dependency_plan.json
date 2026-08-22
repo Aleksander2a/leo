@@ -1,0 +1,15 @@
+{
+  "id": "delegated_dependency_plan",
+  "version": "v1",
+  "purpose": "Verify a delegated dependency DAG passes parent-scoped evidence forward while only the parent owns the final answer.",
+  "provider_mode": "offline",
+  "fixture_digest": "8ae8015ddc6ff04f2a8972bf1d25ae96e124f4caf95f5acdde2de54ffcb005ba",
+  "fixed_clock": "2026-01-02T15:04:05Z",
+  "deterministic_id_prefix": "eval-plan",
+  "execution_variant": "delegated_dependency_plan",
+  "budget": {"max_model_calls": 2, "max_tool_calls": 1, "max_elapsed_seconds": 15},
+  "inputs": {"plan_shape": "baseline_then_dependent"},
+  "expected_hard_invariants": ["scope_is_pinned", "provider_calls_accounted", "budget_is_respected", "dependency_plan_completed", "dependency_context_propagated", "parent_owns_final_answer"],
+  "expected_quality_metrics": ["plan_nodes_completed", "child_terminal_count", "parent_terminal_authority_count", "child_provider_calls"],
+  "allowed_nondeterminism": []
+}

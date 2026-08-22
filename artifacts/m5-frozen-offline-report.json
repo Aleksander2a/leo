@@ -1,0 +1,5156 @@
+{
+  "version": "m5-frozen-report-v1",
+  "code_version": "working-tree:revised-m5-19-scenarios",
+  "scenario_ids": [
+    "budget_boundary",
+    "channel_isolation",
+    "contextual_conversation",
+    "conversational_terminal_recovery",
+    "delegated_dependency_plan",
+    "dm_context_union",
+    "elastic_deliberation",
+    "fault_recovery_matrix",
+    "long_thread_compaction",
+    "memory_lifecycle",
+    "parallel_read_batch",
+    "quote_control",
+    "restart_replay_idempotency",
+    "safe_failure",
+    "shared_group_external_scope",
+    "slack_thread_context_authority",
+    "tavily_verified_research",
+    "tool_recall_progressive",
+    "verifier_correction"
+  ],
+  "fixture_set_digest": "f6bd7d79b08df30921277d8c4c7096e7c315764a4f5de045c9c04648239a5aeb",
+  "result_set_digest": "6d86bcb9c22b7739b4246fe7153b2e0b59bd14be4a20a761b1e0933d3bb1b559",
+  "baseline_set_digest": "9de9f2892dd55f1f0a24ac97209ba90eaefece6ab00bb217dd5e7d845c3dbef4",
+  "event_contract_digest": "59bfdecc1380d10659640e0c4a7e94de6ef6b663d0bc2a2fec2932375c2d548b",
+  "metric_registry_digest": "d1368ca18c725c8c8c92bc71449d6b025e52adbb98a88c7020836b6f30586e6b",
+  "fault_matrix_digest": "a710bbf702d9b2a608dffe68fa466b3bdade9b04bd75c999f36d615777696174",
+  "comparison": {
+    "version": "comparison-v1",
+    "leo": {
+      "version": "metrics-aggregate-v1",
+      "label": "leo-offline",
+      "provider_mode": "offline",
+      "config_digest": "67d2bed05c7b8599237811ebbed495f5f02f7027d46b894044466c7a5b4f2b1a",
+      "fixture_set_digest": "f6bd7d79b08df30921277d8c4c7096e7c315764a4f5de045c9c04648239a5aeb",
+      "scenario_ids": [
+        "budget_boundary",
+        "channel_isolation",
+        "contextual_conversation",
+        "conversational_terminal_recovery",
+        "delegated_dependency_plan",
+        "dm_context_union",
+        "elastic_deliberation",
+        "fault_recovery_matrix",
+        "long_thread_compaction",
+        "memory_lifecycle",
+        "parallel_read_batch",
+        "quote_control",
+        "restart_replay_idempotency",
+        "safe_failure",
+        "shared_group_external_scope",
+        "slack_thread_context_authority",
+        "tavily_verified_research",
+        "tool_recall_progressive",
+        "verifier_correction"
+      ],
+      "status_counts": {
+        "passed": 19,
+        "failed": 0,
+        "unsupported": 0
+      },
+      "raw_counts": [
+        {
+          "name": "budget_overrun_count",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "child_conflict_count",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "child_duplicate_count",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "child_provider_calls",
+          "raw_total": 4,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "child_success_count",
+          "raw_total": 2,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "child_terminal_count",
+          "raw_total": 2,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "child_utilization_ratio",
+          "raw_total": 1.0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "clarification_count",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "compacted_message_count",
+          "raw_total": 48,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "compaction_count",
+          "raw_total": 1,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "compaction_input_tokens",
+          "raw_total": 2210,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "compaction_retained_tokens",
+          "raw_total": 681,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "compaction_token_reduction_ratio",
+          "raw_total": 0.6918552036199095,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "context_items_seen",
+          "raw_total": 4,
+          "observed_scenarios": 3,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "context_leakage_count",
+          "raw_total": 0,
+          "observed_scenarios": 4,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "conversation_kinds_evaluated",
+          "raw_total": 3,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "dm_forbidden_source_count",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "duplicate_delivery_attempt_count",
+          "raw_total": 1,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "duplicate_delivery_count",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "elastic_clarification_tool_calls",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "elastic_no_progress_escape_count",
+          "raw_total": 1,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "elastic_route_count",
+          "raw_total": 5,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "elastic_semantic_delegate_count",
+          "raw_total": 1,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "elastic_semantic_plan_count",
+          "raw_total": 1,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "event_count",
+          "raw_total": 112,
+          "observed_scenarios": 9,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "expected_context_recall_count",
+          "raw_total": 2,
+          "observed_scenarios": 2,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "expected_dm_recall_count",
+          "raw_total": 2,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "false_success_count",
+          "raw_total": 0,
+          "observed_scenarios": 14,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "fault_case_count",
+          "raw_total": 20,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "fault_false_success_count",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "fault_recovered_count",
+          "raw_total": 20,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "fault_triggered_count",
+          "raw_total": 20,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "fault_unknown_effect_count",
+          "raw_total": 1,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "fault_unsafe_recovery_count",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "forged_projection_rejection_count",
+          "raw_total": 3,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "group_dm_aggregation_count",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "long_thread_message_count",
+          "raw_total": 60,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "memory_conflict_count",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "memory_cross_scope_leakage_count",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "memory_current_count",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "memory_revisions",
+          "raw_total": 3,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "memory_source_count_before_forget",
+          "raw_total": 2,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "model_calls",
+          "raw_total": 26,
+          "observed_scenarios": 11,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "no_progress_escape_count",
+          "raw_total": 1,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "observation_count",
+          "raw_total": 7,
+          "observed_scenarios": 9,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "parallel_batch_evidence",
+          "raw_total": 2,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "parallel_batch_size",
+          "raw_total": 2,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "parallel_overlap_peak",
+          "raw_total": 2,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "parent_terminal_authority_count",
+          "raw_total": 1,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "physical_delivery_count",
+          "raw_total": 1,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "plan_no_progress_count",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "plan_nodes_completed",
+          "raw_total": 2,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "plan_revision_count",
+          "raw_total": 3,
+          "observed_scenarios": 2,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "plan_valid_count",
+          "raw_total": 1,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "progressive_tools_opened",
+          "raw_total": 1,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "provider_calls",
+          "raw_total": 17,
+          "observed_scenarios": 9,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "recent_message_count",
+          "raw_total": 12,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "replan_tool_call_count",
+          "raw_total": 1,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "replay_event_delta",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "research_catalog_eligible_count",
+          "raw_total": 2,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "research_discovery_rejection_count",
+          "raw_total": 1,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "research_mock_transport_request_count",
+          "raw_total": 2,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "research_normalized_observation_count",
+          "raw_total": 2,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "research_verified_source_claim_count",
+          "raw_total": 1,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "retry_count",
+          "raw_total": 1,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "routing_correct_count",
+          "raw_total": 1,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "task_success_count",
+          "raw_total": 8,
+          "observed_scenarios": 9,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "terminal_bare_status_count",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "terminal_model_calls",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "terminal_reason_count",
+          "raw_total": 10,
+          "observed_scenarios": 10,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "terminal_recovery_render_count",
+          "raw_total": 2,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "terminal_tool_calls",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "terminal_verified_partial_count",
+          "raw_total": 1,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "thread_authority_rejection_count",
+          "raw_total": 4,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "thread_compacted_turn_count",
+          "raw_total": 37,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "thread_context_leakage_count",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "thread_exact_retained_turn_count",
+          "raw_total": 23,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "thread_loaded_turn_count",
+          "raw_total": 60,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "thread_protected_turn_count",
+          "raw_total": 8,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "thread_reopen_handle_count",
+          "raw_total": 1,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "thread_reopen_success_count",
+          "raw_total": 1,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "tool_calls",
+          "raw_total": 8,
+          "observed_scenarios": 11,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "tool_recall_at_k",
+          "raw_total": 1.0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "tool_recall_authority_leakage_count",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "tool_recall_candidate_count",
+          "raw_total": 1,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "tool_recall_selected_count",
+          "raw_total": 1,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "turns",
+          "raw_total": 17,
+          "observed_scenarios": 9,
+          "eligible_scenarios": 19
+        }
+      ],
+      "digest": "7949ea3cb47b70199a5bd8d0c1d6ecbc9cd75be22814ef9c7d11dfc33b6351db"
+    },
+    "baseline": {
+      "version": "metrics-aggregate-v1",
+      "label": "baseline-offline",
+      "provider_mode": "offline",
+      "config_digest": "67d2bed05c7b8599237811ebbed495f5f02f7027d46b894044466c7a5b4f2b1a",
+      "fixture_set_digest": "f6bd7d79b08df30921277d8c4c7096e7c315764a4f5de045c9c04648239a5aeb",
+      "scenario_ids": [
+        "budget_boundary",
+        "channel_isolation",
+        "contextual_conversation",
+        "conversational_terminal_recovery",
+        "delegated_dependency_plan",
+        "dm_context_union",
+        "elastic_deliberation",
+        "fault_recovery_matrix",
+        "long_thread_compaction",
+        "memory_lifecycle",
+        "parallel_read_batch",
+        "quote_control",
+        "restart_replay_idempotency",
+        "safe_failure",
+        "shared_group_external_scope",
+        "slack_thread_context_authority",
+        "tavily_verified_research",
+        "tool_recall_progressive",
+        "verifier_correction"
+      ],
+      "status_counts": {
+        "passed": 19,
+        "failed": 0,
+        "unsupported": 0
+      },
+      "raw_counts": [
+        {
+          "name": "budget_overrun_count",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "compacted_message_count",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "compaction_count",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "compaction_input_tokens",
+          "raw_total": 36,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "compaction_retained_tokens",
+          "raw_total": 36,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "compaction_token_reduction_ratio",
+          "raw_total": 0.0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "context_items_seen",
+          "raw_total": 2,
+          "observed_scenarios": 9,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "context_leakage_count",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "conversation_kinds_evaluated",
+          "raw_total": 3,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "correction_retry_count",
+          "raw_total": 0,
+          "observed_scenarios": 9,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "elastic_clarification_tool_calls",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "elastic_no_progress_escape_count",
+          "raw_total": 1,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "elastic_route_count",
+          "raw_total": 5,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "elastic_semantic_delegate_count",
+          "raw_total": 1,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "elastic_semantic_plan_count",
+          "raw_total": 1,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "event_count",
+          "raw_total": 88,
+          "observed_scenarios": 9,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "false_success_count",
+          "raw_total": 0,
+          "observed_scenarios": 14,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "fault_case_count",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "fault_false_success_count",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "fault_recovered_count",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "fault_triggered_count",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "fault_unknown_effect_count",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "fault_unsafe_recovery_count",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "forged_projection_rejection_count",
+          "raw_total": 3,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "group_dm_aggregation_count",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "long_thread_message_count",
+          "raw_total": 4,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "memory_conflict_count",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "memory_cross_scope_leakage_count",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "memory_current_count",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "memory_revisions",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "memory_source_count_before_forget",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "model_calls",
+          "raw_total": 22,
+          "observed_scenarios": 11,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "no_progress_escape_count",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "observation_count",
+          "raw_total": 5,
+          "observed_scenarios": 9,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "plan_nodes_completed",
+          "raw_total": 0,
+          "observed_scenarios": 9,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "progressive_tools_opened",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "provider_calls",
+          "raw_total": 13,
+          "observed_scenarios": 9,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "recent_message_count",
+          "raw_total": 4,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "research_catalog_eligible_count",
+          "raw_total": 2,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "research_discovery_rejection_count",
+          "raw_total": 1,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "research_mock_transport_request_count",
+          "raw_total": 2,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "research_normalized_observation_count",
+          "raw_total": 2,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "research_verified_source_claim_count",
+          "raw_total": 1,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "task_success_count",
+          "raw_total": 6,
+          "observed_scenarios": 9,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "terminal_bare_status_count",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "terminal_model_calls",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "terminal_reason_count",
+          "raw_total": 1,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "terminal_recovery_render_count",
+          "raw_total": 2,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "terminal_tool_calls",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "terminal_verified_partial_count",
+          "raw_total": 1,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "thread_authority_rejection_count",
+          "raw_total": 4,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "thread_compacted_turn_count",
+          "raw_total": 37,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "thread_context_leakage_count",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "thread_exact_retained_turn_count",
+          "raw_total": 23,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "thread_loaded_turn_count",
+          "raw_total": 60,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "thread_protected_turn_count",
+          "raw_total": 8,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "thread_reopen_handle_count",
+          "raw_total": 1,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "thread_reopen_success_count",
+          "raw_total": 1,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "tool_adapter_calls",
+          "raw_total": 5,
+          "observed_scenarios": 9,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "tool_calls",
+          "raw_total": 6,
+          "observed_scenarios": 11,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "tool_recall_at_k",
+          "raw_total": 1.0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "tool_recall_authority_leakage_count",
+          "raw_total": 0,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "tool_recall_candidate_count",
+          "raw_total": 3,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        },
+        {
+          "name": "tool_recall_selected_count",
+          "raw_total": 3,
+          "observed_scenarios": 1,
+          "eligible_scenarios": 19
+        }
+      ],
+      "digest": "679444a09d5a7a1931dd2747c74eac203778b645b4398eaf323c6dbe0ff7cc86"
+    },
+    "paired_deltas": [
+      {
+        "scenario_id": "budget_boundary",
+        "scenario_version": "v1",
+        "fixture_digest": "950946578142410747495c50c5554a74fa16fa23c57042da6186cac6b79bb022",
+        "metric_name": "budget_overrun_count",
+        "leo_value": 0,
+        "baseline_value": 0,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "budget_boundary",
+        "scenario_version": "v1",
+        "fixture_digest": "950946578142410747495c50c5554a74fa16fa23c57042da6186cac6b79bb022",
+        "metric_name": "false_success_count",
+        "leo_value": 0,
+        "baseline_value": 0,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "budget_boundary",
+        "scenario_version": "v1",
+        "fixture_digest": "950946578142410747495c50c5554a74fa16fa23c57042da6186cac6b79bb022",
+        "metric_name": "model_calls",
+        "leo_value": 2,
+        "baseline_value": 2,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "budget_boundary",
+        "scenario_version": "v1",
+        "fixture_digest": "950946578142410747495c50c5554a74fa16fa23c57042da6186cac6b79bb022",
+        "metric_name": "terminal_reason_count",
+        "leo_value": 1,
+        "baseline_value": 1,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "budget_boundary",
+        "scenario_version": "v1",
+        "fixture_digest": "950946578142410747495c50c5554a74fa16fa23c57042da6186cac6b79bb022",
+        "metric_name": "tool_calls",
+        "leo_value": 1,
+        "baseline_value": 1,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "channel_isolation",
+        "scenario_version": "v1",
+        "fixture_digest": "da837fdcd2558d950a915aebae87268ba5eec0872f5bd51e66e3e5baab73b686",
+        "metric_name": "context_items_seen",
+        "leo_value": 1,
+        "baseline_value": 1,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "channel_isolation",
+        "scenario_version": "v1",
+        "fixture_digest": "da837fdcd2558d950a915aebae87268ba5eec0872f5bd51e66e3e5baab73b686",
+        "metric_name": "context_leakage_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "channel_isolation",
+        "scenario_version": "v1",
+        "fixture_digest": "da837fdcd2558d950a915aebae87268ba5eec0872f5bd51e66e3e5baab73b686",
+        "metric_name": "correction_retry_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "channel_isolation",
+        "scenario_version": "v1",
+        "fixture_digest": "da837fdcd2558d950a915aebae87268ba5eec0872f5bd51e66e3e5baab73b686",
+        "metric_name": "event_count",
+        "leo_value": 7,
+        "baseline_value": 7,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "channel_isolation",
+        "scenario_version": "v1",
+        "fixture_digest": "da837fdcd2558d950a915aebae87268ba5eec0872f5bd51e66e3e5baab73b686",
+        "metric_name": "expected_context_recall_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "channel_isolation",
+        "scenario_version": "v1",
+        "fixture_digest": "da837fdcd2558d950a915aebae87268ba5eec0872f5bd51e66e3e5baab73b686",
+        "metric_name": "false_success_count",
+        "leo_value": 0,
+        "baseline_value": 0,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "channel_isolation",
+        "scenario_version": "v1",
+        "fixture_digest": "da837fdcd2558d950a915aebae87268ba5eec0872f5bd51e66e3e5baab73b686",
+        "metric_name": "model_calls",
+        "leo_value": 1,
+        "baseline_value": 1,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "channel_isolation",
+        "scenario_version": "v1",
+        "fixture_digest": "da837fdcd2558d950a915aebae87268ba5eec0872f5bd51e66e3e5baab73b686",
+        "metric_name": "observation_count",
+        "leo_value": 0,
+        "baseline_value": 0,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "channel_isolation",
+        "scenario_version": "v1",
+        "fixture_digest": "da837fdcd2558d950a915aebae87268ba5eec0872f5bd51e66e3e5baab73b686",
+        "metric_name": "plan_nodes_completed",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "channel_isolation",
+        "scenario_version": "v1",
+        "fixture_digest": "da837fdcd2558d950a915aebae87268ba5eec0872f5bd51e66e3e5baab73b686",
+        "metric_name": "provider_calls",
+        "leo_value": 1,
+        "baseline_value": 1,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "channel_isolation",
+        "scenario_version": "v1",
+        "fixture_digest": "da837fdcd2558d950a915aebae87268ba5eec0872f5bd51e66e3e5baab73b686",
+        "metric_name": "task_success_count",
+        "leo_value": 1,
+        "baseline_value": 1,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "channel_isolation",
+        "scenario_version": "v1",
+        "fixture_digest": "da837fdcd2558d950a915aebae87268ba5eec0872f5bd51e66e3e5baab73b686",
+        "metric_name": "terminal_reason_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "channel_isolation",
+        "scenario_version": "v1",
+        "fixture_digest": "da837fdcd2558d950a915aebae87268ba5eec0872f5bd51e66e3e5baab73b686",
+        "metric_name": "tool_adapter_calls",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "channel_isolation",
+        "scenario_version": "v1",
+        "fixture_digest": "da837fdcd2558d950a915aebae87268ba5eec0872f5bd51e66e3e5baab73b686",
+        "metric_name": "tool_calls",
+        "leo_value": 0,
+        "baseline_value": 0,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "channel_isolation",
+        "scenario_version": "v1",
+        "fixture_digest": "da837fdcd2558d950a915aebae87268ba5eec0872f5bd51e66e3e5baab73b686",
+        "metric_name": "turns",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "contextual_conversation",
+        "scenario_version": "v1",
+        "fixture_digest": "8478b73fd477c874efa5b517f88bbe2a1510fee48154400890185b1008aa42c1",
+        "metric_name": "clarification_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "contextual_conversation",
+        "scenario_version": "v1",
+        "fixture_digest": "8478b73fd477c874efa5b517f88bbe2a1510fee48154400890185b1008aa42c1",
+        "metric_name": "context_items_seen",
+        "leo_value": 1,
+        "baseline_value": 1,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "contextual_conversation",
+        "scenario_version": "v1",
+        "fixture_digest": "8478b73fd477c874efa5b517f88bbe2a1510fee48154400890185b1008aa42c1",
+        "metric_name": "context_leakage_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "contextual_conversation",
+        "scenario_version": "v1",
+        "fixture_digest": "8478b73fd477c874efa5b517f88bbe2a1510fee48154400890185b1008aa42c1",
+        "metric_name": "correction_retry_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "contextual_conversation",
+        "scenario_version": "v1",
+        "fixture_digest": "8478b73fd477c874efa5b517f88bbe2a1510fee48154400890185b1008aa42c1",
+        "metric_name": "event_count",
+        "leo_value": 7,
+        "baseline_value": 7,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "contextual_conversation",
+        "scenario_version": "v1",
+        "fixture_digest": "8478b73fd477c874efa5b517f88bbe2a1510fee48154400890185b1008aa42c1",
+        "metric_name": "expected_context_recall_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "contextual_conversation",
+        "scenario_version": "v1",
+        "fixture_digest": "8478b73fd477c874efa5b517f88bbe2a1510fee48154400890185b1008aa42c1",
+        "metric_name": "false_success_count",
+        "leo_value": 0,
+        "baseline_value": 0,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "contextual_conversation",
+        "scenario_version": "v1",
+        "fixture_digest": "8478b73fd477c874efa5b517f88bbe2a1510fee48154400890185b1008aa42c1",
+        "metric_name": "model_calls",
+        "leo_value": 1,
+        "baseline_value": 1,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "contextual_conversation",
+        "scenario_version": "v1",
+        "fixture_digest": "8478b73fd477c874efa5b517f88bbe2a1510fee48154400890185b1008aa42c1",
+        "metric_name": "observation_count",
+        "leo_value": 0,
+        "baseline_value": 0,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "contextual_conversation",
+        "scenario_version": "v1",
+        "fixture_digest": "8478b73fd477c874efa5b517f88bbe2a1510fee48154400890185b1008aa42c1",
+        "metric_name": "plan_nodes_completed",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "contextual_conversation",
+        "scenario_version": "v1",
+        "fixture_digest": "8478b73fd477c874efa5b517f88bbe2a1510fee48154400890185b1008aa42c1",
+        "metric_name": "provider_calls",
+        "leo_value": 1,
+        "baseline_value": 1,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "contextual_conversation",
+        "scenario_version": "v1",
+        "fixture_digest": "8478b73fd477c874efa5b517f88bbe2a1510fee48154400890185b1008aa42c1",
+        "metric_name": "routing_correct_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "contextual_conversation",
+        "scenario_version": "v1",
+        "fixture_digest": "8478b73fd477c874efa5b517f88bbe2a1510fee48154400890185b1008aa42c1",
+        "metric_name": "task_success_count",
+        "leo_value": 1,
+        "baseline_value": 1,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "contextual_conversation",
+        "scenario_version": "v1",
+        "fixture_digest": "8478b73fd477c874efa5b517f88bbe2a1510fee48154400890185b1008aa42c1",
+        "metric_name": "terminal_reason_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "contextual_conversation",
+        "scenario_version": "v1",
+        "fixture_digest": "8478b73fd477c874efa5b517f88bbe2a1510fee48154400890185b1008aa42c1",
+        "metric_name": "tool_adapter_calls",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "contextual_conversation",
+        "scenario_version": "v1",
+        "fixture_digest": "8478b73fd477c874efa5b517f88bbe2a1510fee48154400890185b1008aa42c1",
+        "metric_name": "tool_calls",
+        "leo_value": 0,
+        "baseline_value": 0,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "contextual_conversation",
+        "scenario_version": "v1",
+        "fixture_digest": "8478b73fd477c874efa5b517f88bbe2a1510fee48154400890185b1008aa42c1",
+        "metric_name": "turns",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "conversational_terminal_recovery",
+        "scenario_version": "v1",
+        "fixture_digest": "1607e29975719881dd0e1e3cfe09add92f56965de3b5f3b4650dd6e3e0a87165",
+        "metric_name": "false_success_count",
+        "leo_value": 0,
+        "baseline_value": 0,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "conversational_terminal_recovery",
+        "scenario_version": "v1",
+        "fixture_digest": "1607e29975719881dd0e1e3cfe09add92f56965de3b5f3b4650dd6e3e0a87165",
+        "metric_name": "terminal_bare_status_count",
+        "leo_value": 0,
+        "baseline_value": 0,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "conversational_terminal_recovery",
+        "scenario_version": "v1",
+        "fixture_digest": "1607e29975719881dd0e1e3cfe09add92f56965de3b5f3b4650dd6e3e0a87165",
+        "metric_name": "terminal_model_calls",
+        "leo_value": 0,
+        "baseline_value": 0,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "conversational_terminal_recovery",
+        "scenario_version": "v1",
+        "fixture_digest": "1607e29975719881dd0e1e3cfe09add92f56965de3b5f3b4650dd6e3e0a87165",
+        "metric_name": "terminal_recovery_render_count",
+        "leo_value": 2,
+        "baseline_value": 2,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "conversational_terminal_recovery",
+        "scenario_version": "v1",
+        "fixture_digest": "1607e29975719881dd0e1e3cfe09add92f56965de3b5f3b4650dd6e3e0a87165",
+        "metric_name": "terminal_tool_calls",
+        "leo_value": 0,
+        "baseline_value": 0,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "conversational_terminal_recovery",
+        "scenario_version": "v1",
+        "fixture_digest": "1607e29975719881dd0e1e3cfe09add92f56965de3b5f3b4650dd6e3e0a87165",
+        "metric_name": "terminal_verified_partial_count",
+        "leo_value": 1,
+        "baseline_value": 1,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "delegated_dependency_plan",
+        "scenario_version": "v1",
+        "fixture_digest": "8ae8015ddc6ff04f2a8972bf1d25ae96e124f4caf95f5acdde2de54ffcb005ba",
+        "metric_name": "child_conflict_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "delegated_dependency_plan",
+        "scenario_version": "v1",
+        "fixture_digest": "8ae8015ddc6ff04f2a8972bf1d25ae96e124f4caf95f5acdde2de54ffcb005ba",
+        "metric_name": "child_duplicate_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "delegated_dependency_plan",
+        "scenario_version": "v1",
+        "fixture_digest": "8ae8015ddc6ff04f2a8972bf1d25ae96e124f4caf95f5acdde2de54ffcb005ba",
+        "metric_name": "child_provider_calls",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "delegated_dependency_plan",
+        "scenario_version": "v1",
+        "fixture_digest": "8ae8015ddc6ff04f2a8972bf1d25ae96e124f4caf95f5acdde2de54ffcb005ba",
+        "metric_name": "child_success_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "delegated_dependency_plan",
+        "scenario_version": "v1",
+        "fixture_digest": "8ae8015ddc6ff04f2a8972bf1d25ae96e124f4caf95f5acdde2de54ffcb005ba",
+        "metric_name": "child_terminal_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "delegated_dependency_plan",
+        "scenario_version": "v1",
+        "fixture_digest": "8ae8015ddc6ff04f2a8972bf1d25ae96e124f4caf95f5acdde2de54ffcb005ba",
+        "metric_name": "child_utilization_ratio",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "delegated_dependency_plan",
+        "scenario_version": "v1",
+        "fixture_digest": "8ae8015ddc6ff04f2a8972bf1d25ae96e124f4caf95f5acdde2de54ffcb005ba",
+        "metric_name": "context_items_seen",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "delegated_dependency_plan",
+        "scenario_version": "v1",
+        "fixture_digest": "8ae8015ddc6ff04f2a8972bf1d25ae96e124f4caf95f5acdde2de54ffcb005ba",
+        "metric_name": "correction_retry_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "delegated_dependency_plan",
+        "scenario_version": "v1",
+        "fixture_digest": "8ae8015ddc6ff04f2a8972bf1d25ae96e124f4caf95f5acdde2de54ffcb005ba",
+        "metric_name": "event_count",
+        "leo_value": 13,
+        "baseline_value": 5,
+        "delta": 8,
+        "status": "available"
+      },
+      {
+        "scenario_id": "delegated_dependency_plan",
+        "scenario_version": "v1",
+        "fixture_digest": "8ae8015ddc6ff04f2a8972bf1d25ae96e124f4caf95f5acdde2de54ffcb005ba",
+        "metric_name": "false_success_count",
+        "leo_value": 0,
+        "baseline_value": 0,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "delegated_dependency_plan",
+        "scenario_version": "v1",
+        "fixture_digest": "8ae8015ddc6ff04f2a8972bf1d25ae96e124f4caf95f5acdde2de54ffcb005ba",
+        "metric_name": "model_calls",
+        "leo_value": 2,
+        "baseline_value": 1,
+        "delta": 1,
+        "status": "available"
+      },
+      {
+        "scenario_id": "delegated_dependency_plan",
+        "scenario_version": "v1",
+        "fixture_digest": "8ae8015ddc6ff04f2a8972bf1d25ae96e124f4caf95f5acdde2de54ffcb005ba",
+        "metric_name": "observation_count",
+        "leo_value": 1,
+        "baseline_value": 0,
+        "delta": 1,
+        "status": "available"
+      },
+      {
+        "scenario_id": "delegated_dependency_plan",
+        "scenario_version": "v1",
+        "fixture_digest": "8ae8015ddc6ff04f2a8972bf1d25ae96e124f4caf95f5acdde2de54ffcb005ba",
+        "metric_name": "parent_terminal_authority_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "delegated_dependency_plan",
+        "scenario_version": "v1",
+        "fixture_digest": "8ae8015ddc6ff04f2a8972bf1d25ae96e124f4caf95f5acdde2de54ffcb005ba",
+        "metric_name": "plan_no_progress_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "delegated_dependency_plan",
+        "scenario_version": "v1",
+        "fixture_digest": "8ae8015ddc6ff04f2a8972bf1d25ae96e124f4caf95f5acdde2de54ffcb005ba",
+        "metric_name": "plan_nodes_completed",
+        "leo_value": 2,
+        "baseline_value": 0,
+        "delta": 2,
+        "status": "available"
+      },
+      {
+        "scenario_id": "delegated_dependency_plan",
+        "scenario_version": "v1",
+        "fixture_digest": "8ae8015ddc6ff04f2a8972bf1d25ae96e124f4caf95f5acdde2de54ffcb005ba",
+        "metric_name": "plan_revision_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "delegated_dependency_plan",
+        "scenario_version": "v1",
+        "fixture_digest": "8ae8015ddc6ff04f2a8972bf1d25ae96e124f4caf95f5acdde2de54ffcb005ba",
+        "metric_name": "plan_valid_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "delegated_dependency_plan",
+        "scenario_version": "v1",
+        "fixture_digest": "8ae8015ddc6ff04f2a8972bf1d25ae96e124f4caf95f5acdde2de54ffcb005ba",
+        "metric_name": "provider_calls",
+        "leo_value": 2,
+        "baseline_value": 1,
+        "delta": 1,
+        "status": "available"
+      },
+      {
+        "scenario_id": "delegated_dependency_plan",
+        "scenario_version": "v1",
+        "fixture_digest": "8ae8015ddc6ff04f2a8972bf1d25ae96e124f4caf95f5acdde2de54ffcb005ba",
+        "metric_name": "task_success_count",
+        "leo_value": 1,
+        "baseline_value": 0,
+        "delta": 1,
+        "status": "available"
+      },
+      {
+        "scenario_id": "delegated_dependency_plan",
+        "scenario_version": "v1",
+        "fixture_digest": "8ae8015ddc6ff04f2a8972bf1d25ae96e124f4caf95f5acdde2de54ffcb005ba",
+        "metric_name": "terminal_reason_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "delegated_dependency_plan",
+        "scenario_version": "v1",
+        "fixture_digest": "8ae8015ddc6ff04f2a8972bf1d25ae96e124f4caf95f5acdde2de54ffcb005ba",
+        "metric_name": "tool_adapter_calls",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "delegated_dependency_plan",
+        "scenario_version": "v1",
+        "fixture_digest": "8ae8015ddc6ff04f2a8972bf1d25ae96e124f4caf95f5acdde2de54ffcb005ba",
+        "metric_name": "tool_calls",
+        "leo_value": 1,
+        "baseline_value": 0,
+        "delta": 1,
+        "status": "available"
+      },
+      {
+        "scenario_id": "delegated_dependency_plan",
+        "scenario_version": "v1",
+        "fixture_digest": "8ae8015ddc6ff04f2a8972bf1d25ae96e124f4caf95f5acdde2de54ffcb005ba",
+        "metric_name": "turns",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "dm_context_union",
+        "scenario_version": "v1",
+        "fixture_digest": "5a8530fd7781cb9aad3cb815d08504bcb80a59aeeb2c59011ece6c453db67c4f",
+        "metric_name": "context_items_seen",
+        "leo_value": 2,
+        "baseline_value": 0,
+        "delta": 2,
+        "status": "available"
+      },
+      {
+        "scenario_id": "dm_context_union",
+        "scenario_version": "v1",
+        "fixture_digest": "5a8530fd7781cb9aad3cb815d08504bcb80a59aeeb2c59011ece6c453db67c4f",
+        "metric_name": "context_leakage_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "dm_context_union",
+        "scenario_version": "v1",
+        "fixture_digest": "5a8530fd7781cb9aad3cb815d08504bcb80a59aeeb2c59011ece6c453db67c4f",
+        "metric_name": "correction_retry_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "dm_context_union",
+        "scenario_version": "v1",
+        "fixture_digest": "5a8530fd7781cb9aad3cb815d08504bcb80a59aeeb2c59011ece6c453db67c4f",
+        "metric_name": "dm_forbidden_source_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "dm_context_union",
+        "scenario_version": "v1",
+        "fixture_digest": "5a8530fd7781cb9aad3cb815d08504bcb80a59aeeb2c59011ece6c453db67c4f",
+        "metric_name": "event_count",
+        "leo_value": 7,
+        "baseline_value": 7,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "dm_context_union",
+        "scenario_version": "v1",
+        "fixture_digest": "5a8530fd7781cb9aad3cb815d08504bcb80a59aeeb2c59011ece6c453db67c4f",
+        "metric_name": "expected_dm_recall_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "dm_context_union",
+        "scenario_version": "v1",
+        "fixture_digest": "5a8530fd7781cb9aad3cb815d08504bcb80a59aeeb2c59011ece6c453db67c4f",
+        "metric_name": "false_success_count",
+        "leo_value": 0,
+        "baseline_value": 0,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "dm_context_union",
+        "scenario_version": "v1",
+        "fixture_digest": "5a8530fd7781cb9aad3cb815d08504bcb80a59aeeb2c59011ece6c453db67c4f",
+        "metric_name": "model_calls",
+        "leo_value": 1,
+        "baseline_value": 1,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "dm_context_union",
+        "scenario_version": "v1",
+        "fixture_digest": "5a8530fd7781cb9aad3cb815d08504bcb80a59aeeb2c59011ece6c453db67c4f",
+        "metric_name": "observation_count",
+        "leo_value": 0,
+        "baseline_value": 0,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "dm_context_union",
+        "scenario_version": "v1",
+        "fixture_digest": "5a8530fd7781cb9aad3cb815d08504bcb80a59aeeb2c59011ece6c453db67c4f",
+        "metric_name": "plan_nodes_completed",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "dm_context_union",
+        "scenario_version": "v1",
+        "fixture_digest": "5a8530fd7781cb9aad3cb815d08504bcb80a59aeeb2c59011ece6c453db67c4f",
+        "metric_name": "provider_calls",
+        "leo_value": 1,
+        "baseline_value": 1,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "dm_context_union",
+        "scenario_version": "v1",
+        "fixture_digest": "5a8530fd7781cb9aad3cb815d08504bcb80a59aeeb2c59011ece6c453db67c4f",
+        "metric_name": "task_success_count",
+        "leo_value": 1,
+        "baseline_value": 1,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "dm_context_union",
+        "scenario_version": "v1",
+        "fixture_digest": "5a8530fd7781cb9aad3cb815d08504bcb80a59aeeb2c59011ece6c453db67c4f",
+        "metric_name": "terminal_reason_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "dm_context_union",
+        "scenario_version": "v1",
+        "fixture_digest": "5a8530fd7781cb9aad3cb815d08504bcb80a59aeeb2c59011ece6c453db67c4f",
+        "metric_name": "tool_adapter_calls",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "dm_context_union",
+        "scenario_version": "v1",
+        "fixture_digest": "5a8530fd7781cb9aad3cb815d08504bcb80a59aeeb2c59011ece6c453db67c4f",
+        "metric_name": "tool_calls",
+        "leo_value": 0,
+        "baseline_value": 0,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "dm_context_union",
+        "scenario_version": "v1",
+        "fixture_digest": "5a8530fd7781cb9aad3cb815d08504bcb80a59aeeb2c59011ece6c453db67c4f",
+        "metric_name": "turns",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "elastic_deliberation",
+        "scenario_version": "v1",
+        "fixture_digest": "9eb1f2564913a46525bf9a80b9b245d70bb4b41c212ca9b1c92c087539bf1f97",
+        "metric_name": "elastic_clarification_tool_calls",
+        "leo_value": 0,
+        "baseline_value": 0,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "elastic_deliberation",
+        "scenario_version": "v1",
+        "fixture_digest": "9eb1f2564913a46525bf9a80b9b245d70bb4b41c212ca9b1c92c087539bf1f97",
+        "metric_name": "elastic_no_progress_escape_count",
+        "leo_value": 1,
+        "baseline_value": 1,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "elastic_deliberation",
+        "scenario_version": "v1",
+        "fixture_digest": "9eb1f2564913a46525bf9a80b9b245d70bb4b41c212ca9b1c92c087539bf1f97",
+        "metric_name": "elastic_route_count",
+        "leo_value": 5,
+        "baseline_value": 5,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "elastic_deliberation",
+        "scenario_version": "v1",
+        "fixture_digest": "9eb1f2564913a46525bf9a80b9b245d70bb4b41c212ca9b1c92c087539bf1f97",
+        "metric_name": "elastic_semantic_delegate_count",
+        "leo_value": 1,
+        "baseline_value": 1,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "elastic_deliberation",
+        "scenario_version": "v1",
+        "fixture_digest": "9eb1f2564913a46525bf9a80b9b245d70bb4b41c212ca9b1c92c087539bf1f97",
+        "metric_name": "elastic_semantic_plan_count",
+        "leo_value": 1,
+        "baseline_value": 1,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "elastic_deliberation",
+        "scenario_version": "v1",
+        "fixture_digest": "9eb1f2564913a46525bf9a80b9b245d70bb4b41c212ca9b1c92c087539bf1f97",
+        "metric_name": "false_success_count",
+        "leo_value": 0,
+        "baseline_value": 0,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "elastic_deliberation",
+        "scenario_version": "v1",
+        "fixture_digest": "9eb1f2564913a46525bf9a80b9b245d70bb4b41c212ca9b1c92c087539bf1f97",
+        "metric_name": "model_calls",
+        "leo_value": 7,
+        "baseline_value": 7,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "elastic_deliberation",
+        "scenario_version": "v1",
+        "fixture_digest": "9eb1f2564913a46525bf9a80b9b245d70bb4b41c212ca9b1c92c087539bf1f97",
+        "metric_name": "tool_calls",
+        "leo_value": 0,
+        "baseline_value": 0,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "fault_recovery_matrix",
+        "scenario_version": "v1",
+        "fixture_digest": "912f9e3cf80805e1a31ae8712aa828162dd317bfc90b6375357414f1641039a5",
+        "metric_name": "fault_case_count",
+        "leo_value": 20,
+        "baseline_value": 0,
+        "delta": 20,
+        "status": "available"
+      },
+      {
+        "scenario_id": "fault_recovery_matrix",
+        "scenario_version": "v1",
+        "fixture_digest": "912f9e3cf80805e1a31ae8712aa828162dd317bfc90b6375357414f1641039a5",
+        "metric_name": "fault_false_success_count",
+        "leo_value": 0,
+        "baseline_value": 0,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "fault_recovery_matrix",
+        "scenario_version": "v1",
+        "fixture_digest": "912f9e3cf80805e1a31ae8712aa828162dd317bfc90b6375357414f1641039a5",
+        "metric_name": "fault_recovered_count",
+        "leo_value": 20,
+        "baseline_value": 0,
+        "delta": 20,
+        "status": "available"
+      },
+      {
+        "scenario_id": "fault_recovery_matrix",
+        "scenario_version": "v1",
+        "fixture_digest": "912f9e3cf80805e1a31ae8712aa828162dd317bfc90b6375357414f1641039a5",
+        "metric_name": "fault_triggered_count",
+        "leo_value": 20,
+        "baseline_value": 0,
+        "delta": 20,
+        "status": "available"
+      },
+      {
+        "scenario_id": "fault_recovery_matrix",
+        "scenario_version": "v1",
+        "fixture_digest": "912f9e3cf80805e1a31ae8712aa828162dd317bfc90b6375357414f1641039a5",
+        "metric_name": "fault_unknown_effect_count",
+        "leo_value": 1,
+        "baseline_value": 0,
+        "delta": 1,
+        "status": "available"
+      },
+      {
+        "scenario_id": "fault_recovery_matrix",
+        "scenario_version": "v1",
+        "fixture_digest": "912f9e3cf80805e1a31ae8712aa828162dd317bfc90b6375357414f1641039a5",
+        "metric_name": "fault_unsafe_recovery_count",
+        "leo_value": 0,
+        "baseline_value": 0,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "long_thread_compaction",
+        "scenario_version": "v1",
+        "fixture_digest": "b455cc4c9e09644eb9b8ad54f2a311d7b66bd2fc3c4e4daca1afb17dd0b4ff87",
+        "metric_name": "compacted_message_count",
+        "leo_value": 48,
+        "baseline_value": 0,
+        "delta": 48,
+        "status": "available"
+      },
+      {
+        "scenario_id": "long_thread_compaction",
+        "scenario_version": "v1",
+        "fixture_digest": "b455cc4c9e09644eb9b8ad54f2a311d7b66bd2fc3c4e4daca1afb17dd0b4ff87",
+        "metric_name": "compaction_count",
+        "leo_value": 1,
+        "baseline_value": 0,
+        "delta": 1,
+        "status": "available"
+      },
+      {
+        "scenario_id": "long_thread_compaction",
+        "scenario_version": "v1",
+        "fixture_digest": "b455cc4c9e09644eb9b8ad54f2a311d7b66bd2fc3c4e4daca1afb17dd0b4ff87",
+        "metric_name": "compaction_input_tokens",
+        "leo_value": 2210,
+        "baseline_value": 36,
+        "delta": 2174,
+        "status": "available"
+      },
+      {
+        "scenario_id": "long_thread_compaction",
+        "scenario_version": "v1",
+        "fixture_digest": "b455cc4c9e09644eb9b8ad54f2a311d7b66bd2fc3c4e4daca1afb17dd0b4ff87",
+        "metric_name": "compaction_retained_tokens",
+        "leo_value": 681,
+        "baseline_value": 36,
+        "delta": 645,
+        "status": "available"
+      },
+      {
+        "scenario_id": "long_thread_compaction",
+        "scenario_version": "v1",
+        "fixture_digest": "b455cc4c9e09644eb9b8ad54f2a311d7b66bd2fc3c4e4daca1afb17dd0b4ff87",
+        "metric_name": "compaction_token_reduction_ratio",
+        "leo_value": 0.6918552036199095,
+        "baseline_value": 0.0,
+        "delta": 0.6918552036199095,
+        "status": "available"
+      },
+      {
+        "scenario_id": "long_thread_compaction",
+        "scenario_version": "v1",
+        "fixture_digest": "b455cc4c9e09644eb9b8ad54f2a311d7b66bd2fc3c4e4daca1afb17dd0b4ff87",
+        "metric_name": "long_thread_message_count",
+        "leo_value": 60,
+        "baseline_value": 4,
+        "delta": 56,
+        "status": "available"
+      },
+      {
+        "scenario_id": "long_thread_compaction",
+        "scenario_version": "v1",
+        "fixture_digest": "b455cc4c9e09644eb9b8ad54f2a311d7b66bd2fc3c4e4daca1afb17dd0b4ff87",
+        "metric_name": "recent_message_count",
+        "leo_value": 12,
+        "baseline_value": 4,
+        "delta": 8,
+        "status": "available"
+      },
+      {
+        "scenario_id": "memory_lifecycle",
+        "scenario_version": "v1",
+        "fixture_digest": "1a5445850440ab07a36c4079ad37bd50e753dce92badc496dc50174c0301a1c1",
+        "metric_name": "memory_conflict_count",
+        "leo_value": 0,
+        "baseline_value": 0,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "memory_lifecycle",
+        "scenario_version": "v1",
+        "fixture_digest": "1a5445850440ab07a36c4079ad37bd50e753dce92badc496dc50174c0301a1c1",
+        "metric_name": "memory_cross_scope_leakage_count",
+        "leo_value": 0,
+        "baseline_value": 0,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "memory_lifecycle",
+        "scenario_version": "v1",
+        "fixture_digest": "1a5445850440ab07a36c4079ad37bd50e753dce92badc496dc50174c0301a1c1",
+        "metric_name": "memory_current_count",
+        "leo_value": 0,
+        "baseline_value": 0,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "memory_lifecycle",
+        "scenario_version": "v1",
+        "fixture_digest": "1a5445850440ab07a36c4079ad37bd50e753dce92badc496dc50174c0301a1c1",
+        "metric_name": "memory_revisions",
+        "leo_value": 3,
+        "baseline_value": 0,
+        "delta": 3,
+        "status": "available"
+      },
+      {
+        "scenario_id": "memory_lifecycle",
+        "scenario_version": "v1",
+        "fixture_digest": "1a5445850440ab07a36c4079ad37bd50e753dce92badc496dc50174c0301a1c1",
+        "metric_name": "memory_source_count_before_forget",
+        "leo_value": 2,
+        "baseline_value": 0,
+        "delta": 2,
+        "status": "available"
+      },
+      {
+        "scenario_id": "parallel_read_batch",
+        "scenario_version": "v1",
+        "fixture_digest": "d611c1f0d611995a833c175e0226c56a4bb0f4e1d6ecce9c482392c586de5809",
+        "metric_name": "context_items_seen",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "parallel_read_batch",
+        "scenario_version": "v1",
+        "fixture_digest": "d611c1f0d611995a833c175e0226c56a4bb0f4e1d6ecce9c482392c586de5809",
+        "metric_name": "correction_retry_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "parallel_read_batch",
+        "scenario_version": "v1",
+        "fixture_digest": "d611c1f0d611995a833c175e0226c56a4bb0f4e1d6ecce9c482392c586de5809",
+        "metric_name": "event_count",
+        "leo_value": 16,
+        "baseline_value": 16,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "parallel_read_batch",
+        "scenario_version": "v1",
+        "fixture_digest": "d611c1f0d611995a833c175e0226c56a4bb0f4e1d6ecce9c482392c586de5809",
+        "metric_name": "false_success_count",
+        "leo_value": 0,
+        "baseline_value": 0,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "parallel_read_batch",
+        "scenario_version": "v1",
+        "fixture_digest": "d611c1f0d611995a833c175e0226c56a4bb0f4e1d6ecce9c482392c586de5809",
+        "metric_name": "model_calls",
+        "leo_value": 2,
+        "baseline_value": 2,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "parallel_read_batch",
+        "scenario_version": "v1",
+        "fixture_digest": "d611c1f0d611995a833c175e0226c56a4bb0f4e1d6ecce9c482392c586de5809",
+        "metric_name": "observation_count",
+        "leo_value": 2,
+        "baseline_value": 2,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "parallel_read_batch",
+        "scenario_version": "v1",
+        "fixture_digest": "d611c1f0d611995a833c175e0226c56a4bb0f4e1d6ecce9c482392c586de5809",
+        "metric_name": "parallel_batch_evidence",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "parallel_read_batch",
+        "scenario_version": "v1",
+        "fixture_digest": "d611c1f0d611995a833c175e0226c56a4bb0f4e1d6ecce9c482392c586de5809",
+        "metric_name": "parallel_batch_size",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "parallel_read_batch",
+        "scenario_version": "v1",
+        "fixture_digest": "d611c1f0d611995a833c175e0226c56a4bb0f4e1d6ecce9c482392c586de5809",
+        "metric_name": "parallel_overlap_peak",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "parallel_read_batch",
+        "scenario_version": "v1",
+        "fixture_digest": "d611c1f0d611995a833c175e0226c56a4bb0f4e1d6ecce9c482392c586de5809",
+        "metric_name": "plan_nodes_completed",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "parallel_read_batch",
+        "scenario_version": "v1",
+        "fixture_digest": "d611c1f0d611995a833c175e0226c56a4bb0f4e1d6ecce9c482392c586de5809",
+        "metric_name": "provider_calls",
+        "leo_value": 2,
+        "baseline_value": 2,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "parallel_read_batch",
+        "scenario_version": "v1",
+        "fixture_digest": "d611c1f0d611995a833c175e0226c56a4bb0f4e1d6ecce9c482392c586de5809",
+        "metric_name": "task_success_count",
+        "leo_value": 1,
+        "baseline_value": 1,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "parallel_read_batch",
+        "scenario_version": "v1",
+        "fixture_digest": "d611c1f0d611995a833c175e0226c56a4bb0f4e1d6ecce9c482392c586de5809",
+        "metric_name": "terminal_reason_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "parallel_read_batch",
+        "scenario_version": "v1",
+        "fixture_digest": "d611c1f0d611995a833c175e0226c56a4bb0f4e1d6ecce9c482392c586de5809",
+        "metric_name": "tool_adapter_calls",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "parallel_read_batch",
+        "scenario_version": "v1",
+        "fixture_digest": "d611c1f0d611995a833c175e0226c56a4bb0f4e1d6ecce9c482392c586de5809",
+        "metric_name": "tool_calls",
+        "leo_value": 2,
+        "baseline_value": 2,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "parallel_read_batch",
+        "scenario_version": "v1",
+        "fixture_digest": "d611c1f0d611995a833c175e0226c56a4bb0f4e1d6ecce9c482392c586de5809",
+        "metric_name": "turns",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "quote_control",
+        "scenario_version": "v1",
+        "fixture_digest": "878f82ff47549b1273dd8b24d332fb96aff2144f3eee15a7b7f4b00928f3833d",
+        "metric_name": "context_items_seen",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "quote_control",
+        "scenario_version": "v1",
+        "fixture_digest": "878f82ff47549b1273dd8b24d332fb96aff2144f3eee15a7b7f4b00928f3833d",
+        "metric_name": "correction_retry_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "quote_control",
+        "scenario_version": "v1",
+        "fixture_digest": "878f82ff47549b1273dd8b24d332fb96aff2144f3eee15a7b7f4b00928f3833d",
+        "metric_name": "event_count",
+        "leo_value": 13,
+        "baseline_value": 13,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "quote_control",
+        "scenario_version": "v1",
+        "fixture_digest": "878f82ff47549b1273dd8b24d332fb96aff2144f3eee15a7b7f4b00928f3833d",
+        "metric_name": "false_success_count",
+        "leo_value": 0,
+        "baseline_value": 0,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "quote_control",
+        "scenario_version": "v1",
+        "fixture_digest": "878f82ff47549b1273dd8b24d332fb96aff2144f3eee15a7b7f4b00928f3833d",
+        "metric_name": "model_calls",
+        "leo_value": 2,
+        "baseline_value": 2,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "quote_control",
+        "scenario_version": "v1",
+        "fixture_digest": "878f82ff47549b1273dd8b24d332fb96aff2144f3eee15a7b7f4b00928f3833d",
+        "metric_name": "observation_count",
+        "leo_value": 1,
+        "baseline_value": 1,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "quote_control",
+        "scenario_version": "v1",
+        "fixture_digest": "878f82ff47549b1273dd8b24d332fb96aff2144f3eee15a7b7f4b00928f3833d",
+        "metric_name": "plan_nodes_completed",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "quote_control",
+        "scenario_version": "v1",
+        "fixture_digest": "878f82ff47549b1273dd8b24d332fb96aff2144f3eee15a7b7f4b00928f3833d",
+        "metric_name": "provider_calls",
+        "leo_value": 2,
+        "baseline_value": 2,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "quote_control",
+        "scenario_version": "v1",
+        "fixture_digest": "878f82ff47549b1273dd8b24d332fb96aff2144f3eee15a7b7f4b00928f3833d",
+        "metric_name": "task_success_count",
+        "leo_value": 1,
+        "baseline_value": 1,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "quote_control",
+        "scenario_version": "v1",
+        "fixture_digest": "878f82ff47549b1273dd8b24d332fb96aff2144f3eee15a7b7f4b00928f3833d",
+        "metric_name": "terminal_reason_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "quote_control",
+        "scenario_version": "v1",
+        "fixture_digest": "878f82ff47549b1273dd8b24d332fb96aff2144f3eee15a7b7f4b00928f3833d",
+        "metric_name": "tool_adapter_calls",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "quote_control",
+        "scenario_version": "v1",
+        "fixture_digest": "878f82ff47549b1273dd8b24d332fb96aff2144f3eee15a7b7f4b00928f3833d",
+        "metric_name": "tool_calls",
+        "leo_value": 1,
+        "baseline_value": 1,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "quote_control",
+        "scenario_version": "v1",
+        "fixture_digest": "878f82ff47549b1273dd8b24d332fb96aff2144f3eee15a7b7f4b00928f3833d",
+        "metric_name": "turns",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "restart_replay_idempotency",
+        "scenario_version": "v1",
+        "fixture_digest": "db9bc86b3f78965991a61076c09c39c5e4d5091158ab22888d8d483c8c7bf33b",
+        "metric_name": "context_items_seen",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "restart_replay_idempotency",
+        "scenario_version": "v1",
+        "fixture_digest": "db9bc86b3f78965991a61076c09c39c5e4d5091158ab22888d8d483c8c7bf33b",
+        "metric_name": "correction_retry_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "restart_replay_idempotency",
+        "scenario_version": "v1",
+        "fixture_digest": "db9bc86b3f78965991a61076c09c39c5e4d5091158ab22888d8d483c8c7bf33b",
+        "metric_name": "duplicate_delivery_attempt_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "restart_replay_idempotency",
+        "scenario_version": "v1",
+        "fixture_digest": "db9bc86b3f78965991a61076c09c39c5e4d5091158ab22888d8d483c8c7bf33b",
+        "metric_name": "duplicate_delivery_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "restart_replay_idempotency",
+        "scenario_version": "v1",
+        "fixture_digest": "db9bc86b3f78965991a61076c09c39c5e4d5091158ab22888d8d483c8c7bf33b",
+        "metric_name": "event_count",
+        "leo_value": 13,
+        "baseline_value": 13,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "restart_replay_idempotency",
+        "scenario_version": "v1",
+        "fixture_digest": "db9bc86b3f78965991a61076c09c39c5e4d5091158ab22888d8d483c8c7bf33b",
+        "metric_name": "false_success_count",
+        "leo_value": 0,
+        "baseline_value": 0,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "restart_replay_idempotency",
+        "scenario_version": "v1",
+        "fixture_digest": "db9bc86b3f78965991a61076c09c39c5e4d5091158ab22888d8d483c8c7bf33b",
+        "metric_name": "model_calls",
+        "leo_value": 2,
+        "baseline_value": 2,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "restart_replay_idempotency",
+        "scenario_version": "v1",
+        "fixture_digest": "db9bc86b3f78965991a61076c09c39c5e4d5091158ab22888d8d483c8c7bf33b",
+        "metric_name": "observation_count",
+        "leo_value": 1,
+        "baseline_value": 1,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "restart_replay_idempotency",
+        "scenario_version": "v1",
+        "fixture_digest": "db9bc86b3f78965991a61076c09c39c5e4d5091158ab22888d8d483c8c7bf33b",
+        "metric_name": "physical_delivery_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "restart_replay_idempotency",
+        "scenario_version": "v1",
+        "fixture_digest": "db9bc86b3f78965991a61076c09c39c5e4d5091158ab22888d8d483c8c7bf33b",
+        "metric_name": "plan_nodes_completed",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "restart_replay_idempotency",
+        "scenario_version": "v1",
+        "fixture_digest": "db9bc86b3f78965991a61076c09c39c5e4d5091158ab22888d8d483c8c7bf33b",
+        "metric_name": "provider_calls",
+        "leo_value": 2,
+        "baseline_value": 2,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "restart_replay_idempotency",
+        "scenario_version": "v1",
+        "fixture_digest": "db9bc86b3f78965991a61076c09c39c5e4d5091158ab22888d8d483c8c7bf33b",
+        "metric_name": "replay_event_delta",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "restart_replay_idempotency",
+        "scenario_version": "v1",
+        "fixture_digest": "db9bc86b3f78965991a61076c09c39c5e4d5091158ab22888d8d483c8c7bf33b",
+        "metric_name": "task_success_count",
+        "leo_value": 1,
+        "baseline_value": 1,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "restart_replay_idempotency",
+        "scenario_version": "v1",
+        "fixture_digest": "db9bc86b3f78965991a61076c09c39c5e4d5091158ab22888d8d483c8c7bf33b",
+        "metric_name": "terminal_reason_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "restart_replay_idempotency",
+        "scenario_version": "v1",
+        "fixture_digest": "db9bc86b3f78965991a61076c09c39c5e4d5091158ab22888d8d483c8c7bf33b",
+        "metric_name": "tool_adapter_calls",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "restart_replay_idempotency",
+        "scenario_version": "v1",
+        "fixture_digest": "db9bc86b3f78965991a61076c09c39c5e4d5091158ab22888d8d483c8c7bf33b",
+        "metric_name": "tool_calls",
+        "leo_value": 1,
+        "baseline_value": 1,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "restart_replay_idempotency",
+        "scenario_version": "v1",
+        "fixture_digest": "db9bc86b3f78965991a61076c09c39c5e4d5091158ab22888d8d483c8c7bf33b",
+        "metric_name": "turns",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "safe_failure",
+        "scenario_version": "v1",
+        "fixture_digest": "bb4c277477b1319edc00990847dc7e2253cea36ccb9f966730dc0f0fc6bb8a92",
+        "metric_name": "context_items_seen",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "safe_failure",
+        "scenario_version": "v1",
+        "fixture_digest": "bb4c277477b1319edc00990847dc7e2253cea36ccb9f966730dc0f0fc6bb8a92",
+        "metric_name": "correction_retry_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "safe_failure",
+        "scenario_version": "v1",
+        "fixture_digest": "bb4c277477b1319edc00990847dc7e2253cea36ccb9f966730dc0f0fc6bb8a92",
+        "metric_name": "event_count",
+        "leo_value": 12,
+        "baseline_value": 7,
+        "delta": 5,
+        "status": "available"
+      },
+      {
+        "scenario_id": "safe_failure",
+        "scenario_version": "v1",
+        "fixture_digest": "bb4c277477b1319edc00990847dc7e2253cea36ccb9f966730dc0f0fc6bb8a92",
+        "metric_name": "false_success_count",
+        "leo_value": 0,
+        "baseline_value": 0,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "safe_failure",
+        "scenario_version": "v1",
+        "fixture_digest": "bb4c277477b1319edc00990847dc7e2253cea36ccb9f966730dc0f0fc6bb8a92",
+        "metric_name": "model_calls",
+        "leo_value": 2,
+        "baseline_value": 1,
+        "delta": 1,
+        "status": "available"
+      },
+      {
+        "scenario_id": "safe_failure",
+        "scenario_version": "v1",
+        "fixture_digest": "bb4c277477b1319edc00990847dc7e2253cea36ccb9f966730dc0f0fc6bb8a92",
+        "metric_name": "observation_count",
+        "leo_value": 0,
+        "baseline_value": 0,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "safe_failure",
+        "scenario_version": "v1",
+        "fixture_digest": "bb4c277477b1319edc00990847dc7e2253cea36ccb9f966730dc0f0fc6bb8a92",
+        "metric_name": "plan_nodes_completed",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "safe_failure",
+        "scenario_version": "v1",
+        "fixture_digest": "bb4c277477b1319edc00990847dc7e2253cea36ccb9f966730dc0f0fc6bb8a92",
+        "metric_name": "provider_calls",
+        "leo_value": 2,
+        "baseline_value": 1,
+        "delta": 1,
+        "status": "available"
+      },
+      {
+        "scenario_id": "safe_failure",
+        "scenario_version": "v1",
+        "fixture_digest": "bb4c277477b1319edc00990847dc7e2253cea36ccb9f966730dc0f0fc6bb8a92",
+        "metric_name": "task_success_count",
+        "leo_value": 0,
+        "baseline_value": 0,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "safe_failure",
+        "scenario_version": "v1",
+        "fixture_digest": "bb4c277477b1319edc00990847dc7e2253cea36ccb9f966730dc0f0fc6bb8a92",
+        "metric_name": "terminal_reason_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "safe_failure",
+        "scenario_version": "v1",
+        "fixture_digest": "bb4c277477b1319edc00990847dc7e2253cea36ccb9f966730dc0f0fc6bb8a92",
+        "metric_name": "tool_adapter_calls",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "safe_failure",
+        "scenario_version": "v1",
+        "fixture_digest": "bb4c277477b1319edc00990847dc7e2253cea36ccb9f966730dc0f0fc6bb8a92",
+        "metric_name": "tool_calls",
+        "leo_value": 0,
+        "baseline_value": 0,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "safe_failure",
+        "scenario_version": "v1",
+        "fixture_digest": "bb4c277477b1319edc00990847dc7e2253cea36ccb9f966730dc0f0fc6bb8a92",
+        "metric_name": "turns",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "shared_group_external_scope",
+        "scenario_version": "v1",
+        "fixture_digest": "1b0b741585f19721895a351bca3de67533dc5438fb730f772958f35d17cf44e1",
+        "metric_name": "context_leakage_count",
+        "leo_value": 0,
+        "baseline_value": 0,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "shared_group_external_scope",
+        "scenario_version": "v1",
+        "fixture_digest": "1b0b741585f19721895a351bca3de67533dc5438fb730f772958f35d17cf44e1",
+        "metric_name": "conversation_kinds_evaluated",
+        "leo_value": 3,
+        "baseline_value": 3,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "shared_group_external_scope",
+        "scenario_version": "v1",
+        "fixture_digest": "1b0b741585f19721895a351bca3de67533dc5438fb730f772958f35d17cf44e1",
+        "metric_name": "forged_projection_rejection_count",
+        "leo_value": 3,
+        "baseline_value": 3,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "shared_group_external_scope",
+        "scenario_version": "v1",
+        "fixture_digest": "1b0b741585f19721895a351bca3de67533dc5438fb730f772958f35d17cf44e1",
+        "metric_name": "group_dm_aggregation_count",
+        "leo_value": 0,
+        "baseline_value": 0,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "slack_thread_context_authority",
+        "scenario_version": "v1",
+        "fixture_digest": "bb55ad7041f1967a6bec28acb373ff2396819f93f151d535b3af021b51c3487e",
+        "metric_name": "false_success_count",
+        "leo_value": 0,
+        "baseline_value": 0,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "slack_thread_context_authority",
+        "scenario_version": "v1",
+        "fixture_digest": "bb55ad7041f1967a6bec28acb373ff2396819f93f151d535b3af021b51c3487e",
+        "metric_name": "thread_authority_rejection_count",
+        "leo_value": 4,
+        "baseline_value": 4,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "slack_thread_context_authority",
+        "scenario_version": "v1",
+        "fixture_digest": "bb55ad7041f1967a6bec28acb373ff2396819f93f151d535b3af021b51c3487e",
+        "metric_name": "thread_compacted_turn_count",
+        "leo_value": 37,
+        "baseline_value": 37,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "slack_thread_context_authority",
+        "scenario_version": "v1",
+        "fixture_digest": "bb55ad7041f1967a6bec28acb373ff2396819f93f151d535b3af021b51c3487e",
+        "metric_name": "thread_context_leakage_count",
+        "leo_value": 0,
+        "baseline_value": 0,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "slack_thread_context_authority",
+        "scenario_version": "v1",
+        "fixture_digest": "bb55ad7041f1967a6bec28acb373ff2396819f93f151d535b3af021b51c3487e",
+        "metric_name": "thread_exact_retained_turn_count",
+        "leo_value": 23,
+        "baseline_value": 23,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "slack_thread_context_authority",
+        "scenario_version": "v1",
+        "fixture_digest": "bb55ad7041f1967a6bec28acb373ff2396819f93f151d535b3af021b51c3487e",
+        "metric_name": "thread_loaded_turn_count",
+        "leo_value": 60,
+        "baseline_value": 60,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "slack_thread_context_authority",
+        "scenario_version": "v1",
+        "fixture_digest": "bb55ad7041f1967a6bec28acb373ff2396819f93f151d535b3af021b51c3487e",
+        "metric_name": "thread_protected_turn_count",
+        "leo_value": 8,
+        "baseline_value": 8,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "slack_thread_context_authority",
+        "scenario_version": "v1",
+        "fixture_digest": "bb55ad7041f1967a6bec28acb373ff2396819f93f151d535b3af021b51c3487e",
+        "metric_name": "thread_reopen_handle_count",
+        "leo_value": 1,
+        "baseline_value": 1,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "slack_thread_context_authority",
+        "scenario_version": "v1",
+        "fixture_digest": "bb55ad7041f1967a6bec28acb373ff2396819f93f151d535b3af021b51c3487e",
+        "metric_name": "thread_reopen_success_count",
+        "leo_value": 1,
+        "baseline_value": 1,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "tavily_verified_research",
+        "scenario_version": "v1",
+        "fixture_digest": "df776d908dc82bd15a6bbe16928aeca38d4fa85a25fb994846cc81bdbe9ac93b",
+        "metric_name": "false_success_count",
+        "leo_value": 0,
+        "baseline_value": 0,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "tavily_verified_research",
+        "scenario_version": "v1",
+        "fixture_digest": "df776d908dc82bd15a6bbe16928aeca38d4fa85a25fb994846cc81bdbe9ac93b",
+        "metric_name": "research_catalog_eligible_count",
+        "leo_value": 2,
+        "baseline_value": 2,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "tavily_verified_research",
+        "scenario_version": "v1",
+        "fixture_digest": "df776d908dc82bd15a6bbe16928aeca38d4fa85a25fb994846cc81bdbe9ac93b",
+        "metric_name": "research_discovery_rejection_count",
+        "leo_value": 1,
+        "baseline_value": 1,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "tavily_verified_research",
+        "scenario_version": "v1",
+        "fixture_digest": "df776d908dc82bd15a6bbe16928aeca38d4fa85a25fb994846cc81bdbe9ac93b",
+        "metric_name": "research_mock_transport_request_count",
+        "leo_value": 2,
+        "baseline_value": 2,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "tavily_verified_research",
+        "scenario_version": "v1",
+        "fixture_digest": "df776d908dc82bd15a6bbe16928aeca38d4fa85a25fb994846cc81bdbe9ac93b",
+        "metric_name": "research_normalized_observation_count",
+        "leo_value": 2,
+        "baseline_value": 2,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "tavily_verified_research",
+        "scenario_version": "v1",
+        "fixture_digest": "df776d908dc82bd15a6bbe16928aeca38d4fa85a25fb994846cc81bdbe9ac93b",
+        "metric_name": "research_verified_source_claim_count",
+        "leo_value": 1,
+        "baseline_value": 1,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "tool_recall_progressive",
+        "scenario_version": "v1",
+        "fixture_digest": "483a39a554734b02712dd45c4402f4b97caaec9ad65a259e2fbb13091ab6d063",
+        "metric_name": "no_progress_escape_count",
+        "leo_value": 1,
+        "baseline_value": 0,
+        "delta": 1,
+        "status": "available"
+      },
+      {
+        "scenario_id": "tool_recall_progressive",
+        "scenario_version": "v1",
+        "fixture_digest": "483a39a554734b02712dd45c4402f4b97caaec9ad65a259e2fbb13091ab6d063",
+        "metric_name": "progressive_tools_opened",
+        "leo_value": 1,
+        "baseline_value": 0,
+        "delta": 1,
+        "status": "available"
+      },
+      {
+        "scenario_id": "tool_recall_progressive",
+        "scenario_version": "v1",
+        "fixture_digest": "483a39a554734b02712dd45c4402f4b97caaec9ad65a259e2fbb13091ab6d063",
+        "metric_name": "tool_recall_at_k",
+        "leo_value": 1.0,
+        "baseline_value": 1.0,
+        "delta": 0.0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "tool_recall_progressive",
+        "scenario_version": "v1",
+        "fixture_digest": "483a39a554734b02712dd45c4402f4b97caaec9ad65a259e2fbb13091ab6d063",
+        "metric_name": "tool_recall_authority_leakage_count",
+        "leo_value": 0,
+        "baseline_value": 0,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "tool_recall_progressive",
+        "scenario_version": "v1",
+        "fixture_digest": "483a39a554734b02712dd45c4402f4b97caaec9ad65a259e2fbb13091ab6d063",
+        "metric_name": "tool_recall_candidate_count",
+        "leo_value": 1,
+        "baseline_value": 3,
+        "delta": -2,
+        "status": "available"
+      },
+      {
+        "scenario_id": "tool_recall_progressive",
+        "scenario_version": "v1",
+        "fixture_digest": "483a39a554734b02712dd45c4402f4b97caaec9ad65a259e2fbb13091ab6d063",
+        "metric_name": "tool_recall_selected_count",
+        "leo_value": 1,
+        "baseline_value": 3,
+        "delta": -2,
+        "status": "available"
+      },
+      {
+        "scenario_id": "verifier_correction",
+        "scenario_version": "v1",
+        "fixture_digest": "a43a17308c243e7ace0e6f99a2a0b8433e347dad782a3806217d4ed5ab83aa88",
+        "metric_name": "context_items_seen",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "verifier_correction",
+        "scenario_version": "v1",
+        "fixture_digest": "a43a17308c243e7ace0e6f99a2a0b8433e347dad782a3806217d4ed5ab83aa88",
+        "metric_name": "correction_retry_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "verifier_correction",
+        "scenario_version": "v1",
+        "fixture_digest": "a43a17308c243e7ace0e6f99a2a0b8433e347dad782a3806217d4ed5ab83aa88",
+        "metric_name": "event_count",
+        "leo_value": 24,
+        "baseline_value": 13,
+        "delta": 11,
+        "status": "available"
+      },
+      {
+        "scenario_id": "verifier_correction",
+        "scenario_version": "v1",
+        "fixture_digest": "a43a17308c243e7ace0e6f99a2a0b8433e347dad782a3806217d4ed5ab83aa88",
+        "metric_name": "false_success_count",
+        "leo_value": 0,
+        "baseline_value": 0,
+        "delta": 0,
+        "status": "available"
+      },
+      {
+        "scenario_id": "verifier_correction",
+        "scenario_version": "v1",
+        "fixture_digest": "a43a17308c243e7ace0e6f99a2a0b8433e347dad782a3806217d4ed5ab83aa88",
+        "metric_name": "model_calls",
+        "leo_value": 4,
+        "baseline_value": 2,
+        "delta": 2,
+        "status": "available"
+      },
+      {
+        "scenario_id": "verifier_correction",
+        "scenario_version": "v1",
+        "fixture_digest": "a43a17308c243e7ace0e6f99a2a0b8433e347dad782a3806217d4ed5ab83aa88",
+        "metric_name": "observation_count",
+        "leo_value": 2,
+        "baseline_value": 1,
+        "delta": 1,
+        "status": "available"
+      },
+      {
+        "scenario_id": "verifier_correction",
+        "scenario_version": "v1",
+        "fixture_digest": "a43a17308c243e7ace0e6f99a2a0b8433e347dad782a3806217d4ed5ab83aa88",
+        "metric_name": "plan_nodes_completed",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "verifier_correction",
+        "scenario_version": "v1",
+        "fixture_digest": "a43a17308c243e7ace0e6f99a2a0b8433e347dad782a3806217d4ed5ab83aa88",
+        "metric_name": "plan_revision_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "verifier_correction",
+        "scenario_version": "v1",
+        "fixture_digest": "a43a17308c243e7ace0e6f99a2a0b8433e347dad782a3806217d4ed5ab83aa88",
+        "metric_name": "provider_calls",
+        "leo_value": 4,
+        "baseline_value": 2,
+        "delta": 2,
+        "status": "available"
+      },
+      {
+        "scenario_id": "verifier_correction",
+        "scenario_version": "v1",
+        "fixture_digest": "a43a17308c243e7ace0e6f99a2a0b8433e347dad782a3806217d4ed5ab83aa88",
+        "metric_name": "replan_tool_call_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "verifier_correction",
+        "scenario_version": "v1",
+        "fixture_digest": "a43a17308c243e7ace0e6f99a2a0b8433e347dad782a3806217d4ed5ab83aa88",
+        "metric_name": "retry_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "verifier_correction",
+        "scenario_version": "v1",
+        "fixture_digest": "a43a17308c243e7ace0e6f99a2a0b8433e347dad782a3806217d4ed5ab83aa88",
+        "metric_name": "task_success_count",
+        "leo_value": 1,
+        "baseline_value": 0,
+        "delta": 1,
+        "status": "available"
+      },
+      {
+        "scenario_id": "verifier_correction",
+        "scenario_version": "v1",
+        "fixture_digest": "a43a17308c243e7ace0e6f99a2a0b8433e347dad782a3806217d4ed5ab83aa88",
+        "metric_name": "terminal_reason_count",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "verifier_correction",
+        "scenario_version": "v1",
+        "fixture_digest": "a43a17308c243e7ace0e6f99a2a0b8433e347dad782a3806217d4ed5ab83aa88",
+        "metric_name": "tool_adapter_calls",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      },
+      {
+        "scenario_id": "verifier_correction",
+        "scenario_version": "v1",
+        "fixture_digest": "a43a17308c243e7ace0e6f99a2a0b8433e347dad782a3806217d4ed5ab83aa88",
+        "metric_name": "tool_calls",
+        "leo_value": 2,
+        "baseline_value": 1,
+        "delta": 1,
+        "status": "available"
+      },
+      {
+        "scenario_id": "verifier_correction",
+        "scenario_version": "v1",
+        "fixture_digest": "a43a17308c243e7ace0e6f99a2a0b8433e347dad782a3806217d4ed5ab83aa88",
+        "metric_name": "turns",
+        "leo_value": null,
+        "baseline_value": null,
+        "delta": null,
+        "status": "not_available"
+      }
+    ],
+    "thresholds": [
+      {
+        "threshold_id": "budget-false-success-threshold",
+        "metric_name": "false_success_count",
+        "operator": "maximum",
+        "threshold_value": 0.0,
+        "observed_value": 0.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      },
+      {
+        "threshold_id": "budget-overrun-threshold",
+        "metric_name": "budget_overrun_count",
+        "operator": "maximum",
+        "threshold_value": 0.0,
+        "observed_value": 0.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      },
+      {
+        "threshold_id": "child-terminal-authority-threshold",
+        "metric_name": "parent_terminal_authority_count",
+        "operator": "minimum",
+        "threshold_value": 1.0,
+        "observed_value": 1.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      },
+      {
+        "threshold_id": "compaction-reduction-threshold",
+        "metric_name": "compaction_token_reduction_ratio",
+        "operator": "minimum",
+        "threshold_value": 0.5,
+        "observed_value": 0.6918552036199095,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      },
+      {
+        "threshold_id": "conversation-context-leakage-threshold",
+        "metric_name": "context_leakage_count",
+        "operator": "maximum",
+        "threshold_value": 0.0,
+        "observed_value": 0.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      },
+      {
+        "threshold_id": "dm-expected-recall-threshold",
+        "metric_name": "expected_dm_recall_count",
+        "operator": "minimum",
+        "threshold_value": 2.0,
+        "observed_value": 2.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      },
+      {
+        "threshold_id": "duplicate-delivery-threshold",
+        "metric_name": "duplicate_delivery_count",
+        "operator": "maximum",
+        "threshold_value": 0.0,
+        "observed_value": 0.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      },
+      {
+        "threshold_id": "elastic-clarification-tool-use-threshold",
+        "metric_name": "elastic_clarification_tool_calls",
+        "operator": "maximum",
+        "threshold_value": 0.0,
+        "observed_value": 0.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      },
+      {
+        "threshold_id": "elastic-no-progress-bound-threshold",
+        "metric_name": "elastic_no_progress_escape_count",
+        "operator": "minimum",
+        "threshold_value": 1.0,
+        "observed_value": 1.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      },
+      {
+        "threshold_id": "elastic-route-coverage-threshold",
+        "metric_name": "elastic_route_count",
+        "operator": "minimum",
+        "threshold_value": 5.0,
+        "observed_value": 5.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      },
+      {
+        "threshold_id": "elastic-semantic-delegation-threshold",
+        "metric_name": "elastic_semantic_delegate_count",
+        "operator": "minimum",
+        "threshold_value": 1.0,
+        "observed_value": 1.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      },
+      {
+        "threshold_id": "elastic-semantic-planning-threshold",
+        "metric_name": "elastic_semantic_plan_count",
+        "operator": "minimum",
+        "threshold_value": 1.0,
+        "observed_value": 1.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      },
+      {
+        "threshold_id": "fault-false-success-threshold",
+        "metric_name": "fault_false_success_count",
+        "operator": "maximum",
+        "threshold_value": 0.0,
+        "observed_value": 0.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      },
+      {
+        "threshold_id": "fault-recovery-cases-threshold",
+        "metric_name": "fault_recovered_count",
+        "operator": "minimum",
+        "threshold_value": 20.0,
+        "observed_value": 20.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      },
+      {
+        "threshold_id": "fault-unsafe-recovery-threshold",
+        "metric_name": "fault_unsafe_recovery_count",
+        "operator": "maximum",
+        "threshold_value": 0.0,
+        "observed_value": 0.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      },
+      {
+        "threshold_id": "long-thread-compaction-threshold",
+        "metric_name": "compaction_count",
+        "operator": "minimum",
+        "threshold_value": 1.0,
+        "observed_value": 1.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      },
+      {
+        "threshold_id": "memory-conflicts-threshold",
+        "metric_name": "memory_conflict_count",
+        "operator": "maximum",
+        "threshold_value": 0.0,
+        "observed_value": 0.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      },
+      {
+        "threshold_id": "memory-revision-lifecycle-threshold",
+        "metric_name": "memory_revisions",
+        "operator": "minimum",
+        "threshold_value": 3.0,
+        "observed_value": 3.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      },
+      {
+        "threshold_id": "memory-scope-leakage-threshold",
+        "metric_name": "memory_cross_scope_leakage_count",
+        "operator": "maximum",
+        "threshold_value": 0.0,
+        "observed_value": 0.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      },
+      {
+        "threshold_id": "parallel-read-evidence-threshold",
+        "metric_name": "parallel_batch_evidence",
+        "operator": "minimum",
+        "threshold_value": 2.0,
+        "observed_value": 2.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      },
+      {
+        "threshold_id": "plan-nodes-completed-threshold",
+        "metric_name": "plan_nodes_completed",
+        "operator": "minimum",
+        "threshold_value": 2.0,
+        "observed_value": 2.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      },
+      {
+        "threshold_id": "replay-event-delta-threshold",
+        "metric_name": "replay_event_delta",
+        "operator": "maximum",
+        "threshold_value": 0.0,
+        "observed_value": 0.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      },
+      {
+        "threshold_id": "tavily-discovery-rejection-threshold",
+        "metric_name": "research_discovery_rejection_count",
+        "operator": "minimum",
+        "threshold_value": 1.0,
+        "observed_value": 1.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      },
+      {
+        "threshold_id": "tavily-verified-source-claim-threshold",
+        "metric_name": "research_verified_source_claim_count",
+        "operator": "minimum",
+        "threshold_value": 1.0,
+        "observed_value": 1.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      },
+      {
+        "threshold_id": "terminal-bare-status-threshold",
+        "metric_name": "terminal_bare_status_count",
+        "operator": "maximum",
+        "threshold_value": 0.0,
+        "observed_value": 0.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      },
+      {
+        "threshold_id": "terminal-conversational-recovery-threshold",
+        "metric_name": "terminal_recovery_render_count",
+        "operator": "minimum",
+        "threshold_value": 2.0,
+        "observed_value": 2.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      },
+      {
+        "threshold_id": "thread-authority-rejections-threshold",
+        "metric_name": "thread_authority_rejection_count",
+        "operator": "minimum",
+        "threshold_value": 4.0,
+        "observed_value": 4.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      },
+      {
+        "threshold_id": "thread-context-leakage-threshold",
+        "metric_name": "thread_context_leakage_count",
+        "operator": "maximum",
+        "threshold_value": 0.0,
+        "observed_value": 0.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      },
+      {
+        "threshold_id": "thread-full-coverage-threshold",
+        "metric_name": "thread_loaded_turn_count",
+        "operator": "minimum",
+        "threshold_value": 60.0,
+        "observed_value": 60.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      },
+      {
+        "threshold_id": "thread-reopen-success-threshold",
+        "metric_name": "thread_reopen_success_count",
+        "operator": "minimum",
+        "threshold_value": 1.0,
+        "observed_value": 1.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      },
+      {
+        "threshold_id": "tool-authority-leakage-threshold",
+        "metric_name": "tool_recall_authority_leakage_count",
+        "operator": "maximum",
+        "threshold_value": 0.0,
+        "observed_value": 0.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      },
+      {
+        "threshold_id": "tool-no-progress-escape-threshold",
+        "metric_name": "no_progress_escape_count",
+        "operator": "minimum",
+        "threshold_value": 1.0,
+        "observed_value": 1.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      },
+      {
+        "threshold_id": "tool-recall-at-k-threshold",
+        "metric_name": "tool_recall_at_k",
+        "operator": "minimum",
+        "threshold_value": 1.0,
+        "observed_value": 1.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      }
+    ],
+    "passed": true,
+    "digest": "43f8a7891b6ba2ca259688c03d212756ec7bafb7e7b2454438bcfd91048a97ea"
+  },
+  "metrics": [
+    {
+      "metric_id": "budget-false-success",
+      "raw_name": "false_success_count",
+      "category": "safety",
+      "unit": "count",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "budget_boundary"
+      ],
+      "observed_scenario_ids": [
+        "budget_boundary"
+      ],
+      "required_for_offline_gate": true,
+      "value": 0.0,
+      "status": "available",
+      "threshold": {
+        "threshold_id": "budget-false-success-threshold",
+        "metric_name": "false_success_count",
+        "operator": "maximum",
+        "threshold_value": 0.0,
+        "observed_value": 0.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      }
+    },
+    {
+      "metric_id": "budget-overrun",
+      "raw_name": "budget_overrun_count",
+      "category": "safety",
+      "unit": "calls",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "budget_boundary"
+      ],
+      "observed_scenario_ids": [
+        "budget_boundary"
+      ],
+      "required_for_offline_gate": true,
+      "value": 0.0,
+      "status": "available",
+      "threshold": {
+        "threshold_id": "budget-overrun-threshold",
+        "metric_name": "budget_overrun_count",
+        "operator": "maximum",
+        "threshold_value": 0.0,
+        "observed_value": 0.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      }
+    },
+    {
+      "metric_id": "child-conflicts",
+      "raw_name": "child_conflict_count",
+      "category": "safety",
+      "unit": "count",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "delegated_dependency_plan"
+      ],
+      "observed_scenario_ids": [
+        "delegated_dependency_plan"
+      ],
+      "required_for_offline_gate": true,
+      "value": 0.0,
+      "status": "available",
+      "threshold": null
+    },
+    {
+      "metric_id": "child-duplicates",
+      "raw_name": "child_duplicate_count",
+      "category": "safety",
+      "unit": "children",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "delegated_dependency_plan"
+      ],
+      "observed_scenario_ids": [
+        "delegated_dependency_plan"
+      ],
+      "required_for_offline_gate": true,
+      "value": 0.0,
+      "status": "available",
+      "threshold": null
+    },
+    {
+      "metric_id": "child-success",
+      "raw_name": "child_success_count",
+      "category": "quality",
+      "unit": "children",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "delegated_dependency_plan"
+      ],
+      "observed_scenario_ids": [
+        "delegated_dependency_plan"
+      ],
+      "required_for_offline_gate": true,
+      "value": 2.0,
+      "status": "available",
+      "threshold": null
+    },
+    {
+      "metric_id": "child-terminal-authority",
+      "raw_name": "parent_terminal_authority_count",
+      "category": "safety",
+      "unit": "count",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "delegated_dependency_plan"
+      ],
+      "observed_scenario_ids": [
+        "delegated_dependency_plan"
+      ],
+      "required_for_offline_gate": true,
+      "value": 1.0,
+      "status": "available",
+      "threshold": {
+        "threshold_id": "child-terminal-authority-threshold",
+        "metric_name": "parent_terminal_authority_count",
+        "operator": "minimum",
+        "threshold_value": 1.0,
+        "observed_value": 1.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      }
+    },
+    {
+      "metric_id": "child-utilization",
+      "raw_name": "child_utilization_ratio",
+      "category": "efficiency",
+      "unit": "ratio",
+      "aggregation": "mean",
+      "source_scenario_ids": [
+        "delegated_dependency_plan"
+      ],
+      "observed_scenario_ids": [
+        "delegated_dependency_plan"
+      ],
+      "required_for_offline_gate": true,
+      "value": 1.0,
+      "status": "available",
+      "threshold": null
+    },
+    {
+      "metric_id": "clarification-count",
+      "raw_name": "clarification_count",
+      "category": "efficiency",
+      "unit": "turns",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "contextual_conversation"
+      ],
+      "observed_scenario_ids": [
+        "contextual_conversation"
+      ],
+      "required_for_offline_gate": true,
+      "value": 0.0,
+      "status": "available",
+      "threshold": null
+    },
+    {
+      "metric_id": "compaction-reduction",
+      "raw_name": "compaction_token_reduction_ratio",
+      "category": "efficiency",
+      "unit": "ratio",
+      "aggregation": "mean",
+      "source_scenario_ids": [
+        "long_thread_compaction"
+      ],
+      "observed_scenario_ids": [
+        "long_thread_compaction"
+      ],
+      "required_for_offline_gate": true,
+      "value": 0.6918552036199095,
+      "status": "available",
+      "threshold": {
+        "threshold_id": "compaction-reduction-threshold",
+        "metric_name": "compaction_token_reduction_ratio",
+        "operator": "minimum",
+        "threshold_value": 0.5,
+        "observed_value": 0.6918552036199095,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      }
+    },
+    {
+      "metric_id": "conversation-context-leakage",
+      "raw_name": "context_leakage_count",
+      "category": "safety",
+      "unit": "count",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "channel_isolation",
+        "contextual_conversation",
+        "dm_context_union",
+        "shared_group_external_scope"
+      ],
+      "observed_scenario_ids": [
+        "channel_isolation",
+        "contextual_conversation",
+        "dm_context_union",
+        "shared_group_external_scope"
+      ],
+      "required_for_offline_gate": true,
+      "value": 0.0,
+      "status": "available",
+      "threshold": {
+        "threshold_id": "conversation-context-leakage-threshold",
+        "metric_name": "context_leakage_count",
+        "operator": "maximum",
+        "threshold_value": 0.0,
+        "observed_value": 0.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      }
+    },
+    {
+      "metric_id": "dm-expected-recall",
+      "raw_name": "expected_dm_recall_count",
+      "category": "quality",
+      "unit": "count",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "dm_context_union"
+      ],
+      "observed_scenario_ids": [
+        "dm_context_union"
+      ],
+      "required_for_offline_gate": true,
+      "value": 2.0,
+      "status": "available",
+      "threshold": {
+        "threshold_id": "dm-expected-recall-threshold",
+        "metric_name": "expected_dm_recall_count",
+        "operator": "minimum",
+        "threshold_value": 2.0,
+        "observed_value": 2.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      }
+    },
+    {
+      "metric_id": "dm-forbidden-exclusion",
+      "raw_name": "dm_forbidden_source_count",
+      "category": "safety",
+      "unit": "count",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "dm_context_union"
+      ],
+      "observed_scenario_ids": [
+        "dm_context_union"
+      ],
+      "required_for_offline_gate": true,
+      "value": 0.0,
+      "status": "available",
+      "threshold": null
+    },
+    {
+      "metric_id": "duplicate-delivery",
+      "raw_name": "duplicate_delivery_count",
+      "category": "safety",
+      "unit": "deliveries",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "restart_replay_idempotency"
+      ],
+      "observed_scenario_ids": [
+        "restart_replay_idempotency"
+      ],
+      "required_for_offline_gate": true,
+      "value": 0.0,
+      "status": "available",
+      "threshold": {
+        "threshold_id": "duplicate-delivery-threshold",
+        "metric_name": "duplicate_delivery_count",
+        "operator": "maximum",
+        "threshold_value": 0.0,
+        "observed_value": 0.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      }
+    },
+    {
+      "metric_id": "elastic-clarification-tool-use",
+      "raw_name": "elastic_clarification_tool_calls",
+      "category": "safety",
+      "unit": "calls",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "elastic_deliberation"
+      ],
+      "observed_scenario_ids": [
+        "elastic_deliberation"
+      ],
+      "required_for_offline_gate": true,
+      "value": 0.0,
+      "status": "available",
+      "threshold": {
+        "threshold_id": "elastic-clarification-tool-use-threshold",
+        "metric_name": "elastic_clarification_tool_calls",
+        "operator": "maximum",
+        "threshold_value": 0.0,
+        "observed_value": 0.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      }
+    },
+    {
+      "metric_id": "elastic-no-progress-bound",
+      "raw_name": "elastic_no_progress_escape_count",
+      "category": "reliability",
+      "unit": "loops",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "elastic_deliberation"
+      ],
+      "observed_scenario_ids": [
+        "elastic_deliberation"
+      ],
+      "required_for_offline_gate": true,
+      "value": 1.0,
+      "status": "available",
+      "threshold": {
+        "threshold_id": "elastic-no-progress-bound-threshold",
+        "metric_name": "elastic_no_progress_escape_count",
+        "operator": "minimum",
+        "threshold_value": 1.0,
+        "observed_value": 1.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      }
+    },
+    {
+      "metric_id": "elastic-route-coverage",
+      "raw_name": "elastic_route_count",
+      "category": "quality",
+      "unit": "routes",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "elastic_deliberation"
+      ],
+      "observed_scenario_ids": [
+        "elastic_deliberation"
+      ],
+      "required_for_offline_gate": true,
+      "value": 5.0,
+      "status": "available",
+      "threshold": {
+        "threshold_id": "elastic-route-coverage-threshold",
+        "metric_name": "elastic_route_count",
+        "operator": "minimum",
+        "threshold_value": 5.0,
+        "observed_value": 5.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      }
+    },
+    {
+      "metric_id": "elastic-semantic-delegation",
+      "raw_name": "elastic_semantic_delegate_count",
+      "category": "quality",
+      "unit": "delegations",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "elastic_deliberation"
+      ],
+      "observed_scenario_ids": [
+        "elastic_deliberation"
+      ],
+      "required_for_offline_gate": true,
+      "value": 1.0,
+      "status": "available",
+      "threshold": {
+        "threshold_id": "elastic-semantic-delegation-threshold",
+        "metric_name": "elastic_semantic_delegate_count",
+        "operator": "minimum",
+        "threshold_value": 1.0,
+        "observed_value": 1.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      }
+    },
+    {
+      "metric_id": "elastic-semantic-planning",
+      "raw_name": "elastic_semantic_plan_count",
+      "category": "quality",
+      "unit": "plans",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "elastic_deliberation"
+      ],
+      "observed_scenario_ids": [
+        "elastic_deliberation"
+      ],
+      "required_for_offline_gate": true,
+      "value": 1.0,
+      "status": "available",
+      "threshold": {
+        "threshold_id": "elastic-semantic-planning-threshold",
+        "metric_name": "elastic_semantic_plan_count",
+        "operator": "minimum",
+        "threshold_value": 1.0,
+        "observed_value": 1.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      }
+    },
+    {
+      "metric_id": "fault-false-success",
+      "raw_name": "fault_false_success_count",
+      "category": "safety",
+      "unit": "count",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "fault_recovery_matrix"
+      ],
+      "observed_scenario_ids": [
+        "fault_recovery_matrix"
+      ],
+      "required_for_offline_gate": true,
+      "value": 0.0,
+      "status": "available",
+      "threshold": {
+        "threshold_id": "fault-false-success-threshold",
+        "metric_name": "fault_false_success_count",
+        "operator": "maximum",
+        "threshold_value": 0.0,
+        "observed_value": 0.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      }
+    },
+    {
+      "metric_id": "fault-recovery-cases",
+      "raw_name": "fault_recovered_count",
+      "category": "reliability",
+      "unit": "cases",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "fault_recovery_matrix"
+      ],
+      "observed_scenario_ids": [
+        "fault_recovery_matrix"
+      ],
+      "required_for_offline_gate": true,
+      "value": 20.0,
+      "status": "available",
+      "threshold": {
+        "threshold_id": "fault-recovery-cases-threshold",
+        "metric_name": "fault_recovered_count",
+        "operator": "minimum",
+        "threshold_value": 20.0,
+        "observed_value": 20.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      }
+    },
+    {
+      "metric_id": "fault-unsafe-recovery",
+      "raw_name": "fault_unsafe_recovery_count",
+      "category": "safety",
+      "unit": "count",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "fault_recovery_matrix"
+      ],
+      "observed_scenario_ids": [
+        "fault_recovery_matrix"
+      ],
+      "required_for_offline_gate": true,
+      "value": 0.0,
+      "status": "available",
+      "threshold": {
+        "threshold_id": "fault-unsafe-recovery-threshold",
+        "metric_name": "fault_unsafe_recovery_count",
+        "operator": "maximum",
+        "threshold_value": 0.0,
+        "observed_value": 0.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      }
+    },
+    {
+      "metric_id": "latency",
+      "raw_name": "latency_ms",
+      "category": "efficiency",
+      "unit": "milliseconds",
+      "aggregation": "maximum",
+      "source_scenario_ids": [
+        "quote_control"
+      ],
+      "observed_scenario_ids": [],
+      "required_for_offline_gate": false,
+      "value": null,
+      "status": "not_available",
+      "threshold": null
+    },
+    {
+      "metric_id": "long-thread-compaction",
+      "raw_name": "compaction_count",
+      "category": "quality",
+      "unit": "compactions",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "long_thread_compaction"
+      ],
+      "observed_scenario_ids": [
+        "long_thread_compaction"
+      ],
+      "required_for_offline_gate": true,
+      "value": 1.0,
+      "status": "available",
+      "threshold": {
+        "threshold_id": "long-thread-compaction-threshold",
+        "metric_name": "compaction_count",
+        "operator": "minimum",
+        "threshold_value": 1.0,
+        "observed_value": 1.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      }
+    },
+    {
+      "metric_id": "memory-conflicts",
+      "raw_name": "memory_conflict_count",
+      "category": "safety",
+      "unit": "count",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "memory_lifecycle"
+      ],
+      "observed_scenario_ids": [
+        "memory_lifecycle"
+      ],
+      "required_for_offline_gate": true,
+      "value": 0.0,
+      "status": "available",
+      "threshold": {
+        "threshold_id": "memory-conflicts-threshold",
+        "metric_name": "memory_conflict_count",
+        "operator": "maximum",
+        "threshold_value": 0.0,
+        "observed_value": 0.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      }
+    },
+    {
+      "metric_id": "memory-revision-lifecycle",
+      "raw_name": "memory_revisions",
+      "category": "quality",
+      "unit": "revisions",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "memory_lifecycle"
+      ],
+      "observed_scenario_ids": [
+        "memory_lifecycle"
+      ],
+      "required_for_offline_gate": true,
+      "value": 3.0,
+      "status": "available",
+      "threshold": {
+        "threshold_id": "memory-revision-lifecycle-threshold",
+        "metric_name": "memory_revisions",
+        "operator": "minimum",
+        "threshold_value": 3.0,
+        "observed_value": 3.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      }
+    },
+    {
+      "metric_id": "memory-scope-leakage",
+      "raw_name": "memory_cross_scope_leakage_count",
+      "category": "safety",
+      "unit": "count",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "memory_lifecycle"
+      ],
+      "observed_scenario_ids": [
+        "memory_lifecycle"
+      ],
+      "required_for_offline_gate": true,
+      "value": 0.0,
+      "status": "available",
+      "threshold": {
+        "threshold_id": "memory-scope-leakage-threshold",
+        "metric_name": "memory_cross_scope_leakage_count",
+        "operator": "maximum",
+        "threshold_value": 0.0,
+        "observed_value": 0.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      }
+    },
+    {
+      "metric_id": "model-calls",
+      "raw_name": "model_calls",
+      "category": "efficiency",
+      "unit": "calls",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "budget_boundary",
+        "quote_control"
+      ],
+      "observed_scenario_ids": [
+        "budget_boundary",
+        "quote_control"
+      ],
+      "required_for_offline_gate": true,
+      "value": 4.0,
+      "status": "available",
+      "threshold": null
+    },
+    {
+      "metric_id": "parallel-read-evidence",
+      "raw_name": "parallel_batch_evidence",
+      "category": "quality",
+      "unit": "observations",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "parallel_read_batch"
+      ],
+      "observed_scenario_ids": [
+        "parallel_read_batch"
+      ],
+      "required_for_offline_gate": true,
+      "value": 2.0,
+      "status": "available",
+      "threshold": {
+        "threshold_id": "parallel-read-evidence-threshold",
+        "metric_name": "parallel_batch_evidence",
+        "operator": "minimum",
+        "threshold_value": 2.0,
+        "observed_value": 2.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      }
+    },
+    {
+      "metric_id": "plan-no-progress",
+      "raw_name": "plan_no_progress_count",
+      "category": "safety",
+      "unit": "count",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "delegated_dependency_plan"
+      ],
+      "observed_scenario_ids": [
+        "delegated_dependency_plan"
+      ],
+      "required_for_offline_gate": true,
+      "value": 0.0,
+      "status": "available",
+      "threshold": null
+    },
+    {
+      "metric_id": "plan-nodes-completed",
+      "raw_name": "plan_nodes_completed",
+      "category": "quality",
+      "unit": "nodes",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "delegated_dependency_plan"
+      ],
+      "observed_scenario_ids": [
+        "delegated_dependency_plan"
+      ],
+      "required_for_offline_gate": true,
+      "value": 2.0,
+      "status": "available",
+      "threshold": {
+        "threshold_id": "plan-nodes-completed-threshold",
+        "metric_name": "plan_nodes_completed",
+        "operator": "minimum",
+        "threshold_value": 2.0,
+        "observed_value": 2.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      }
+    },
+    {
+      "metric_id": "plan-revisions",
+      "raw_name": "plan_revision_count",
+      "category": "reliability",
+      "unit": "revisions",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "delegated_dependency_plan",
+        "verifier_correction"
+      ],
+      "observed_scenario_ids": [
+        "delegated_dependency_plan",
+        "verifier_correction"
+      ],
+      "required_for_offline_gate": true,
+      "value": 3.0,
+      "status": "available",
+      "threshold": null
+    },
+    {
+      "metric_id": "plan-validity",
+      "raw_name": "plan_valid_count",
+      "category": "quality",
+      "unit": "plans",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "delegated_dependency_plan"
+      ],
+      "observed_scenario_ids": [
+        "delegated_dependency_plan"
+      ],
+      "required_for_offline_gate": true,
+      "value": 1.0,
+      "status": "available",
+      "threshold": null
+    },
+    {
+      "metric_id": "provider-cost",
+      "raw_name": "provider_cost",
+      "category": "efficiency",
+      "unit": "currency_units",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "quote_control"
+      ],
+      "observed_scenario_ids": [],
+      "required_for_offline_gate": false,
+      "value": null,
+      "status": "not_available",
+      "threshold": null
+    },
+    {
+      "metric_id": "replay-event-delta",
+      "raw_name": "replay_event_delta",
+      "category": "reliability",
+      "unit": "events",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "restart_replay_idempotency"
+      ],
+      "observed_scenario_ids": [
+        "restart_replay_idempotency"
+      ],
+      "required_for_offline_gate": true,
+      "value": 0.0,
+      "status": "available",
+      "threshold": {
+        "threshold_id": "replay-event-delta-threshold",
+        "metric_name": "replay_event_delta",
+        "operator": "maximum",
+        "threshold_value": 0.0,
+        "observed_value": 0.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      }
+    },
+    {
+      "metric_id": "retries",
+      "raw_name": "retry_count",
+      "category": "reliability",
+      "unit": "retries",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "verifier_correction"
+      ],
+      "observed_scenario_ids": [
+        "verifier_correction"
+      ],
+      "required_for_offline_gate": true,
+      "value": 1.0,
+      "status": "available",
+      "threshold": null
+    },
+    {
+      "metric_id": "routing-accuracy",
+      "raw_name": "routing_correct_count",
+      "category": "quality",
+      "unit": "count",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "contextual_conversation"
+      ],
+      "observed_scenario_ids": [
+        "contextual_conversation"
+      ],
+      "required_for_offline_gate": true,
+      "value": 1.0,
+      "status": "available",
+      "threshold": null
+    },
+    {
+      "metric_id": "task-success",
+      "raw_name": "task_success_count",
+      "category": "quality",
+      "unit": "count",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "quote_control"
+      ],
+      "observed_scenario_ids": [
+        "quote_control"
+      ],
+      "required_for_offline_gate": true,
+      "value": 1.0,
+      "status": "available",
+      "threshold": null
+    },
+    {
+      "metric_id": "tavily-discovery-rejection",
+      "raw_name": "research_discovery_rejection_count",
+      "category": "safety",
+      "unit": "claims",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "tavily_verified_research"
+      ],
+      "observed_scenario_ids": [
+        "tavily_verified_research"
+      ],
+      "required_for_offline_gate": true,
+      "value": 1.0,
+      "status": "available",
+      "threshold": {
+        "threshold_id": "tavily-discovery-rejection-threshold",
+        "metric_name": "research_discovery_rejection_count",
+        "operator": "minimum",
+        "threshold_value": 1.0,
+        "observed_value": 1.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      }
+    },
+    {
+      "metric_id": "tavily-verified-source-claim",
+      "raw_name": "research_verified_source_claim_count",
+      "category": "quality",
+      "unit": "claims",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "tavily_verified_research"
+      ],
+      "observed_scenario_ids": [
+        "tavily_verified_research"
+      ],
+      "required_for_offline_gate": true,
+      "value": 1.0,
+      "status": "available",
+      "threshold": {
+        "threshold_id": "tavily-verified-source-claim-threshold",
+        "metric_name": "research_verified_source_claim_count",
+        "operator": "minimum",
+        "threshold_value": 1.0,
+        "observed_value": 1.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      }
+    },
+    {
+      "metric_id": "terminal-bare-status",
+      "raw_name": "terminal_bare_status_count",
+      "category": "safety",
+      "unit": "replies",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "conversational_terminal_recovery"
+      ],
+      "observed_scenario_ids": [
+        "conversational_terminal_recovery"
+      ],
+      "required_for_offline_gate": true,
+      "value": 0.0,
+      "status": "available",
+      "threshold": {
+        "threshold_id": "terminal-bare-status-threshold",
+        "metric_name": "terminal_bare_status_count",
+        "operator": "maximum",
+        "threshold_value": 0.0,
+        "observed_value": 0.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      }
+    },
+    {
+      "metric_id": "terminal-conversational-recovery",
+      "raw_name": "terminal_recovery_render_count",
+      "category": "reliability",
+      "unit": "renders",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "conversational_terminal_recovery"
+      ],
+      "observed_scenario_ids": [
+        "conversational_terminal_recovery"
+      ],
+      "required_for_offline_gate": true,
+      "value": 2.0,
+      "status": "available",
+      "threshold": {
+        "threshold_id": "terminal-conversational-recovery-threshold",
+        "metric_name": "terminal_recovery_render_count",
+        "operator": "minimum",
+        "threshold_value": 2.0,
+        "observed_value": 2.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      }
+    },
+    {
+      "metric_id": "terminal-reason-observed",
+      "raw_name": "terminal_reason_count",
+      "category": "reliability",
+      "unit": "runs",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "budget_boundary"
+      ],
+      "observed_scenario_ids": [
+        "budget_boundary"
+      ],
+      "required_for_offline_gate": true,
+      "value": 1.0,
+      "status": "available",
+      "threshold": null
+    },
+    {
+      "metric_id": "thread-authority-rejections",
+      "raw_name": "thread_authority_rejection_count",
+      "category": "safety",
+      "unit": "rejections",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "slack_thread_context_authority"
+      ],
+      "observed_scenario_ids": [
+        "slack_thread_context_authority"
+      ],
+      "required_for_offline_gate": true,
+      "value": 4.0,
+      "status": "available",
+      "threshold": {
+        "threshold_id": "thread-authority-rejections-threshold",
+        "metric_name": "thread_authority_rejection_count",
+        "operator": "minimum",
+        "threshold_value": 4.0,
+        "observed_value": 4.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      }
+    },
+    {
+      "metric_id": "thread-context-leakage",
+      "raw_name": "thread_context_leakage_count",
+      "category": "safety",
+      "unit": "turns",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "slack_thread_context_authority"
+      ],
+      "observed_scenario_ids": [
+        "slack_thread_context_authority"
+      ],
+      "required_for_offline_gate": true,
+      "value": 0.0,
+      "status": "available",
+      "threshold": {
+        "threshold_id": "thread-context-leakage-threshold",
+        "metric_name": "thread_context_leakage_count",
+        "operator": "maximum",
+        "threshold_value": 0.0,
+        "observed_value": 0.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      }
+    },
+    {
+      "metric_id": "thread-full-coverage",
+      "raw_name": "thread_loaded_turn_count",
+      "category": "quality",
+      "unit": "turns",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "slack_thread_context_authority"
+      ],
+      "observed_scenario_ids": [
+        "slack_thread_context_authority"
+      ],
+      "required_for_offline_gate": true,
+      "value": 60.0,
+      "status": "available",
+      "threshold": {
+        "threshold_id": "thread-full-coverage-threshold",
+        "metric_name": "thread_loaded_turn_count",
+        "operator": "minimum",
+        "threshold_value": 60.0,
+        "observed_value": 60.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      }
+    },
+    {
+      "metric_id": "thread-reopen-success",
+      "raw_name": "thread_reopen_success_count",
+      "category": "reliability",
+      "unit": "opens",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "slack_thread_context_authority"
+      ],
+      "observed_scenario_ids": [
+        "slack_thread_context_authority"
+      ],
+      "required_for_offline_gate": true,
+      "value": 1.0,
+      "status": "available",
+      "threshold": {
+        "threshold_id": "thread-reopen-success-threshold",
+        "metric_name": "thread_reopen_success_count",
+        "operator": "minimum",
+        "threshold_value": 1.0,
+        "observed_value": 1.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      }
+    },
+    {
+      "metric_id": "tokens",
+      "raw_name": "total_tokens",
+      "category": "efficiency",
+      "unit": "tokens",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "quote_control"
+      ],
+      "observed_scenario_ids": [],
+      "required_for_offline_gate": false,
+      "value": null,
+      "status": "not_available",
+      "threshold": null
+    },
+    {
+      "metric_id": "tool-authority-leakage",
+      "raw_name": "tool_recall_authority_leakage_count",
+      "category": "safety",
+      "unit": "count",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "tool_recall_progressive"
+      ],
+      "observed_scenario_ids": [
+        "tool_recall_progressive"
+      ],
+      "required_for_offline_gate": true,
+      "value": 0.0,
+      "status": "available",
+      "threshold": {
+        "threshold_id": "tool-authority-leakage-threshold",
+        "metric_name": "tool_recall_authority_leakage_count",
+        "operator": "maximum",
+        "threshold_value": 0.0,
+        "observed_value": 0.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      }
+    },
+    {
+      "metric_id": "tool-calls",
+      "raw_name": "tool_calls",
+      "category": "efficiency",
+      "unit": "calls",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "budget_boundary",
+        "quote_control"
+      ],
+      "observed_scenario_ids": [
+        "budget_boundary",
+        "quote_control"
+      ],
+      "required_for_offline_gate": true,
+      "value": 2.0,
+      "status": "available",
+      "threshold": null
+    },
+    {
+      "metric_id": "tool-no-progress-escape",
+      "raw_name": "no_progress_escape_count",
+      "category": "reliability",
+      "unit": "count",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "tool_recall_progressive"
+      ],
+      "observed_scenario_ids": [
+        "tool_recall_progressive"
+      ],
+      "required_for_offline_gate": true,
+      "value": 1.0,
+      "status": "available",
+      "threshold": {
+        "threshold_id": "tool-no-progress-escape-threshold",
+        "metric_name": "no_progress_escape_count",
+        "operator": "minimum",
+        "threshold_value": 1.0,
+        "observed_value": 1.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      }
+    },
+    {
+      "metric_id": "tool-recall-at-k",
+      "raw_name": "tool_recall_at_k",
+      "category": "quality",
+      "unit": "ratio",
+      "aggregation": "mean",
+      "source_scenario_ids": [
+        "tool_recall_progressive"
+      ],
+      "observed_scenario_ids": [
+        "tool_recall_progressive"
+      ],
+      "required_for_offline_gate": true,
+      "value": 1.0,
+      "status": "available",
+      "threshold": {
+        "threshold_id": "tool-recall-at-k-threshold",
+        "metric_name": "tool_recall_at_k",
+        "operator": "minimum",
+        "threshold_value": 1.0,
+        "observed_value": 1.0,
+        "status": "passed",
+        "blocking": false,
+        "source": "M5 reliability acceptance contract"
+      }
+    },
+    {
+      "metric_id": "turns",
+      "raw_name": "turns",
+      "category": "efficiency",
+      "unit": "turns",
+      "aggregation": "sum",
+      "source_scenario_ids": [
+        "quote_control"
+      ],
+      "observed_scenario_ids": [
+        "quote_control"
+      ],
+      "required_for_offline_gate": true,
+      "value": 2.0,
+      "status": "available",
+      "threshold": null
+    }
+  ],
+  "proof_manifest": {
+    "version": "proof-v2",
+    "code_version": "working-tree:revised-m5-19-scenarios",
+    "fixture_versions": [
+      "budget_boundary:v1",
+      "channel_isolation:v1",
+      "contextual_conversation:v1",
+      "conversational_terminal_recovery:v1",
+      "delegated_dependency_plan:v1",
+      "dm_context_union:v1",
+      "elastic_deliberation:v1",
+      "fault_recovery_matrix:v1",
+      "long_thread_compaction:v1",
+      "memory_lifecycle:v1",
+      "parallel_read_batch:v1",
+      "quote_control:v1",
+      "restart_replay_idempotency:v1",
+      "safe_failure:v1",
+      "shared_group_external_scope:v1",
+      "slack_thread_context_authority:v1",
+      "tavily_verified_research:v1",
+      "tool_recall_progressive:v1",
+      "verifier_correction:v1"
+    ],
+    "model_catalog_version": "offline-model-catalog-v1",
+    "tool_catalog_version": "offline-tool-catalog-v1",
+    "policy_versions": [
+      "baseline-v2",
+      "event-v2",
+      "verifier-v1"
+    ],
+    "artifacts": [
+      {
+        "id": "arbitrary_conversational_golden",
+        "kind": "deterministic_golden",
+        "command": "python -m leo.evals --id contextual_conversation",
+        "digest": "78d5588c2e4e66cb6bd34aaea23bc1f6d82fa644b1e0925ce9e7d416699621a8",
+        "scenario_ids": [
+          "contextual_conversation"
+        ],
+        "fixture_digests": [
+          "8478b73fd477c874efa5b517f88bbe2a1510fee48154400890185b1008aa42c1"
+        ],
+        "provider_label": "offline",
+        "sanitized_run_ids": [],
+        "metadata": {
+          "result_replay_pointers": {
+            "contextual_conversation": "scenario:contextual_conversation:v1:eval-contextual"
+          }
+        }
+      },
+      {
+        "id": "nvda_source_golden",
+        "kind": "deterministic_golden",
+        "command": "python -m leo.evals --id quote_control",
+        "digest": "7eb6d7fbe4b87d2f6275695ef48a58a33e2aba1a6e672f094749794038734439",
+        "scenario_ids": [
+          "quote_control"
+        ],
+        "fixture_digests": [
+          "878f82ff47549b1273dd8b24d332fb96aff2144f3eee15a7b7f4b00928f3833d"
+        ],
+        "provider_label": "offline",
+        "sanitized_run_ids": [],
+        "metadata": {
+          "result_replay_pointers": {
+            "quote_control": "scenario:quote_control:v1:eval-quote"
+          }
+        }
+      },
+      {
+        "id": "delegated_replanning_golden",
+        "kind": "deterministic_golden",
+        "command": "python -m leo.evals --id delegated_dependency_plan --id verifier_correction",
+        "digest": "3f687e88337994d165540c3670d46e0aea4ea8f46d4381303415db87cf3c0ce9",
+        "scenario_ids": [
+          "delegated_dependency_plan",
+          "verifier_correction"
+        ],
+        "fixture_digests": [
+          "8ae8015ddc6ff04f2a8972bf1d25ae96e124f4caf95f5acdde2de54ffcb005ba",
+          "a43a17308c243e7ace0e6f99a2a0b8433e347dad782a3806217d4ed5ab83aa88"
+        ],
+        "provider_label": "offline",
+        "sanitized_run_ids": [],
+        "metadata": {
+          "result_replay_pointers": {
+            "delegated_dependency_plan": "scenario:delegated_dependency_plan:v1:eval-plan",
+            "verifier_correction": "scenario:verifier_correction:v1:eval-correction"
+          }
+        }
+      },
+      {
+        "id": "restart_recovery",
+        "kind": "deterministic_golden",
+        "command": "python -m leo.evals --id restart_replay_idempotency",
+        "digest": "60d287b94b47cc23cff7b2ca7e6cf91d302bed4f7c90c22518702235a2b511e8",
+        "scenario_ids": [
+          "restart_replay_idempotency"
+        ],
+        "fixture_digests": [
+          "db9bc86b3f78965991a61076c09c39c5e4d5091158ab22888d8d483c8c7bf33b"
+        ],
+        "provider_label": "offline",
+        "sanitized_run_ids": [],
+        "metadata": {
+          "result_replay_pointers": {
+            "restart_replay_idempotency": "scenario:restart_replay_idempotency:v1:eval-replay"
+          }
+        }
+      },
+      {
+        "id": "duplicate_suppression",
+        "kind": "deterministic_golden",
+        "command": "python -m leo.evals --id restart_replay_idempotency",
+        "digest": "831d889d7271f22df40e710d50dc3e933d724d977302675da8ffac745b792aac",
+        "scenario_ids": [
+          "restart_replay_idempotency"
+        ],
+        "fixture_digests": [
+          "db9bc86b3f78965991a61076c09c39c5e4d5091158ab22888d8d483c8c7bf33b"
+        ],
+        "provider_label": "offline",
+        "sanitized_run_ids": [],
+        "metadata": {
+          "result_replay_pointers": {
+            "restart_replay_idempotency": "scenario:restart_replay_idempotency:v1:eval-replay"
+          }
+        }
+      },
+      {
+        "id": "dm_membership_exclusion",
+        "kind": "deterministic_golden",
+        "command": "python -m leo.evals --id dm_context_union",
+        "digest": "3da1012dbf1f624391be1109a18bb70e2a09361cd7d49ed5d194370efde66b3f",
+        "scenario_ids": [
+          "dm_context_union"
+        ],
+        "fixture_digests": [
+          "5a8530fd7781cb9aad3cb815d08504bcb80a59aeeb2c59011ece6c453db67c4f"
+        ],
+        "provider_label": "offline",
+        "sanitized_run_ids": [],
+        "metadata": {
+          "result_replay_pointers": {
+            "dm_context_union": "scenario:dm_context_union:v1:eval-dm-union"
+          }
+        }
+      },
+      {
+        "id": "verifier_rejection",
+        "kind": "deterministic_golden",
+        "command": "python -m leo.evals --id safe_failure",
+        "digest": "598e51e7cd485928f0d79ffece8074527b8e3527516902b6de57b40ce9b793eb",
+        "scenario_ids": [
+          "safe_failure"
+        ],
+        "fixture_digests": [
+          "bb4c277477b1319edc00990847dc7e2253cea36ccb9f966730dc0f0fc6bb8a92"
+        ],
+        "provider_label": "offline",
+        "sanitized_run_ids": [],
+        "metadata": {
+          "result_replay_pointers": {
+            "safe_failure": "scenario:safe_failure:v1:eval-safe"
+          }
+        }
+      },
+      {
+        "id": "memory_lifecycle",
+        "kind": "deterministic_golden",
+        "command": "python -m leo.evals --id memory_lifecycle",
+        "digest": "a0f8baea4e566fc529c09059a7c7cff4ff35c3f4974ce09e69c54b4b96a6db12",
+        "scenario_ids": [
+          "memory_lifecycle"
+        ],
+        "fixture_digests": [
+          "1a5445850440ab07a36c4079ad37bd50e753dce92badc496dc50174c0301a1c1"
+        ],
+        "provider_label": "offline",
+        "sanitized_run_ids": [],
+        "metadata": {
+          "result_replay_pointers": {
+            "memory_lifecycle": "scenario:memory_lifecycle:v1:eval-memory"
+          }
+        }
+      },
+      {
+        "id": "long_thread_compaction",
+        "kind": "deterministic_golden",
+        "command": "python -m leo.evals --id long_thread_compaction",
+        "digest": "e548d6373cb70b79aaf2c459a493406bba5089bd01908fcb4496569c4939cfae",
+        "scenario_ids": [
+          "long_thread_compaction"
+        ],
+        "fixture_digests": [
+          "b455cc4c9e09644eb9b8ad54f2a311d7b66bd2fc3c4e4daca1afb17dd0b4ff87"
+        ],
+        "provider_label": "offline",
+        "sanitized_run_ids": [],
+        "metadata": {
+          "result_replay_pointers": {
+            "long_thread_compaction": "scenario:long_thread_compaction:v1:eval-long-thread"
+          }
+        }
+      },
+      {
+        "id": "tool_recall_no_progress",
+        "kind": "deterministic_golden",
+        "command": "python -m leo.evals --id tool_recall_progressive",
+        "digest": "a756607418f668d9e5aa5604a48c3c52435e9be618300380e10ec55d54490dc8",
+        "scenario_ids": [
+          "tool_recall_progressive"
+        ],
+        "fixture_digests": [
+          "483a39a554734b02712dd45c4402f4b97caaec9ad65a259e2fbb13091ab6d063"
+        ],
+        "provider_label": "offline",
+        "sanitized_run_ids": [],
+        "metadata": {
+          "result_replay_pointers": {
+            "tool_recall_progressive": "scenario:tool_recall_progressive:v1:eval-tool-recall"
+          }
+        }
+      },
+      {
+        "id": "shared_group_external_authority",
+        "kind": "deterministic_golden",
+        "command": "python -m leo.evals --id shared_group_external_scope",
+        "digest": "591d0fa31048a6f0e0fd02067d59ba4383b556c4cdaccadfd94164b10f59cf7f",
+        "scenario_ids": [
+          "shared_group_external_scope"
+        ],
+        "fixture_digests": [
+          "1b0b741585f19721895a351bca3de67533dc5438fb730f772958f35d17cf44e1"
+        ],
+        "provider_label": "offline",
+        "sanitized_run_ids": [],
+        "metadata": {
+          "result_replay_pointers": {
+            "shared_group_external_scope": "scenario:shared_group_external_scope:v1:eval-conversation-kinds"
+          }
+        }
+      },
+      {
+        "id": "budget_boundary",
+        "kind": "deterministic_golden",
+        "command": "python -m leo.evals --id budget_boundary",
+        "digest": "c362ca9e8ae818775f9ef7772742857fa88e3c6dd4db1a4ae374757c6c665a3c",
+        "scenario_ids": [
+          "budget_boundary"
+        ],
+        "fixture_digests": [
+          "950946578142410747495c50c5554a74fa16fa23c57042da6186cac6b79bb022"
+        ],
+        "provider_label": "offline",
+        "sanitized_run_ids": [],
+        "metadata": {
+          "result_replay_pointers": {
+            "budget_boundary": "scenario:budget_boundary:v1:eval-budget"
+          }
+        }
+      },
+      {
+        "id": "fault_recovery_matrix",
+        "kind": "deterministic_golden",
+        "command": "python -m leo.evals --id fault_recovery_matrix",
+        "digest": "8f956b252df48059f920e6bf662301cfe631087f7c913a5ae32bb9598bf1d01d",
+        "scenario_ids": [
+          "fault_recovery_matrix"
+        ],
+        "fixture_digests": [
+          "912f9e3cf80805e1a31ae8712aa828162dd317bfc90b6375357414f1641039a5"
+        ],
+        "provider_label": "offline",
+        "sanitized_run_ids": [],
+        "metadata": {
+          "result_replay_pointers": {
+            "fault_recovery_matrix": "scenario:fault_recovery_matrix:v1:eval-fault-recovery"
+          }
+        }
+      },
+      {
+        "id": "conversational_terminal_recovery",
+        "kind": "deterministic_golden",
+        "command": "python -m leo.evals --id conversational_terminal_recovery",
+        "digest": "5b48e7e7f78d4ecf77047febb52869df57d8e91b85b5301950aea1bd02a9edd8",
+        "scenario_ids": [
+          "conversational_terminal_recovery"
+        ],
+        "fixture_digests": [
+          "1607e29975719881dd0e1e3cfe09add92f56965de3b5f3b4650dd6e3e0a87165"
+        ],
+        "provider_label": "offline",
+        "sanitized_run_ids": [],
+        "metadata": {
+          "result_replay_pointers": {
+            "conversational_terminal_recovery": "scenario:conversational_terminal_recovery:v1:eval-terminal-recovery"
+          }
+        }
+      },
+      {
+        "id": "elastic_deliberation",
+        "kind": "deterministic_golden",
+        "command": "python -m leo.evals --id elastic_deliberation",
+        "digest": "a73e9ce69bdb119247fdf89714caff51efee23a3e388e6750659cea72b5cf57b",
+        "scenario_ids": [
+          "elastic_deliberation"
+        ],
+        "fixture_digests": [
+          "9eb1f2564913a46525bf9a80b9b245d70bb4b41c212ca9b1c92c087539bf1f97"
+        ],
+        "provider_label": "offline",
+        "sanitized_run_ids": [],
+        "metadata": {
+          "result_replay_pointers": {
+            "elastic_deliberation": "scenario:elastic_deliberation:v1:eval-elastic-deliberation"
+          }
+        }
+      },
+      {
+        "id": "slack_thread_context_authority",
+        "kind": "deterministic_golden",
+        "command": "python -m leo.evals --id slack_thread_context_authority",
+        "digest": "3a980186b35c2a25a96ee299936c267c82b523cf525ff0b4eff65495394a06a1",
+        "scenario_ids": [
+          "slack_thread_context_authority"
+        ],
+        "fixture_digests": [
+          "bb55ad7041f1967a6bec28acb373ff2396819f93f151d535b3af021b51c3487e"
+        ],
+        "provider_label": "offline",
+        "sanitized_run_ids": [],
+        "metadata": {
+          "result_replay_pointers": {
+            "slack_thread_context_authority": "scenario:slack_thread_context_authority:v1:eval-thread-authority"
+          }
+        }
+      },
+      {
+        "id": "tavily_verified_research",
+        "kind": "deterministic_golden",
+        "command": "python -m leo.evals --id tavily_verified_research",
+        "digest": "a7ef4d9f7b7a85fc6e5b516c6867a674300bc541be98c5cef6483103e5f043c0",
+        "scenario_ids": [
+          "tavily_verified_research"
+        ],
+        "fixture_digests": [
+          "df776d908dc82bd15a6bbe16928aeca38d4fa85a25fb994846cc81bdbe9ac93b"
+        ],
+        "provider_label": "offline",
+        "sanitized_run_ids": [],
+        "metadata": {
+          "result_replay_pointers": {
+            "tavily_verified_research": "scenario:tavily_verified_research:v1:eval-tavily-verified"
+          }
+        }
+      },
+      {
+        "id": "paired_baseline_report",
+        "kind": "paired_baseline_report",
+        "command": "python -m leo.evals --baseline",
+        "digest": "b953384887209355b78ab45c001f15b035957550c1bc8fa2691caadcb36319cc",
+        "scenario_ids": [
+          "budget_boundary",
+          "channel_isolation",
+          "contextual_conversation",
+          "conversational_terminal_recovery",
+          "delegated_dependency_plan",
+          "dm_context_union",
+          "elastic_deliberation",
+          "fault_recovery_matrix",
+          "long_thread_compaction",
+          "memory_lifecycle",
+          "parallel_read_batch",
+          "quote_control",
+          "restart_replay_idempotency",
+          "safe_failure",
+          "shared_group_external_scope",
+          "slack_thread_context_authority",
+          "tavily_verified_research",
+          "tool_recall_progressive",
+          "verifier_correction"
+        ],
+        "fixture_digests": [
+          "950946578142410747495c50c5554a74fa16fa23c57042da6186cac6b79bb022",
+          "da837fdcd2558d950a915aebae87268ba5eec0872f5bd51e66e3e5baab73b686",
+          "8478b73fd477c874efa5b517f88bbe2a1510fee48154400890185b1008aa42c1",
+          "1607e29975719881dd0e1e3cfe09add92f56965de3b5f3b4650dd6e3e0a87165",
+          "8ae8015ddc6ff04f2a8972bf1d25ae96e124f4caf95f5acdde2de54ffcb005ba",
+          "5a8530fd7781cb9aad3cb815d08504bcb80a59aeeb2c59011ece6c453db67c4f",
+          "9eb1f2564913a46525bf9a80b9b245d70bb4b41c212ca9b1c92c087539bf1f97",
+          "912f9e3cf80805e1a31ae8712aa828162dd317bfc90b6375357414f1641039a5",
+          "b455cc4c9e09644eb9b8ad54f2a311d7b66bd2fc3c4e4daca1afb17dd0b4ff87",
+          "1a5445850440ab07a36c4079ad37bd50e753dce92badc496dc50174c0301a1c1",
+          "d611c1f0d611995a833c175e0226c56a4bb0f4e1d6ecce9c482392c586de5809",
+          "878f82ff47549b1273dd8b24d332fb96aff2144f3eee15a7b7f4b00928f3833d",
+          "db9bc86b3f78965991a61076c09c39c5e4d5091158ab22888d8d483c8c7bf33b",
+          "bb4c277477b1319edc00990847dc7e2253cea36ccb9f966730dc0f0fc6bb8a92",
+          "1b0b741585f19721895a351bca3de67533dc5438fb730f772958f35d17cf44e1",
+          "bb55ad7041f1967a6bec28acb373ff2396819f93f151d535b3af021b51c3487e",
+          "df776d908dc82bd15a6bbe16928aeca38d4fa85a25fb994846cc81bdbe9ac93b",
+          "483a39a554734b02712dd45c4402f4b97caaec9ad65a259e2fbb13091ab6d063",
+          "a43a17308c243e7ace0e6f99a2a0b8433e347dad782a3806217d4ed5ab83aa88"
+        ],
+        "provider_label": "offline",
+        "sanitized_run_ids": [],
+        "metadata": {
+          "result_replay_pointers": {
+            "budget_boundary": "scenario:budget_boundary:v1:eval-budget",
+            "channel_isolation": "scenario:channel_isolation:v1:eval-isolation",
+            "contextual_conversation": "scenario:contextual_conversation:v1:eval-contextual",
+            "conversational_terminal_recovery": "scenario:conversational_terminal_recovery:v1:eval-terminal-recovery",
+            "delegated_dependency_plan": "scenario:delegated_dependency_plan:v1:eval-plan",
+            "dm_context_union": "scenario:dm_context_union:v1:eval-dm-union",
+            "elastic_deliberation": "scenario:elastic_deliberation:v1:eval-elastic-deliberation",
+            "fault_recovery_matrix": "scenario:fault_recovery_matrix:v1:eval-fault-recovery",
+            "long_thread_compaction": "scenario:long_thread_compaction:v1:eval-long-thread",
+            "memory_lifecycle": "scenario:memory_lifecycle:v1:eval-memory",
+            "parallel_read_batch": "scenario:parallel_read_batch:v1:eval-parallel",
+            "quote_control": "scenario:quote_control:v1:eval-quote",
+            "restart_replay_idempotency": "scenario:restart_replay_idempotency:v1:eval-replay",
+            "safe_failure": "scenario:safe_failure:v1:eval-safe",
+            "shared_group_external_scope": "scenario:shared_group_external_scope:v1:eval-conversation-kinds",
+            "slack_thread_context_authority": "scenario:slack_thread_context_authority:v1:eval-thread-authority",
+            "tavily_verified_research": "scenario:tavily_verified_research:v1:eval-tavily-verified",
+            "tool_recall_progressive": "scenario:tool_recall_progressive:v1:eval-tool-recall",
+            "verifier_correction": "scenario:verifier_correction:v1:eval-correction"
+          },
+          "comparison_digest": "86aa189cf570ed475e99cdcf207d822cc14e387b75500841a9b55a710b51a26c",
+          "paired_delta_count": 208
+        }
+      }
+    ],
+    "final_golden_bound": true
+  },
+  "external_evidence": [
+    {
+      "id": "postgres-current-head-contracts",
+      "evidence_level": "postgres",
+      "command": [
+        ".venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/postgres/test_m5_reliability.py"
+      ],
+      "required_environment": [
+        "DATABASE_URL"
+      ],
+      "expected_artifact_fields": [
+        "alembic_head",
+        "concurrent_sequence_result",
+        "durable_recovery_digest",
+        "durable_plan_restart_result",
+        "failure_bundle_digest",
+        "lease_reclaim_result",
+        "rollback_safe",
+        "scenario_fixture_digests"
+      ],
+      "purpose": "Run current-head event/plan parity, conflict, restart, and authorized export proofs inside one rollback-only outer transaction per case.",
+      "blocks_final_milestone": true
+    },
+    {
+      "id": "slack-primary-acceptance",
+      "evidence_level": "live",
+      "command": [
+        "leo",
+        "slack-live"
+      ],
+      "required_environment": [
+        "DATABASE_URL",
+        "FINNHUB_API_KEY",
+        "OPENROUTER_API_KEY",
+        "SLACK_APP_TOKEN",
+        "SLACK_BOT_TOKEN"
+      ],
+      "expected_artifact_fields": [
+        "case_invariant_digest",
+        "channel_id",
+        "conversation_kind",
+        "context_access_hash",
+        "current_membership_digest",
+        "delegated_evidence_digest",
+        "evidence_id",
+        "grounded_memory_claim_digest",
+        "message_ts",
+        "memory_recall_observation_digest",
+        "objective_digest",
+        "run_id",
+        "slack_response_ts"
+      ],
+      "purpose": "Ping Leo in real Slack across required conversation kinds, including distinct positive 1:1-DM membership-union recall and isolated group-DM cases, and capture sanitized IDs.",
+      "blocks_final_milestone": true
+    },
+    {
+      "id": "supabase-durable-reconciliation",
+      "evidence_level": "live",
+      "command": [
+        "leo",
+        "replay",
+        "{run_id}"
+      ],
+      "required_environment": [
+        "DATABASE_URL"
+      ],
+      "expected_artifact_fields": [
+        "case_invariant_digest",
+        "context_access_hash",
+        "context_snapshot_digest",
+        "conversation_source_set_digest",
+        "current_membership_count",
+        "current_membership_digest",
+        "delegated_child_count",
+        "delegated_evidence_digest",
+        "delegated_overlap_verified",
+        "delivery_state",
+        "event_terminal_state",
+        "grounded_claim_count",
+        "grounded_memory_claim_digest",
+        "memory_mutation_digest",
+        "memory_mutation_record_count",
+        "memory_mutation_revision_count",
+        "memory_mutation_source_count",
+        "memory_recall_observation_digest",
+        "memory_recall_source_digest",
+        "observed_evidence_count",
+        "plan_revision_digest",
+        "run_id",
+        "run_terminal_state",
+        "task_terminal_state"
+      ],
+      "purpose": "Reconcile Slack-visible output with Supabase task/run/plan/context/event/outbox truth, including the exact DM source-set/access hash and grounded channel-memory recall.",
+      "blocks_final_milestone": true
+    }
+  ],
+  "offline_passed": true,
+  "external_evidence_status": "pending",
+  "digest": "babd85a488c96ee9dfce045e20212d9acc73dfd6da801297dc74002fe2b30706"
+}

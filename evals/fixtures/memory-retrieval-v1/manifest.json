@@ -1,0 +1,11 @@
+{
+  "version": "memory-retrieval-v1",
+  "retrieval_policy_version": "fts-scope-first-v2",
+  "synthetic_public_only": true,
+  "fixed_clock": "2026-08-21T00:00:00Z",
+  "recall_at_k_threshold": 0.9,
+  "coverage_threshold": 0.9,
+  "corpus_file": "corpus.json",
+  "queries_file": "queries.json",
+  "fixture_digest": "9fa63e4affe38ee81bea33acf4fce78c52096baf82329e6cb04aa7188d73939c"
+}

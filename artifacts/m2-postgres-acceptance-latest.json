@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "run_id": "cdc3bf70f2f4",
+  "status": "passed",
+  "pytest_artifact_root": "D:\\leo\\artifacts\\.pytest-tmp-m2-m5-postgres-cdc3bf70f2f4",
+  "postgres_evidence": "D:\\leo\\artifacts\\m5-postgres-reliability-v1.json",
+  "outbox_recovery_evidence": "D:\\leo\\artifacts\\m5-outbox-recovery-v1.json",
+  "final_evidence": "D:\\leo\\artifacts\\m5-final-evidence-v1.json"
+}

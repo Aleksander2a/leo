@@ -1,0 +1,11 @@
+{
+  "name": "Demo Corporation",
+  "filings": {
+    "recent": {
+      "form": ["10-K", "8-K"],
+      "accessionNumber": ["0000000001-26-000001", "0000000001-26-000002"],
+      "filingDate": ["2026-08-20", "2026-08-19"],
+      "primaryDocument": ["demo-10k.htm", "demo-8k.htm"]
+    }
+  }
+}

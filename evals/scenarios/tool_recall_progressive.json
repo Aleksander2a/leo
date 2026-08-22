@@ -1,0 +1,15 @@
+{
+  "id": "tool_recall_progressive",
+  "version": "v1",
+  "purpose": "Verify policy-first tool recall selects the relevant SEC capability, progressively opens an eligible quote tool, and rejects repeated or forged discovery.",
+  "provider_mode": "offline",
+  "fixture_digest": "483a39a554734b02712dd45c4402f4b97caaec9ad65a259e2fbb13091ab6d063",
+  "fixed_clock": "2026-01-02T15:04:05Z",
+  "deterministic_id_prefix": "eval-tool-recall",
+  "execution_variant": "tool_recall_progressive",
+  "budget": {"max_model_calls": 1, "max_tool_calls": 2, "max_elapsed_seconds": 5},
+  "inputs": {"objective_class": "sec_research", "progressive_query_class": "market_quote"},
+  "expected_hard_invariants": ["relevant_tool_recalled", "progressive_tool_opened", "tool_recall_no_progress_guard", "tool_recall_authority_pinned"],
+  "expected_quality_metrics": ["tool_recall_at_k", "tool_recall_candidate_count", "tool_recall_selected_count", "progressive_tools_opened", "tool_recall_authority_leakage_count", "no_progress_escape_count"],
+  "allowed_nondeterminism": []
+}

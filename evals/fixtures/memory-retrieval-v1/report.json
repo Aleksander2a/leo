@@ -1,0 +1,93 @@
+{
+  "version": "memory-retrieval-report-v1",
+  "fixture_version": "memory-retrieval-v1",
+  "fixture_digest": "9fa63e4affe38ee81bea33acf4fce78c52096baf82329e6cb04aa7188d73939c",
+  "retrieval_policy_version": "fts-scope-first-v2",
+  "fixed_clock": "2026-08-21T00:00:00Z",
+  "outcomes": [
+    {
+      "variant": "deterministic_fts",
+      "status": "completed",
+      "reason": "Frozen scope-first lexical baseline executed.",
+      "metrics": {
+        "recall_at_k": 1.0,
+        "full_query_coverage": 1.0,
+        "ndcg_at_k": 1.0,
+        "expected_dm_source_coverage": 1.0,
+        "current_revision_recall": 1.0,
+        "conflict_recall": 1.0,
+        "leakage_count": 0,
+        "relevant_selected": 11,
+        "relevant_total": 11,
+        "query_count": 9,
+        "selected_count": 11,
+        "selected_content_bytes": 1030,
+        "estimated_context_tokens": 258,
+        "context_cost_status": "content_only_utf8_bytes_div4_v1",
+        "latency_ms": null,
+        "latency_status": "not_measured_deterministic_offline"
+      }
+    },
+    {
+      "variant": "progressive_navigation",
+      "status": "completed",
+      "reason": "The same authorized FTS records are exposed through bounded inline/card/open contracts; the content token count is a conservative full-content upper bound.",
+      "metrics": {
+        "recall_at_k": 1.0,
+        "full_query_coverage": 1.0,
+        "ndcg_at_k": 1.0,
+        "expected_dm_source_coverage": 1.0,
+        "current_revision_recall": 1.0,
+        "conflict_recall": 1.0,
+        "leakage_count": 0,
+        "relevant_selected": 11,
+        "relevant_total": 11,
+        "query_count": 9,
+        "selected_count": 11,
+        "selected_content_bytes": 1030,
+        "estimated_context_tokens": 258,
+        "context_cost_status": "progressive_full-content-upper-bound-v1",
+        "latency_ms": null,
+        "latency_status": "not_measured_deterministic_offline"
+      }
+    },
+    {
+      "variant": "compaction_context",
+      "status": "completed",
+      "reason": "The same frozen retrieval selection is preserved; the content-addressed M3 report separately executes the 100-message compaction/context workload.",
+      "metrics": {
+        "recall_at_k": 1.0,
+        "full_query_coverage": 1.0,
+        "ndcg_at_k": 1.0,
+        "expected_dm_source_coverage": 1.0,
+        "current_revision_recall": 1.0,
+        "conflict_recall": 1.0,
+        "leakage_count": 0,
+        "relevant_selected": 11,
+        "relevant_total": 11,
+        "query_count": 9,
+        "selected_count": 11,
+        "selected_content_bytes": 1030,
+        "estimated_context_tokens": 258,
+        "context_cost_status": "compaction-selection-parity-v1",
+        "latency_ms": null,
+        "latency_status": "not_measured_deterministic_offline"
+      }
+    },
+    {
+      "variant": "vector",
+      "status": "not_required",
+      "reason": "D-058 deterministic FTS threshold passed; no vector metrics were generated.",
+      "metrics": null
+    },
+    {
+      "variant": "hybrid_reranking",
+      "status": "not_required",
+      "reason": "D-058 deterministic FTS threshold passed; no vector metrics were generated.",
+      "metrics": null
+    }
+  ],
+  "selected_default": "deterministic_fts+progressive_navigation+compaction_context",
+  "fallback": "deterministic_fts+bounded_inline_context",
+  "report_digest": "2b546607f1519d73d54189c390e5282ecb22b2217a16c2d6701eec9cc3e5382c"
+}

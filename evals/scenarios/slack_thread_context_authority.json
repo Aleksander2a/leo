@@ -1,0 +1,15 @@
+{
+  "id": "slack_thread_context_authority",
+  "version": "v2",
+  "purpose": "Execute full-thread retention, fresh-root isolation, progress-boundary prefix recovery, durable exact-thread task isolation, deterministic compaction, and sealed reopen authority against the real context components with offline boundaries.",
+  "provider_mode": "offline",
+  "fixture_digest": "2ebc174c5bb4f3f0b54edb1e7dca7a91399a4917c2b6ca5583be2e148a421fb1",
+  "fixed_clock": "2026-08-22T12:00:00Z",
+  "deterministic_id_prefix": "eval-thread-authority",
+  "execution_variant": "slack_thread_context_authority",
+  "budget": {"max_model_calls": 0, "max_tool_calls": 4, "max_elapsed_seconds": 5},
+  "inputs": {"message_count": 60},
+  "expected_hard_invariants": ["full_thread_context_has_exact_coverage", "thread_compaction_has_content_free_reopen_proof", "thread_reopen_executes_under_sealed_authority", "thread_reopen_rejects_cross_authority_access", "thread_context_remains_destination_isolated", "fresh_slack_root_starts_without_unrelated_thread_context", "progress_after_current_boundary_uses_exact_prior_prefix", "durable_task_turns_remain_on_exact_slack_thread"],
+  "expected_quality_metrics": ["thread_loaded_turn_count", "thread_compacted_turn_count", "thread_protected_turn_count", "thread_exact_retained_turn_count", "thread_reopen_handle_count", "thread_reopen_success_count", "thread_authority_rejection_count", "thread_context_leakage_count", "thread_fresh_root_isolation_count", "thread_progress_prefix_success_count", "thread_post_boundary_leakage_count", "thread_durable_exact_task_count", "thread_durable_rejection_count"],
+  "allowed_nondeterminism": []
+}

@@ -1,0 +1,126 @@
+{
+  "version": "memory-m3-eval-report-v1",
+  "fixture_version": "memory-retrieval-v1",
+  "fixture_digest": "9fa63e4affe38ee81bea33acf4fce78c52096baf82329e6cb04aa7188d73939c",
+  "scenarios": [
+    {
+      "id": "m3-retrieval-isolation-current-dm",
+      "category": "retrieval",
+      "passed": true,
+      "assertions": [
+        "exact conversation isolation",
+        "current A+B 1:1-DM union",
+        "revoked/no-Leo/group/cross-workspace exclusion",
+        "current correction and conflict recall"
+      ],
+      "metrics": {
+        "recall_at_k": 1.0,
+        "coverage": 1.0,
+        "dm_source_coverage": 1.0,
+        "leakage_count": 0,
+        "query_count": 9
+      },
+      "replay_pointer": "evals/fixtures/memory-retrieval-v1/report.json"
+    },
+    {
+      "id": "m3-explicit-write-sealed-authority",
+      "category": "memory_write",
+      "passed": true,
+      "assertions": [
+        "model arguments cannot select authority",
+        "actor/run/scope are server-bound",
+        "event/task/message provenance is complete"
+      ],
+      "metrics": {
+        "authorized_commit_count": 1,
+        "unauthorized_commit_count": 0,
+        "provenance_source_count": 3
+      },
+      "replay_pointer": "tests/test_memory_tools.py"
+    },
+    {
+      "id": "m3-progressive-card-bounded-open",
+      "category": "progressive_navigation",
+      "passed": true,
+      "assertions": [
+        "long memory is a bounded card",
+        "open is ordinal and resumable",
+        "search-within returns matching bounded chunks",
+        "internal record IDs are absent from the card"
+      ],
+      "metrics": {
+        "chunk_count": 3,
+        "max_chunk_chars": 951,
+        "forbidden_open_count": 0
+      },
+      "replay_pointer": "tests/test_memory_navigation.py"
+    },
+    {
+      "id": "m3-compaction-100-message-drift",
+      "category": "compaction",
+      "passed": true,
+      "assertions": [
+        "50-message trigger is deterministic",
+        "recent twelve messages remain verbatim",
+        "summary covers the full compacted prefix",
+        "correction/decision/commitment/unresolved fields are retained"
+      ],
+      "metrics": {
+        "message_count": 100,
+        "compacted_count": 88,
+        "recent_count": 12,
+        "token_reduction_ratio": 0.6304896516910652
+      },
+      "replay_pointer": "tests/test_memory_compaction.py"
+    },
+    {
+      "id": "m3-cache-authority-generation-key",
+      "category": "cache",
+      "passed": true,
+      "assertions": [
+        "membership hash participates in the key",
+        "authority refresh invalidates old entries",
+        "content/policy/generation are key material"
+      ],
+      "metrics": {
+        "stale_cache_hit_count": 0
+      },
+      "replay_pointer": "tests/test_memory_cache.py"
+    },
+    {
+      "id": "m3-projection-current-escaped",
+      "category": "projection",
+      "passed": true,
+      "assertions": [
+        "only authorized current revisions render",
+        "Slack/Markdown-active text is escaped",
+        "projection is explicitly derived and read-only"
+      ],
+      "metrics": {
+        "projected_item_count": 1
+      },
+      "replay_pointer": "tests/test_memory_projection_pagination.py"
+    },
+    {
+      "id": "m3-manual-purge-version-bound",
+      "category": "maintenance",
+      "passed": true,
+      "assertions": [
+        "physical purge requires explicit record IDs",
+        "confirmation binds generation and current revision",
+        "changed targets require a new dry-run token"
+      ],
+      "metrics": {
+        "wildcard_target_count": 0,
+        "automatic_purge_job_count": 0
+      },
+      "replay_pointer": "tests/test_memory_maintenance.py"
+    }
+  ],
+  "scenario_count": 7,
+  "passed_count": 7,
+  "leakage_count": 0,
+  "unauthorized_commit_count": 0,
+  "forbidden_open_count": 0,
+  "report_digest": "417392603ddbd1a6824721dc28849e5ed619b7b912ca9a499370021f93461d12"
+}

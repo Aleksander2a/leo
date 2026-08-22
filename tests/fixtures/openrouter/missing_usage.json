@@ -1,0 +1,22 @@
+{
+  "id": "fixture-missing-usage",
+  "model": "test/model",
+  "choices": [
+    {
+      "finish_reason": "tool_calls",
+      "message": {
+        "content": null,
+        "tool_calls": [
+          {
+            "id": "fixture-missing-usage-call",
+            "type": "function",
+            "function": {
+              "name": "market_get_quote",
+              "arguments": "{\"symbol\":\"NVDA\"}"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

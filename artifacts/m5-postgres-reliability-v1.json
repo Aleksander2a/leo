@@ -1,0 +1,186 @@
+{
+  "version": "postgres-reliability-evidence-v1",
+  "alembic_head": "20260822_0026",
+  "rollback_safe": true,
+  "event_recovery": {
+    "version": "durable-recovery-v1",
+    "database_label": "supabase-postgres-current-head",
+    "rollback_safe": true,
+    "cases": [
+      {
+        "id": "stale-cas",
+        "boundary": "run_store_commit",
+        "outcome": "rejected_safe",
+        "observed_before_digest": "7b6528cbd743af6a3c987676d66f18d6cc2ef38e26785e326372b8a735f98bbb",
+        "observed_after_digest": "7b6528cbd743af6a3c987676d66f18d6cc2ef38e26785e326372b8a735f98bbb",
+        "mutation_applied": false,
+        "duplicate_committed": false,
+        "terminal_success": false,
+        "detail_code": "stale_task_version"
+      },
+      {
+        "id": "duplicate-event-sequence",
+        "boundary": "run_event_unique_sequence",
+        "outcome": "rejected_safe",
+        "observed_before_digest": "7b6528cbd743af6a3c987676d66f18d6cc2ef38e26785e326372b8a735f98bbb",
+        "observed_after_digest": "7b6528cbd743af6a3c987676d66f18d6cc2ef38e26785e326372b8a735f98bbb",
+        "mutation_applied": false,
+        "duplicate_committed": false,
+        "terminal_success": false,
+        "detail_code": "uq_run_event_sequence"
+      },
+      {
+        "id": "restart-replay",
+        "boundary": "run_store_reload",
+        "outcome": "reload_exact",
+        "observed_before_digest": "650b0de97c6377e0aef4db2151546929490dd7ef33cac62c997b28ec27c99f25",
+        "observed_after_digest": "650b0de97c6377e0aef4db2151546929490dd7ef33cac62c997b28ec27c99f25",
+        "mutation_applied": false,
+        "duplicate_committed": false,
+        "terminal_success": false,
+        "detail_code": "exact_snapshot_reloaded"
+      },
+      {
+        "id": "operator-export",
+        "boundary": "failure_event_source",
+        "outcome": "exported",
+        "observed_before_digest": "4fe30eae6085a53204e181bd7cc593f0ac7e924efc46396b944468a45301a495",
+        "observed_after_digest": "b82c7e50b85fae13b2c16e4eca00078c1888afeb57789984f15837780b6a8087",
+        "mutation_applied": true,
+        "duplicate_committed": false,
+        "terminal_success": false,
+        "detail_code": "sanitized_bundle_exported"
+      }
+    ],
+    "case_count": 4,
+    "duplicate_commit_count": 0,
+    "false_success_count": 0,
+    "digest": "3ed4af435dc8a6fab96e0f9524e8ac3d57bd1120f6eddd6175a4fa5ca7e1b466"
+  },
+  "plan_recovery": {
+    "version": "durable-recovery-v1",
+    "database_label": "supabase-postgres-current-head",
+    "rollback_safe": true,
+    "cases": [
+      {
+        "id": "running-child-reload",
+        "boundary": "plan_store_replay",
+        "outcome": "reload_exact",
+        "observed_before_digest": "c68cad5e197658a2481f3e578b484925a683685378330830666a2ee14bed5aa1",
+        "observed_after_digest": "c68cad5e197658a2481f3e578b484925a683685378330830666a2ee14bed5aa1",
+        "mutation_applied": false,
+        "duplicate_committed": false,
+        "terminal_success": false,
+        "detail_code": "attached_child_reloaded"
+      },
+      {
+        "id": "expired-child-reclaim",
+        "boundary": "plan_node_lease",
+        "outcome": "reclaimed",
+        "observed_before_digest": "d8828b45c94943aedbf20b4201f36e5dc0e9f26ce8261cdea7b2446feac0abd4",
+        "observed_after_digest": "cb7b4c06e7c08eae036c4f5ffbff623b7ebf64dc870b354a1870225e29dfc922",
+        "mutation_applied": true,
+        "duplicate_committed": false,
+        "terminal_success": false,
+        "detail_code": "stale_running_reclaimed"
+      },
+      {
+        "id": "stale-child-fenced",
+        "boundary": "plan_node_claim",
+        "outcome": "fenced",
+        "observed_before_digest": "d9c47cc11fd6f44e24aae46038df32b8bcc435b08471665dad07bee0ba38a760",
+        "observed_after_digest": "d9c47cc11fd6f44e24aae46038df32b8bcc435b08471665dad07bee0ba38a760",
+        "mutation_applied": false,
+        "duplicate_committed": false,
+        "terminal_success": false,
+        "detail_code": "stale_claim_rejected"
+      },
+      {
+        "id": "terminal-plan-reload",
+        "boundary": "plan_store_reload",
+        "outcome": "reload_exact",
+        "observed_before_digest": "a3ad62ab7460e0eb64f8d438ba65119d60e61601bd501cff85b4d87a4167ba42",
+        "observed_after_digest": "a3ad62ab7460e0eb64f8d438ba65119d60e61601bd501cff85b4d87a4167ba42",
+        "mutation_applied": false,
+        "duplicate_committed": false,
+        "terminal_success": false,
+        "detail_code": "parent_terminal_reloaded"
+      }
+    ],
+    "case_count": 4,
+    "duplicate_commit_count": 0,
+    "false_success_count": 0,
+    "digest": "70744ffb1ae564c50987b241b881b0be049bb29f0edf2d361e27fe97d0cb0afb"
+  },
+  "failure_bundle": {
+    "version": "bundle-v2",
+    "failure": {
+      "version": "failure-v2",
+      "run_id": "run-b7cba97b894b",
+      "root_code": "m5_synthetic_timeout",
+      "failure_class": "budget_deadline_cancel",
+      "boundary": "run_timed_out",
+      "terminal_reason": "m5_synthetic_timeout",
+      "event_ids": [
+        "evt-24e31997-e00f-4a13-a60b-8f5f42271b8a",
+        "evt-9b3e9560-e450-4272-8535-b2ed8980578e",
+        "evt-55f4150f-0aa1-4ae6-8960-47c54074a6fd"
+      ],
+      "recording_ids": [],
+      "reproduction_command": "leo replay run-b7cba97b894b"
+    },
+    "sanitized_config": {
+      "alembic_head": "20260822_0026",
+      "source": "rollback-safe-postgres"
+    },
+    "sanitized_events": [
+      {
+        "causation_id": null,
+        "correlation_id": "run-b7cba97b894b",
+        "event_id": "evt-24e31997-e00f-4a13-a60b-8f5f42271b8a",
+        "kind": "lifecycle",
+        "occurred_at": "2026-08-20T12:00:00+00:00",
+        "payload": {
+          "status": "task_started"
+        },
+        "run_id": "run-b7cba97b894b",
+        "schema_version": "v2",
+        "sequence": 1,
+        "task_id": "task-b7cba97b894b"
+      },
+      {
+        "causation_id": "evt-24e31997-e00f-4a13-a60b-8f5f42271b8a",
+        "correlation_id": "run-b7cba97b894b",
+        "event_id": "evt-9b3e9560-e450-4272-8535-b2ed8980578e",
+        "kind": "model_called",
+        "occurred_at": "2026-08-20T12:00:00+00:00",
+        "payload": {
+          "provider": "offline",
+          "status": "model_called"
+        },
+        "run_id": "run-b7cba97b894b",
+        "schema_version": "v2",
+        "sequence": 2,
+        "task_id": "task-b7cba97b894b"
+      },
+      {
+        "causation_id": "evt-9b3e9560-e450-4272-8535-b2ed8980578e",
+        "correlation_id": "run-b7cba97b894b",
+        "event_id": "evt-55f4150f-0aa1-4ae6-8960-47c54074a6fd",
+        "kind": "terminal",
+        "occurred_at": "2026-08-20T12:00:00+00:00",
+        "payload": {
+          "reason": "m5_synthetic_timeout",
+          "status": "run_timed_out"
+        },
+        "run_id": "run-b7cba97b894b",
+        "schema_version": "v2",
+        "sequence": 3,
+        "task_id": "task-b7cba97b894b"
+      }
+    ],
+    "fixture_id": "durable-run-failure-v1",
+    "digest": "b5c947aa229a834421977731e46626f9cb3e61db13c6e669e582781d13d3c373"
+  },
+  "digest": "5849ab082409011eb4c91568d56ad7372f5c64363c2e516a45c88bd77d9db493"
+}
