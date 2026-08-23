@@ -97,9 +97,7 @@ class _MissingSlackThreadRoot(RuntimeError):
 class SlackPostClient(Protocol):
     async def chat_postMessage(self, *, channel: str, thread_ts: str, text: str) -> object: ...
 
-    async def conversations_replies(
-        self, *, channel: str, ts: str, limit: int = 1
-    ) -> object: ...
+    async def conversations_replies(self, *, channel: str, ts: str, limit: int = 1) -> object: ...
 
 
 class PostgresDeliveryOutbox:
@@ -763,8 +761,7 @@ class SlackOutboxDispatcher:
             raise RuntimeError("Slack thread-root probe returned an unusable response")
         messages = payload.get("messages")
         if not isinstance(messages, list) or not any(
-            isinstance(message, Mapping)
-            and message.get("ts") == intent.destination_thread_ts
+            isinstance(message, Mapping) and message.get("ts") == intent.destination_thread_ts
             for message in messages
         ):
             raise _MissingSlackThreadRoot

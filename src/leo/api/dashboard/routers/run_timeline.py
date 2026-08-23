@@ -37,17 +37,14 @@ async def get_run_timeline(
     )
 
     transcript_rows = (
-        (
-            await session.execute(
-                select(
-                    ModelCallTranscriptRow.request_id,
-                    ModelCallTranscriptRow.raw_request,
-                    ModelCallTranscriptRow.raw_response,
-                ).where(ModelCallTranscriptRow.run_id == run_id)
-            )
+        await session.execute(
+            select(
+                ModelCallTranscriptRow.request_id,
+                ModelCallTranscriptRow.raw_request,
+                ModelCallTranscriptRow.raw_response,
+            ).where(ModelCallTranscriptRow.run_id == run_id)
         )
-        .all()
-    )
+    ).all()
     transcripts_by_request_id = {
         request_id: {"request": raw_request, "response": raw_response}
         for request_id, raw_request, raw_response in transcript_rows

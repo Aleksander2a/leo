@@ -546,8 +546,7 @@ def _drop_unsourced_optional_claims(
         and (
             not claim.observation_ids
             or all(
-                observation_id in valid_observation_ids
-                for observation_id in claim.observation_ids
+                observation_id in valid_observation_ids for observation_id in claim.observation_ids
             )
         )
     )

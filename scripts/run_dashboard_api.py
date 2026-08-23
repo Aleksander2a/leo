@@ -12,6 +12,7 @@ Usage: ``uv run python scripts/run_dashboard_api.py``
 from __future__ import annotations
 
 import asyncio
+import os
 import selectors
 import sys
 
@@ -19,7 +20,9 @@ import uvicorn
 
 
 def main() -> None:
-    config = uvicorn.Config("leo.api.app:app", host="127.0.0.1", port=8000, log_level="info")
+    host = os.getenv("HOST", "0.0.0.0")
+    port = int(os.getenv("PORT", "8000"))
+    config = uvicorn.Config("leo.api.app:app", host=host, port=port, log_level="info")
     server = uvicorn.Server(config)
     if sys.platform == "win32":
         with asyncio.Runner(

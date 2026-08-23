@@ -17,6 +17,15 @@ from leo.persistence.database import create_database_engine, create_session_fact
 _DASHBOARD_DEV_ORIGINS = ("http://localhost:3000", "http://127.0.0.1:3000")
 
 
+def _dashboard_cors_origins(settings: Settings) -> list[str]:
+    configured = tuple(
+        origin.strip()
+        for origin in settings.leo_dashboard_cors_origins.split(",")
+        if origin.strip()
+    )
+    return list(dict.fromkeys((*_DASHBOARD_DEV_ORIGINS, *configured)))
+
+
 def create_app(
     settings: Settings | None = None,
     *,
@@ -51,7 +60,7 @@ def create_app(
     application = FastAPI(title="Leo API", version="0.1.0", lifespan=lifespan)
     application.add_middleware(
         CORSMiddleware,
-        allow_origins=list(_DASHBOARD_DEV_ORIGINS),
+        allow_origins=_dashboard_cors_origins(runtime_settings),
         allow_methods=["GET"],
         allow_headers=["*"],
     )

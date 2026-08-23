@@ -431,9 +431,7 @@ async def test_deleted_thread_root_is_dead_lettered_without_top_level_post() -> 
             self.probes = 0
             self.posts = 0
 
-        async def conversations_replies(
-            self, *, channel: str, ts: str, limit: int = 1
-        ) -> object:
+        async def conversations_replies(self, *, channel: str, ts: str, limit: int = 1) -> object:
             assert (channel, ts, limit) == ("channel-1", "thread-1", 1)
             self.probes += 1
             return {"ok": True, "messages": []}
