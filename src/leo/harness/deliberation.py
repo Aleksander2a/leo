@@ -366,6 +366,7 @@ class ElasticDeliberationGateway:
                 raise ModelGatewayError(
                     "deliberation_no_progress",
                     "The bounded reasoning loop made no evidence progress.",
+                    fallback_answer=_last_proposal_answer(self._last_result),
                 )
 
         guided_request = request.model_copy(
@@ -461,6 +462,7 @@ class ElasticDeliberationGateway:
             raise ModelGatewayError(
                 "deliberation_repeated_decision",
                 "The model repeated a decision without adding evidence.",
+                fallback_answer=_last_proposal_answer(result),
             )
         self._same_decision_count = self._same_decision_count + 1 if repeated else 1
         self._last_observation_signature = observation_signature
@@ -519,6 +521,31 @@ class ElasticDeliberationGateway:
             self._envelope.maximum_depth,
             max(self._recommended_depth + 1, _DEPTH_BY_MODE[self._recommended_mode]),
         )
+
+
+def _last_proposal_answer(result: ModelTurnResult | None) -> str | None:
+    """Extract a salvageable answer text from the last decision, if any.
+
+    Used when the bounded repair loop is about to give up: a self-contained answer
+    the model already produced is a better outcome for the user than no answer at
+    all, even though it never satisfied the verifier or the no-progress bound.
+
+    Only a claim-free answer is eligible. A claim is an unverified evidentiary
+    assertion (a source citation or inference); delivering one without ever
+    passing it through the verifier would let a fabricated or ungrounded claim
+    reach the user, which is a correctness failure, not merely a formatting one.
+    A plain prose answer ("I need current provider evidence to answer.") carries
+    no such risk and is always safe to salvage.
+    """
+
+    if (
+        result is None
+        or not isinstance(result.decision, CompletionProposal)
+        or result.decision.claims
+    ):
+        return None
+    answer = result.decision.answer.strip()
+    return answer or None
 
 
 def _drop_unsourced_optional_claims(

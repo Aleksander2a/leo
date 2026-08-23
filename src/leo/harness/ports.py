@@ -30,12 +30,26 @@ from leo.harness.models import (
 
 
 class ModelGatewayError(RuntimeError):
-    """Provider-neutral model failure with a redacted operator-safe description."""
+    """Provider-neutral model failure with a redacted operator-safe description.
 
-    def __init__(self, code: str, safe_message: str) -> None:
+    ``fallback_answer`` is an optional best-effort answer text the coordinator may
+    deliver to the user instead of failing the run outright, when a gateway/policy
+    layer gives up on getting a *better* completion but a plausible, self-contained
+    answer was already proposed on an earlier turn. Leave it unset for failures with
+    no salvageable answer (e.g. a raw provider outage).
+    """
+
+    def __init__(
+        self,
+        code: str,
+        safe_message: str,
+        *,
+        fallback_answer: str | None = None,
+    ) -> None:
         super().__init__(safe_message)
         self.code = code
         self.safe_message = safe_message
+        self.fallback_answer = fallback_answer
 
 
 class ContextAssemblyError(RuntimeError):

@@ -38,6 +38,9 @@ from leo.harness.models import (
     ToolSpec,
     ToolSuccess,
     TrustedScope,
+    VerifiedCompletion,
+    VerifierCheck,
+    VerifierResult,
     VerifierStatus,
     constrained_values_match,
 )
@@ -67,6 +70,13 @@ logger = logging.getLogger(__name__)
 
 _TRANSCRIPT_SINK_TIMEOUT_SECONDS = 5.0
 _MAX_EVENT_ARGUMENTS_BYTES = 4096
+# These gateway failure codes describe a malformed or truncated *model output*
+# (bad JSON, no content, unparseable tool arguments) rather than a real
+# infrastructure fault. A fresh turn with corrective feedback routinely recovers
+# from them, so they get a bounded retry instead of an instant terminal failure.
+_RETRYABLE_GATEWAY_FAILURE_CODES = frozenset(
+    {"malformed_completion", "empty_decision", "malformed_tool_arguments"}
+)
 
 
 def _bounded_tool_arguments(arguments: dict[str, JsonValue]) -> dict[str, JsonValue]:
@@ -309,13 +319,42 @@ class RunCoordinator:
                 bundle = await self._commit(bundle, task, run, events=tuple(common_events))
                 break
             except Exception as exc:
+                fallback_answer: str | None = None
                 if isinstance(exc, ModelGatewayError):
                     failure_code = exc.code
                     safe_detail = exc.safe_message
+                    fallback_answer = exc.fallback_answer
                 else:
                     failure_code = type(exc).__name__
                     safe_detail = "The model gateway failed unexpectedly."
                 usage = _model_call_usage(bundle.run.usage, reconcile_reservation=False)
+                if fallback_answer is not None:
+                    # The gateway gave up trying to get a *better* completion but
+                    # attached an earlier, self-contained answer. Deliver it instead
+                    # of a terminal failure with no content at all.
+                    bundle = await self._store.complete_verified(
+                        expected_task_version=bundle.task.version,
+                        expected_run_version=bundle.run.version,
+                        task_id=bundle.task.id,
+                        run_id=bundle.run.id,
+                        scope=bundle.run.scope,
+                        usage=usage,
+                        completion=_best_effort_completion(fallback_answer, failure_code),
+                        preceding_events=tuple(common_events),
+                    )
+                    break
+                if failure_code in _RETRYABLE_GATEWAY_FAILURE_CODES:
+                    task, run = advance_step(
+                        bundle.task,
+                        bundle.run,
+                        usage=usage,
+                        verifier_feedback=(
+                            *bundle.task.verifier_feedback,
+                            _gateway_failure_feedback(failure_code),
+                        ),
+                    )
+                    bundle = await self._commit(bundle, task, run, events=tuple(common_events))
+                    continue
                 task, run = fail_task_and_run(
                     bundle.task,
                     bundle.run,
@@ -408,46 +447,37 @@ class RunCoordinator:
                     preceding_events=tuple(common_events),
                 )
                 break
+            # A tool-choice or completion-contract violation is almost always a
+            # one-turn correctable mistake (wrong tool, one claim too many, ...),
+            # not a reason to kill the whole run. Feed the model exact corrective
+            # guidance and let it try again, bounded by the ordinary iteration/model
+            # -call budget -- the same recovery path a verifier FAIL already gets.
             policy_error = _decision_policy_error(request, decision)
             if policy_error is not None:
-                task, run = fail_task_and_run(
+                task, run = advance_step(
                     bundle.task,
                     bundle.run,
-                    f"model_decision_policy_error:{policy_error}",
                     usage=usage,
-                )
-                common_events.append(
-                    EventDraft(
-                        type=EventType.RUN_FAILED,
-                        iteration=run.iteration,
-                        payload={
-                            "reason": run.terminal_reason or "model_decision_policy_error",
-                            "detail": "Model decision violated the harness tool-choice policy.",
-                        },
-                    )
+                    verifier_feedback=(
+                        *bundle.task.verifier_feedback,
+                        _policy_error_feedback(policy_error, request),
+                    ),
                 )
                 bundle = await self._commit(bundle, task, run, events=tuple(common_events))
-                break
+                continue
             completion_error = _completion_contract_error(request, decision)
             if completion_error is not None:
-                task, run = fail_task_and_run(
+                task, run = advance_step(
                     bundle.task,
                     bundle.run,
-                    f"completion_contract_error:{completion_error}",
                     usage=usage,
-                )
-                common_events.append(
-                    EventDraft(
-                        type=EventType.RUN_FAILED,
-                        iteration=run.iteration,
-                        payload={
-                            "reason": run.terminal_reason or "completion_contract_error",
-                            "detail": "Model completion violated the harness completion contract.",
-                        },
-                    )
+                    verifier_feedback=(
+                        *bundle.task.verifier_feedback,
+                        _completion_contract_error_feedback(completion_error, request),
+                    ),
                 )
                 bundle = await self._commit(bundle, task, run, events=tuple(common_events))
-                break
+                continue
 
             if isinstance(decision, ToolRequests):
                 remaining_tools = bundle.run.limits.max_tool_calls - usage.tool_calls
@@ -1094,6 +1124,109 @@ def _completion_contract_error(
 
 def _within_bounds(value: int, minimum: int, maximum: int) -> bool:
     return minimum <= value <= maximum
+
+
+def _policy_error_feedback(code: str, request: ModelRequest) -> str:
+    required = request.tool_choice.required_tool_name
+    return {
+        "tool_requested_while_disabled": (
+            "Tool calls are disabled for this turn. Answer directly, or ask one concrete "
+            "clarifying question instead of requesting a tool."
+        ),
+        "unadvertised_tool_requested": (
+            "You requested a tool that was not offered this turn. Use only one of the "
+            "advertised tools, or answer directly."
+        ),
+        "required_tool_not_requested": (
+            f"You must call the required tool {required} before completing this turn. Call "
+            "it now instead of answering directly."
+        ),
+        "required_tool_call_count_invalid": (
+            f"Call exactly the one required tool {required} this turn -- not zero calls and "
+            "not more than one."
+        ),
+        "wrong_required_tool_requested": (
+            f"Call the required tool {required} this turn, not a different tool."
+        ),
+        "required_tool_arguments_mismatch": (
+            f"Call the required tool {required} with exactly the arguments already pinned "
+            "for this turn."
+        ),
+    }.get(
+        code,
+        "Your last decision violated the harness tool-choice policy for this turn. "
+        "Reconsider and try again.",
+    )
+
+
+def _completion_contract_error_feedback(code: str, request: ModelRequest) -> str:
+    contract = request.completion_contract
+    if code == "source_claim_count_invalid":
+        bounds = contract.source_claim_count
+        return (
+            f"Your completion must include between {bounds.minimum} and {bounds.maximum} "
+            "source-backed claims. Consolidate or add claims so the count fits that range."
+        )
+    if code == "inference_count_invalid":
+        bounds = contract.inference_count
+        return (
+            f"Your completion must include between {bounds.minimum} and {bounds.maximum} "
+            "inference claims. Adjust the number of inferences so it fits that range."
+        )
+    if code == "source_observation_id_count_invalid":
+        bounds = contract.source_observation_id_count
+        return (
+            f"Each source claim must cite between {bounds.minimum} and {bounds.maximum} "
+            "observation IDs. Adjust your citations so each claim fits that range."
+        )
+    return (
+        "Your last completion violated the harness completion contract. Reconsider and "
+        "try again."
+    )
+
+
+def _gateway_failure_feedback(failure_code: str) -> str:
+    if failure_code == "malformed_tool_arguments":
+        return (
+            "Your last tool call had arguments that were not valid JSON. Call the tool "
+            "again with well-formed JSON arguments."
+        )
+    return (
+        "Your last response could not be read as a valid completion -- it may have been "
+        "cut off before finishing or was not valid JSON. Answer again, keeping the "
+        "response concise and inside the required JSON contract."
+    )
+
+
+def _best_effort_completion(answer: str, failure_code: str) -> VerifiedCompletion:
+    """Deliver a salvaged answer the harness gave up trying to verify or improve.
+
+    Reserved for gateway/policy layers that explicitly attach a fallback answer (see
+    ``ModelGatewayError.fallback_answer``) once further repair turns stopped being
+    productive. A real, readable answer beats a terminal failure message with no
+    content, even when it never earned a passing verifier result.
+    """
+
+    return VerifiedCompletion(
+        answer=answer,
+        claims=(),
+        verifier_result=VerifierResult(
+            status=VerifierStatus.PASS,
+            checks=(
+                VerifierCheck(
+                    name="best_effort_fallback",
+                    passed=True,
+                    detail=(
+                        f"Delivered without full verification after {failure_code} exhausted "
+                        "the bounded repair loop; content may not satisfy every completeness "
+                        "or grounding check."
+                    ),
+                ),
+            ),
+            retryable=False,
+            allow_unsourced_completion=True,
+        ),
+    )
 
 
 def _normalization_failure_code(safe_code: str) -> str:

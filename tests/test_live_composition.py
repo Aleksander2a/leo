@@ -947,12 +947,16 @@ async def test_live_composition_rejects_wrong_symbol_before_finnhub_execution() 
             objective="Report the current NVDA quote using an allowed market tool.",
         )
 
-    assert result.run.status is RunStatus.FAILED
-    assert result.run.usage.model_calls == 1
+    # Wrong required arguments are retried with corrective feedback instead of
+    # instantly failing the run; this fixture handler always answers with the
+    # wrong symbol, so the bounded retry loop exhausts its budget without ever
+    # executing the tool.
+    assert result.run.status is RunStatus.BUDGET_EXHAUSTED
+    assert result.run.usage.model_calls > 1
     assert result.run.usage.tool_calls == 0
     assert finnhub_calls == 0
-    assert result.run.terminal_reason == (
-        "model_decision_policy_error:required_tool_arguments_mismatch"
+    assert any(
+        "argument" in feedback.lower() for feedback in result.task.verifier_feedback
     )
 
 
@@ -1493,13 +1497,25 @@ async def test_live_current_quote_pins_tool_and_stops_repeated_fabricated_citati
             ),
         )
 
+    # Ignoring the required tool and fabricating a quote gets one retry with
+    # corrective feedback instead of instantly failing on the first turn -- but
+    # the core safety property holds either way: a decision carrying an
+    # unverified source claim is never eligible for the bounded-loop's
+    # best-effort fallback (only claim-free prose is), so once this fixture
+    # handler repeats the identical fabricated claim, the run still fails
+    # closed. The fabricated citation is never delivered, no observation is
+    # ever fabricated, and Finnhub is never reached.
     assert result.run.status is RunStatus.FAILED
-    assert result.run.terminal_reason == "model_decision_policy_error:required_tool_not_requested"
+    assert result.run.terminal_reason == "model_gateway_error:deliberation_repeated_decision"
+    assert result.run.final_output is None
     assert result.run.usage.tool_calls == 0
     assert result.observations == ()
-    assert model_calls == 1
+    assert model_calls == 2
     assert finnhub_calls == 0
     assert not any(event.type is EventType.VERIFICATION_FAILED for event in result.events)
+    assert any(
+        "market.get_quote" in feedback for feedback in result.task.verifier_feedback
+    )
 
 
 @pytest.mark.parametrize(
@@ -2023,13 +2039,25 @@ async def test_live_latest_sec_lookup_pins_one_tool_without_thesis_hijack() -> N
             ),
         )
 
+    # Ignoring the required tool and fabricating filing metadata gets one retry
+    # with corrective feedback instead of instantly failing on the first turn --
+    # but the core safety property holds either way: a decision carrying an
+    # unverified source claim is never eligible for the bounded-loop's
+    # best-effort fallback (only claim-free prose is), so once this fixture
+    # handler repeats the identical fabricated claim, the run still fails
+    # closed. The fabricated citation is never delivered, no observation is
+    # ever fabricated, and SEC EDGAR is never reached.
     assert result.run.status is RunStatus.FAILED
-    assert result.run.terminal_reason == "model_decision_policy_error:required_tool_not_requested"
+    assert result.run.terminal_reason == "model_gateway_error:deliberation_repeated_decision"
+    assert result.run.final_output is None
     assert result.run.usage.tool_calls == 0
     assert result.observations == ()
-    assert model_calls == 1
+    assert model_calls == 2
     assert sec_calls == 0
     assert not any(event.type is EventType.VERIFICATION_FAILED for event in result.events)
+    assert any(
+        "sec.get_recent_filings" in feedback for feedback in result.task.verifier_feedback
+    )
 
 
 @pytest.mark.asyncio
@@ -2360,8 +2388,17 @@ async def test_live_conversation_selects_parallel_market_sec_and_parent_tools() 
             ),
         )
 
-    assert result.run.status is RunStatus.FAILED
-    assert result.run.terminal_reason == ("model_decision_policy_error:required_tool_not_requested")
+    # The required-orchestration-tool policy is still correctly enforced on both
+    # turns (see the tool_choice/required_tool assertions below); the model
+    # simply never complies. The first miss is retried with corrective feedback;
+    # once it repeats the identical claim-free answer, the bounded loop's
+    # best-effort fallback delivers that honest "I need evidence" text instead
+    # of a terminal failure -- it never fabricates a claim, so this is safe.
+    assert result.run.status is RunStatus.COMPLETED
+    assert result.run.final_output == "I need current provider evidence to answer."
+    assert any(
+        "agent.execute_research_plan" in feedback for feedback in result.task.verifier_feedback
+    )
     assert {"market_get_quote", "sec_get_recent_filings"}.issubset(seen_tool_names)
     assert {
         "agent_delegate_research",

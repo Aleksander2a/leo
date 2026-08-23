@@ -521,10 +521,18 @@ async def test_coordinator_rejects_completion_when_required_tool_was_not_request
         trusted_scope=TrustedScope(namespace=bundle.run.scope, actor_id="actor"),
     )
 
-    assert result.run.status is RunStatus.FAILED
-    assert result.run.usage.model_calls == 1
+    # A required-tool violation is a one-turn correctable mistake, not a reason to
+    # kill the run outright: the coordinator retries with corrective feedback
+    # instead of failing on the model's first (wrong) decision. This fixture model
+    # never calls the tool, so the bounded retry loop eventually exhausts its
+    # budget -- but it never hits the old instant, zero-attempt terminal failure.
+    assert result.run.status is RunStatus.BUDGET_EXHAUSTED
+    assert result.run.usage.model_calls > 1
     assert result.run.usage.tool_calls == 0
-    assert result.run.terminal_reason == ("model_decision_policy_error:required_tool_not_requested")
+    assert any(
+        "market.get_quote" in feedback and "required" in feedback.lower()
+        for feedback in result.task.verifier_feedback
+    )
     context_event = next(event for event in result.events if event.type is EventType.CONTEXT_BUILT)
     assert context_event.payload["tool_choice"] == "required"
     assert context_event.payload["required_tool"] == "market.get_quote"
@@ -554,10 +562,13 @@ async def test_research_write_proposal_is_rejected_before_tool_execution() -> No
         trusted_scope=TrustedScope(namespace=bundle.run.scope, actor_id="actor"),
     )
 
-    assert result.run.status is RunStatus.FAILED
-    assert result.run.usage.model_calls == 1
+    # Requesting a disabled tool is retried with corrective feedback instead of
+    # instantly failing the run; this fixture model always asks for the write
+    # tool, so the bounded retry loop exhausts its budget without ever executing it.
+    assert result.run.status is RunStatus.BUDGET_EXHAUSTED
+    assert result.run.usage.model_calls > 1
     assert result.run.usage.tool_calls == 0
-    assert result.run.terminal_reason == "model_decision_policy_error:tool_requested_while_disabled"
+    assert any("disabled" in feedback.lower() for feedback in result.task.verifier_feedback)
     assert write_tool.calls == 0
 
 
@@ -591,12 +602,16 @@ async def test_coordinator_rejects_wrong_required_arguments_before_tool_executio
         trusted_scope=TrustedScope(namespace=bundle.run.scope, actor_id="actor"),
     )
 
-    assert result.run.status is RunStatus.FAILED
-    assert result.run.usage.model_calls == 1
+    # Wrong required arguments are retried with corrective feedback instead of
+    # instantly failing; this fixture model always requests the wrong symbol, so
+    # the bounded retry loop exhausts its budget without ever executing the tool.
+    assert result.run.status is RunStatus.BUDGET_EXHAUSTED
+    assert result.run.usage.model_calls > 1
     assert result.run.usage.tool_calls == 0
     assert result.observations == ()
-    assert result.run.terminal_reason == (
-        "model_decision_policy_error:required_tool_arguments_mismatch"
+    assert any(
+        "market.get_quote" in feedback and "argument" in feedback.lower()
+        for feedback in result.task.verifier_feedback
     )
 
 
@@ -629,9 +644,14 @@ async def test_coordinator_enforces_completion_contract_before_verification() ->
         trusted_scope=TrustedScope(namespace=bundle.run.scope, actor_id="actor"),
     )
 
-    assert result.run.status is RunStatus.FAILED
-    assert result.run.terminal_reason == (
-        "completion_contract_error:source_observation_id_count_invalid"
+    # A completion-contract cardinality violation is retried with corrective
+    # feedback instead of instantly failing the run; this fixture model always
+    # returns the same over-cited claim, so the bounded retry loop exhausts its
+    # budget, and verification is still never reached for this malformed shape.
+    assert result.run.status is RunStatus.BUDGET_EXHAUSTED
+    assert result.run.usage.model_calls > 1
+    assert any(
+        "observation id" in feedback.lower() for feedback in result.task.verifier_feedback
     )
     assert EventType.VERIFICATION_STARTED not in {event.type for event in result.events}
 
@@ -665,6 +685,13 @@ async def test_coordinator_rejects_extra_source_claim_before_verification() -> N
         trusted_scope=TrustedScope(namespace=bundle.run.scope, actor_id="actor"),
     )
 
-    assert result.run.status is RunStatus.FAILED
-    assert result.run.terminal_reason == "completion_contract_error:source_claim_count_invalid"
+    # Too many source claims is retried with corrective feedback instead of
+    # instantly failing the run; this fixture model always returns the same
+    # duplicated claim, so the bounded retry loop exhausts its budget, and
+    # verification is still never reached for this malformed shape.
+    assert result.run.status is RunStatus.BUDGET_EXHAUSTED
+    assert result.run.usage.model_calls > 1
+    assert any(
+        "source-backed claim" in feedback.lower() for feedback in result.task.verifier_feedback
+    )
     assert EventType.VERIFICATION_STARTED not in {event.type for event in result.events}
