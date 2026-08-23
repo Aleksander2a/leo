@@ -15,8 +15,8 @@ _FUTURE_ACTION = re.compile(
     r"\b(?:"
     r"i(?:'ll| will)|let me|i (?:need|have) to|i(?:'m| am) going to"
     r")\s+(?:(?:just|first|now|quickly|briefly|next)\s+){0,3}"
-    r"(?:pull|grab|check|search|look up|research|verify|browse|investigate|consult|gather|"
-    r"find|fetch|retrieve|open|review|use|take a look at)\b"
+    r"(?:pull|grab|check|search|look up|research|verify|browse|investigate|gather|"
+    r"fetch|retrieve)\b"
 )
 _THEN_I_CAN = re.compile(r"\bthen\s+i\s+can\s+[a-z][a-z'-]*\b")
 _COMPLETED_MARKET_DATA_ACTION = re.compile(
@@ -30,7 +30,8 @@ _COMPLETED_FILING_ACTION = re.compile(
 _COMPLETED_EXTERNAL_RESEARCH_ACTION = re.compile(
     r"\bi(?:'ve| have)?\s+(?:researched|browsed|searched|looked up|investigated)\b|"
     r"\bi(?:'ve| have)?\s+(?:pulled|grabbed|fetched|retrieved|checked|verified|reviewed)\b"
-    r"[^.!?\r\n]{0,80}\b(?:current data|live data|sources?|filings?|news|financials?|"
+    r"[^.!?\r\n]{0,80}\b(?:current data|live data|sources?|filings?|news|"
+    r"financials?(?!\s+advice\b)|"
     r"web results?|documentation|evidence|reports?|company data|market data)\b"
 )
 

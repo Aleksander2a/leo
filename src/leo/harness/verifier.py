@@ -230,6 +230,15 @@ _DEFAULT_GROUNDING_RULES: dict[str, _ClaimAwareGroundingRule] = {
 _RELAXED_INTEGRATION_KINDS = frozenset(
     kind for kind in _DEFAULT_GROUNDING_RULES if kind.startswith(("market.", "web.", "sec."))
 )
+# Delegated-research observations (a child task's verified findings) may be paraphrased
+# by the parent agent's own INFERENCE claims, same as any other trusted integration
+# payload. They are deliberately excluded here for SOURCE_CLAIM: a source claim asserts
+# exact provenance, and _ground_delegated_research / _ground_research_plan must keep
+# requiring a verbatim match against what the child harness actually verified so the
+# model cannot misattribute or subtly alter it.
+_RELAXED_DELEGATED_RESEARCH_KINDS = frozenset(
+    {"agent.delegate_research", "agent.execute_research_plan"}
+)
 
 
 class DeterministicCompletionVerifier:
@@ -568,7 +577,9 @@ class DeterministicCompletionVerifier:
                                 passed=(
                                     (
                                         self._relax_integration_grounding
-                                        and _is_relaxed_integration_observation(observation)
+                                        and _is_relaxed_integration_observation(
+                                            observation, candidate.kind
+                                        )
                                     )
                                     or observation.quality is not EvidenceQuality.DISCOVERY_ONLY
                                 ),
@@ -576,7 +587,9 @@ class DeterministicCompletionVerifier:
                                     "Trusted integration evidence is available to the model."
                                     if (
                                         self._relax_integration_grounding
-                                        and _is_relaxed_integration_observation(observation)
+                                        and _is_relaxed_integration_observation(
+                                            observation, candidate.kind
+                                        )
                                     )
                                     else (
                                         "Referenced evidence quality may support a source claim."
@@ -1133,8 +1146,8 @@ def _requests_concrete_options(objective: str) -> bool:
     return bool(
         re.search(
             r"\b(?:recommend(?:ation|ations)?|suggest(?:ion|ions)?|examples?|options?|"
-            r"alternatives?|compare|comparison|versus|rank|list|ideas?|"
-            r"opportunit(?:y|ies))\b",
+            r"alternatives?|compare|comparison|versus|rank|(?:short|watch|wish|check|"
+            r"bucket)?lists?|ideas?|opportunit(?:y|ies))\b",
             normalized,
         )
         or re.search(
@@ -1159,7 +1172,9 @@ def _is_output_preamble_only(answer: str) -> bool:
     substantive_sentences = tuple(
         sentence.strip()
         for sentence in re.findall(r"[^.!?]+(?:[.!?]+|$)", remainder)
-        if sentence.strip() and not _is_terminal_disclaimer(sentence)
+        if sentence.strip()
+        and re.search(r"\w", sentence) is not None
+        and not _is_terminal_disclaimer(sentence)
     )
     return not substantive_sentences
 
@@ -1370,7 +1385,9 @@ def _claim_support(
 ) -> tuple[bool, str]:
     rule = grounding_rules.get(observation.kind)
     if rule is None:
-        if relax_integration_grounding and _is_relaxed_integration_observation(observation):
+        if relax_integration_grounding and _is_relaxed_integration_observation(
+            observation, claim_kind
+        ):
             return True, "Trusted integration payload is available to the model."
         return (
             False,
@@ -1378,7 +1395,8 @@ def _claim_support(
         )
     supported, detail = rule(claim_kind, statement, answer, observation)
     if supported or not (
-        relax_integration_grounding and _is_relaxed_integration_observation(observation)
+        relax_integration_grounding
+        and _is_relaxed_integration_observation(observation, claim_kind)
     ):
         return supported, detail
     # Relaxation trusts a claim's WORDING against a connected-integration payload --
@@ -1393,12 +1411,22 @@ def _claim_support(
     return True, "Trusted integration payload is available; the model may synthesize the answer."
 
 
-def _is_relaxed_integration_observation(observation: Observation) -> bool:
-    """Treat trusted adapter payloads as model context, not copy-exact prose."""
+def _is_relaxed_integration_observation(observation: Observation, claim_kind: ClaimKind) -> bool:
+    """Treat trusted adapter payloads as model context, not copy-exact prose.
 
-    return observation.kind in _RELAXED_INTEGRATION_KINDS or observation.kind.startswith(
+    Delegated-research observations only qualify for INFERENCE claims: a SOURCE_CLAIM
+    against them must still pass the exact-match grounding that _ground_delegated_research
+    / _ground_research_plan enforce, so misattribution of a child's verified findings
+    cannot be waved through by this relaxation.
+    """
+
+    if observation.kind in _RELAXED_INTEGRATION_KINDS or observation.kind.startswith(
         ("api.", "integration.", "mcp.")
-    )
+    ):
+        return True
+    if claim_kind is ClaimKind.INFERENCE and observation.kind in _RELAXED_DELEGATED_RESEARCH_KINDS:
+        return True
+    return False
 
 
 def _looks_like_integration_payload_failure(detail: str) -> bool:
@@ -2767,8 +2795,13 @@ _OUTPUT_INTRODUCTION = re.compile(
     r"^\s*(?:"
     r"here(?:\s+(?:are|is)|'s)\s+"
     r"(?:(?:a|an|one|some|several|two|three|a couple of|a few)\s+)?"
+    r"(?:(?:brief|concise|quick|short|simple|small)\s+)?"
     r"(?:buckets?|options?|ideas?|examples?|recommendations?|alternatives?|candidates?|"
-    r"names?|stocks?|investments?|choices?|approaches?|mix)(?:\s+(?:to consider|"
+    r"names?|stocks?|investments?|choices?|approaches?|mix|"
+    r"(?:short|watch|wish|check|bucket)?lists?)"
+    r"(?:\s+of\s+[^:.!?,]+)?"
+    r"(?:\s*,?\s*(?:each\s+with|with\s+one|for\s+each)\b[^:.!?]*)?"
+    r"(?:\s+(?:to consider|"
     r"worth considering|for comparison))?"
     r"|(?:(?:some|several|two|three|a couple of|a few)|potential|possible)\s+"
     r"(?:options?|ideas?|examples?|"

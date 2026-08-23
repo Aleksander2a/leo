@@ -318,6 +318,77 @@ def test_requested_output_preamble_without_items_fails_sufficiency(answer: str) 
     assert "do not stop after a list introduction" in sufficiency.detail.lower()
 
 
+UK_DIVIDEND_SHORTLIST_OBJECTIVE = (
+    "Give me a concise shortlist of three UK dividend-growth stocks, with one key trade-off "
+    "for each, and include a brief not-financial-advice caveat."
+)
+UK_DIVIDEND_SHORTLIST_PREAMBLE_ONLY_ANSWER = (
+    "Here's a concise shortlist of three UK dividend-growth stocks, each with one key "
+    "trade-off. (Not financial advice — this is general information, not a "
+    "recommendation; do your own research and consider your own circumstances before "
+    "investing.)"
+)
+UK_DIVIDEND_SHORTLIST_REPAIRED_ANSWER = (
+    "Here's a concise shortlist of three UK dividend-growth stocks, each with one key "
+    "trade-off: Unilever offers defensive income but slower growth; National Grid offers a "
+    "high yield but is rate-sensitive; Diageo offers dividend consistency but faces "
+    "consumer-spending risk. Not financial advice — do your own research."
+)
+
+
+def test_shortlist_preamble_without_items_fails_sufficiency() -> None:
+    """Regression test for the 2026-08-23 Railway smoke-test incident.
+
+    A real Slack reply consisted only of this announcement sentence plus the research
+    disclaimer, with no actual stocks or trade-offs. ``_requests_concrete_options`` missed
+    "shortlist" (compound word, no ``\\blist\\b`` boundary) and ``_is_output_preamble_only``
+    didn't recognize this phrasing as an introduction, so the empty answer passed
+    verification and was delivered to the user as-is.
+    """
+
+    outcome = _verify(
+        UK_DIVIDEND_SHORTLIST_PREAMBLE_ONLY_ANSWER,
+        objective=UK_DIVIDEND_SHORTLIST_OBJECTIVE,
+    )
+
+    sufficiency = next(item for item in outcome.result.checks if item.name == "answer_sufficiency")
+    assert sufficiency.passed is False
+    assert outcome.result.status is VerifierStatus.FAIL
+    assert outcome.result.retryable is True
+
+
+def test_shortlist_answer_with_real_content_passes_sufficiency() -> None:
+    outcome = _verify(
+        UK_DIVIDEND_SHORTLIST_REPAIRED_ANSWER,
+        objective=UK_DIVIDEND_SHORTLIST_OBJECTIVE,
+    )
+
+    sufficiency = next(item for item in outcome.result.checks if item.name == "answer_sufficiency")
+    assert sufficiency.passed is True
+    assert outcome.result.status is VerifierStatus.PASS
+
+
+@pytest.mark.asyncio
+async def test_shortlist_preamble_only_answer_retries_into_concrete_recommendations() -> None:
+    delegate = _RepairingGateway(
+        (UK_DIVIDEND_SHORTLIST_PREAMBLE_ONLY_ANSWER, UK_DIVIDEND_SHORTLIST_REPAIRED_ANSWER)
+    )
+    model = ElasticDeliberationGateway(
+        delegate,
+        ElasticDeliberationPolicy().assess(UK_DIVIDEND_SHORTLIST_OBJECTIVE),
+    )
+
+    result = await run_conversation_smoke(
+        model=model,
+        objective=UK_DIVIDEND_SHORTLIST_OBJECTIVE,
+        limits=BudgetLimits(max_iterations=3, max_model_calls=3, max_tool_calls=0),
+    )
+
+    assert result.run.status is RunStatus.COMPLETED
+    assert result.run.final_output == UK_DIVIDEND_SHORTLIST_REPAIRED_ANSWER
+    assert len(delegate.requests) == 2
+
+
 @pytest.mark.parametrize(
     "answer",
     [
@@ -604,7 +675,15 @@ async def test_live_preamble_only_answer_retries_into_concrete_recommendations()
 
 
 @pytest.mark.asyncio
-async def test_repeated_preamble_only_answer_is_bounded_by_no_progress() -> None:
+async def test_repeated_preamble_only_answer_delivers_best_effort_fallback() -> None:
+    """Once the bounded repair loop gives up, a claim-free answer is still delivered.
+
+    The model never produces real content here, so the run cannot succeed through
+    ordinary verification. But failing the user with no answer at all is worse than
+    delivering the last (imperfect) attempt: it carries no unverified claims, so it
+    is safe to hand back as a best-effort completion instead of a terminal error.
+    """
+
     delegate = _RepairingGateway((LIVE_PREAMBLE_ONLY_ANSWER, LIVE_PREAMBLE_ONLY_ANSWER))
     model = ElasticDeliberationGateway(
         delegate,
@@ -618,13 +697,21 @@ async def test_repeated_preamble_only_answer_is_bounded_by_no_progress() -> None
     )
 
     assert len(delegate.requests) == 2
-    assert result.run.status is RunStatus.FAILED
-    assert result.run.terminal_reason == "model_gateway_error:deliberation_repeated_decision"
+    assert result.run.status is RunStatus.COMPLETED
+    assert result.run.final_output == LIVE_PREAMBLE_ONLY_ANSWER
     assert sum(event.type is EventType.VERIFICATION_FAILED for event in result.events) == 1
+    fallback = next(
+        check
+        for event in result.events
+        if event.type is EventType.VERIFICATION_PASSED
+        for check in event.payload["checks"]
+        if check["name"] == "best_effort_fallback"
+    )
+    assert fallback["passed"] is True
 
 
 @pytest.mark.asyncio
-async def test_repeated_incomplete_repair_is_still_bounded_as_no_progress() -> None:
+async def test_repeated_incomplete_repair_delivers_best_effort_fallback() -> None:
     objective = "Suggest a few dividend-focused ideas."
     delegate = _RepairingGateway((LIVE_INCOMPLETE_ANSWER, LIVE_INCOMPLETE_ANSWER))
     model = ElasticDeliberationGateway(
@@ -639,6 +726,6 @@ async def test_repeated_incomplete_repair_is_still_bounded_as_no_progress() -> N
     )
 
     assert len(delegate.requests) == 2
-    assert result.run.status is RunStatus.FAILED
-    assert result.run.terminal_reason == "model_gateway_error:deliberation_repeated_decision"
+    assert result.run.status is RunStatus.COMPLETED
+    assert result.run.final_output == LIVE_INCOMPLETE_ANSWER.strip()
     assert sum(event.type is EventType.VERIFICATION_FAILED for event in result.events) == 1

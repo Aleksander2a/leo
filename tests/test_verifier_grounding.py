@@ -273,6 +273,125 @@ def test_relaxed_integration_grounding_accepts_model_synthesis_without_copy_exac
     assert outcome.completion.answer == "The model's concise consolidated summary."
 
 
+# A plan node with no verified nested source claims (context-only child), used for the
+# INFERENCE-paraphrase-acceptance case below. A plan node carrying verified nested
+# source-claim evidence (PLAN_DATA itself) triggers a separate, unrelated coverage
+# requirement (_research_plan_coverage_checks) that always demands an exact-copy
+# SOURCE_CLAIM citing every verified nested statement whenever the plan observation is
+# cited at all -- by design, regardless of relaxation. That mechanism is untouched by
+# this fix, so it is exercised deliberately (not accidentally) by the rejection test
+# below rather than the acceptance test.
+PLAN_DATA_WITHOUT_NESTED_EVIDENCE: dict[str, JsonValue] = deepcopy(PLAN_DATA)
+_plan_node_without_nested_evidence = PLAN_DATA_WITHOUT_NESTED_EVIDENCE["nodes"][0]
+assert isinstance(_plan_node_without_nested_evidence, dict)
+_plan_node_without_nested_evidence.pop("child_evidence")
+
+INFERENCE_PARAPHRASE_ACCEPT_CASES = (
+    (
+        "agent.delegate_research",
+        DELEGATE_DATA,
+        DELEGATE_SOURCE,
+        "Data center demand is holding up well.",
+    ),
+    (
+        "agent.execute_research_plan",
+        PLAN_DATA_WITHOUT_NESTED_EVIDENCE,
+        PLAN_SOURCE,
+        "Supply-side constraints appear to be loosening this quarter.",
+    ),
+)
+
+SOURCE_CLAIM_PARAPHRASE_REJECT_CASES = (
+    (
+        "agent.delegate_research",
+        DELEGATE_DATA,
+        DELEGATE_SOURCE,
+        "Data center demand is holding up well.",
+    ),
+    (
+        "agent.execute_research_plan",
+        PLAN_DATA,
+        PLAN_SOURCE,
+        "Supply-side constraints appear to be loosening this quarter.",
+    ),
+)
+
+
+@pytest.mark.parametrize(
+    ("kind", "data", "source", "paraphrase"),
+    INFERENCE_PARAPHRASE_ACCEPT_CASES,
+)
+def test_relaxed_integration_grounding_accepts_delegated_research_inference_paraphrase(
+    kind: str,
+    data: dict[str, JsonValue],
+    source: SourceRef,
+    paraphrase: str,
+) -> None:
+    """Paraphrased INFERENCE claims over delegated research get the same relaxation.
+
+    A parent agent that delegates research and then synthesizes the child's verified
+    findings in its own words should get the same paraphrase relaxation as
+    directly-fetched market/web/sec evidence. Regression test for a gap where
+    'agent.'-kind observations were never recognized as relaxed integration
+    observations, so a correct paraphrase of verified child research failed
+    verification even with relax_integration_grounding=True.
+    """
+    outcome = _verify(
+        kind,
+        data,
+        source,
+        paraphrase,
+        claim_kind=ClaimKind.INFERENCE,
+        answer=f"Summary: {paraphrase}",
+        relax_integration_grounding=True,
+    )
+    assert outcome.result.status is VerifierStatus.PASS
+    assert outcome.completion is not None
+
+    # Without relaxation, the exact same paraphrase must still fail closed -- proving
+    # the PASS above comes from the relaxation path, not from a lenient match rule.
+    strict_outcome = _verify(
+        kind,
+        data,
+        source,
+        paraphrase,
+        claim_kind=ClaimKind.INFERENCE,
+        answer=f"Summary: {paraphrase}",
+        relax_integration_grounding=False,
+    )
+    assert strict_outcome.result.status is VerifierStatus.FAIL
+
+
+@pytest.mark.parametrize(
+    ("kind", "data", "source", "paraphrase"),
+    SOURCE_CLAIM_PARAPHRASE_REJECT_CASES,
+)
+def test_relaxed_integration_grounding_still_rejects_delegated_research_source_claim_paraphrase(
+    kind: str,
+    data: dict[str, JsonValue],
+    source: SourceRef,
+    paraphrase: str,
+) -> None:
+    """Safety-preserving regression test.
+
+    The INFERENCE-only relaxation above must never extend to SOURCE_CLAIM. A source
+    claim asserts exact provenance from a child research task's verified evidence, so
+    a paraphrase must still fail even with relax_integration_grounding=True -- otherwise
+    the model could misattribute or subtly alter what the child actually found.
+    """
+    outcome = _verify(
+        kind,
+        data,
+        source,
+        paraphrase,
+        claim_kind=ClaimKind.SOURCE_CLAIM,
+        answer=f"Summary: {paraphrase}",
+        relax_integration_grounding=True,
+    )
+    assert outcome.result.status is VerifierStatus.FAIL
+    assert outcome.completion is None
+
+
 MALFORMED_CASES = (
     (
         "web.fetch_public_text",
