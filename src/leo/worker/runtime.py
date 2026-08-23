@@ -124,18 +124,36 @@ class DurableTaskWorker:
         if lease is None:
             return False
 
-        heartbeat = asyncio.create_task(self._heartbeat_loop(lease))
+        heartbeat: asyncio.Task[None] = asyncio.create_task(self._heartbeat_loop(lease))
+        handler: asyncio.Task[None] = asyncio.ensure_future(self._handler(lease))
         try:
-            await self._handler(lease)
+            # Losing the lease mid-run means another worker may already have
+            # claimed this task, so the handler must stop rather than race it to
+            # a second Slack reply. Waiting on both makes that observable; the
+            # heartbeat only finishes early by failing.
+            done, _pending = await asyncio.wait(
+                {handler, heartbeat},
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+            if heartbeat in done and handler not in done:
+                handler.cancel()
+                await asyncio.gather(handler, return_exceptions=True)
+                heartbeat.result()  # re-raise the lease failure
+                raise TaskLeaseConflictError("heartbeat stopped before the handler finished")
+            await handler
         except asyncio.CancelledError:
             await self._expire_safely(lease, "worker_stopped")
+            raise
+        except TaskLeaseConflictError:
+            # The lease is already someone else's; expiring it would clobber them.
             raise
         except Exception:
             await self._expire_safely(lease, "worker_handler_error")
             raise
         finally:
             heartbeat.cancel()
-            await asyncio.gather(heartbeat, return_exceptions=True)
+            handler.cancel()
+            await asyncio.gather(heartbeat, handler, return_exceptions=True)
 
         try:
             await self._leases.release(lease)
@@ -155,13 +173,18 @@ class DurableTaskWorker:
                 continue
 
     async def _heartbeat_loop(self, lease: TaskLease) -> None:
+        """Keep the lease alive, and surface the loss of it rather than hiding it.
+
+        Returning quietly on a conflict left the handler running against a lease
+        it no longer owned: the lease then expired, another worker claimed the
+        same task, and the user received two replies to one mention. Raising
+        cancels the handler through the task group instead.
+        """
+
         interval = max(0.1, self._lease_seconds / 3.0)
         while True:
             await asyncio.sleep(interval)
-            try:
-                await self._leases.heartbeat(lease, lease_seconds=self._lease_seconds)
-            except TaskLeaseConflictError:
-                return
+            await self._leases.heartbeat(lease, lease_seconds=self._lease_seconds)
 
     async def _expire_safely(self, lease: TaskLease, safe_error: str) -> None:
         try:

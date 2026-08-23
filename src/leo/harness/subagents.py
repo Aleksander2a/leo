@@ -67,6 +67,17 @@ from leo.harness.tools import ToolRegistry
 from leo.harness.transitions import cancel_task_and_run
 from leo.harness.verifier import DeterministicCompletionVerifier
 
+# One child turn is a model call plus at most a couple of bounded reads. The
+# child's wall clock is derived from its own turn count so the two budgets can
+# never drift apart again, and is capped just under the delegating tool's own
+# timeout so the parent observes a real child result rather than a tool timeout.
+_CHILD_SECONDS_PER_TURN = 20.0
+_CHILD_MAX_ELAPSED_SECONDS = 85.0
+
+
+def _child_elapsed_budget_seconds(max_turns: int) -> float:
+    return min(_CHILD_MAX_ELAPSED_SECONDS, max(30.0, max_turns * _CHILD_SECONDS_PER_TURN))
+
 
 class _DelegateArguments(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -385,6 +396,12 @@ class SubagentResearchTool:
                 max_iterations=parsed.max_turns,
                 max_model_calls=parsed.max_turns,
                 max_tool_calls=max(1, parsed.max_turns * 2),
+                # Without this the child inherited the 60s BudgetLimits default
+                # while the parent ran with 600s and this tool allowed 90s, so a
+                # 4-turn child reliably self-timed-out mid-research and the
+                # failure cascaded into the parent run. Derive it from the same
+                # turn count that sizes every other child budget.
+                max_elapsed_seconds=_child_elapsed_budget_seconds(parsed.max_turns),
             ),
         )
         store = self._run_store or InMemoryRunStore(self._clock, self._ids)

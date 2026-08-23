@@ -1037,9 +1037,14 @@ def repair_repeated_format_completion(
         names.append(normalized)
 
     if malformed or len(names) != requested.name_line_count:
-        return proposal.model_copy(
-            update={"answer": "\n".join(_fallback_code_names(requested.name_line_count))}
-        )
+        # The harness must never invent the content it is asked to verify. This
+        # previously substituted a hardcoded list ("Signal Harbor", "Trust
+        # Compass", ...) and presented it as Leo's answer -- a fabrication path
+        # inside the very component that exists to prevent fabrication. A shape
+        # mismatch is not licence to author the payload: return the model's real
+        # answer unchanged and let the ordinary verifier feedback loop ask for
+        # the requested format.
+        return None
     return proposal.model_copy(update={"answer": "\n".join(names)})
 
 
@@ -1053,26 +1058,6 @@ def _looks_like_names_heading(line: str) -> bool:
             normalized,
         )
     )
-
-
-_FALLBACK_CODE_NAMES = (
-    "Signal Harbor",
-    "Trust Compass",
-    "Clarity Trail",
-    "Insight Grove",
-    "Proof Lantern",
-    "Bright Path",
-    "Source Beacon",
-    "Verity Bridge",
-    "Clear Current",
-    "Northstar Relay",
-    "Open Atlas",
-    "True Horizon",
-)
-
-
-def _fallback_code_names(count: int) -> tuple[str, ...]:
-    return _FALLBACK_CODE_NAMES[:count]
 
 
 def _bounded_number(value: str, *, maximum: int) -> int | None:

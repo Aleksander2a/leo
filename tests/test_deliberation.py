@@ -838,7 +838,7 @@ async def test_live_grab_promise_dispatches_advertised_verified_read_now() -> No
     assert result.decision.calls[0].name == "web.research_verified"
     assert result.decision.calls[0].arguments == {"query": objective}
     assert result.provider == "leo-harness"
-    assert result.model == "elastic-verified-web-v1"
+    assert result.model == "elastic-web-research-verified-v2"
 
 
 @pytest.mark.asyncio

@@ -67,7 +67,24 @@ def normalize_success(
         raise NormalizationFailure("observation_data_not_object")
     encoded = canonical.encode("utf-8")
     if len(encoded) > max_bytes:
-        raise NormalizationFailure("observation_data_too_large")
+        # Oversize evidence used to be discarded outright, so Leo would fetch a
+        # long filing or article, throw the whole result away, and then report
+        # that it had no reliable source. Several tools also declare result caps
+        # above this ceiling (web.research_verified at 40KB, the subagent tools
+        # far higher), which made those routes structurally unable to succeed.
+        # Truncating preserves the leading, most relevant portion and marks the
+        # elision so the model knows the payload is partial.
+        decoded = _truncate_to_fit(decoded, max_bytes)
+        canonical = json.dumps(
+            decoded,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=True,
+            allow_nan=False,
+        )
+        encoded = canonical.encode("utf-8")
+        if len(encoded) > max_bytes:
+            raise NormalizationFailure("observation_data_too_large")
     try:
         kind = observation_kind or outcome.source.reference.split(":", 1)[0]
         return Observation(
@@ -88,6 +105,57 @@ def normalize_success(
         )
     except (AttributeError, TypeError, ValueError, ValidationError) as exc:
         raise NormalizationFailure("observation_contract_invalid") from exc
+
+
+_TRUNCATION_MARKER = "… [truncated by Leo's evidence boundary]"
+
+
+def _encoded_size(value: object) -> int:
+    return len(
+        json.dumps(
+            value, sort_keys=True, separators=(",", ":"), ensure_ascii=True, allow_nan=False
+        ).encode("utf-8")
+    )
+
+
+def _truncate_to_fit(data: dict[str, JsonValue], max_bytes: int) -> dict[str, JsonValue]:
+    """Shrink a payload to the evidence ceiling, largest contributor first.
+
+    Strings are cut (keeping their leading text, which is where the answer
+    usually is) and lists are shortened from the tail. Applied repeatedly until
+    the canonical encoding fits, so the model receives partial evidence rather
+    than nothing at all.
+    """
+
+    working: dict[str, JsonValue] = dict(data)
+    for _ in range(64):
+        if _encoded_size(working) <= max_bytes:
+            return working
+        widest_key: str | None = None
+        widest_size = 0
+        for key, value in working.items():
+            size = _encoded_size(value)
+            if size > widest_size:
+                widest_key, widest_size = key, size
+        if widest_key is None:
+            break
+        value = working[widest_key]
+        overshoot = _encoded_size(working) - max_bytes
+        if isinstance(value, str) and len(value) > len(_TRUNCATION_MARKER):
+            keep = max(0, len(value) - overshoot - len(_TRUNCATION_MARKER) - 8)
+            if keep <= 0:
+                working[widest_key] = _TRUNCATION_MARKER
+            else:
+                working[widest_key] = value[:keep] + _TRUNCATION_MARKER
+        elif isinstance(value, list) and value:
+            working[widest_key] = value[: max(1, len(value) // 2)] if len(value) > 1 else []
+        elif isinstance(value, dict) and value:
+            working[widest_key] = _truncate_to_fit(
+                value, max(1, max_bytes - (_encoded_size(working) - widest_size))
+            )
+        else:
+            working[widest_key] = _TRUNCATION_MARKER
+    return working
 
 
 def _quality_for_kind(kind: str) -> EvidenceQuality:

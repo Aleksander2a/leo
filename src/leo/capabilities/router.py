@@ -42,7 +42,7 @@ class AdaptiveRouter:
         role: str | None = None,
         roles: frozenset[str] | None = None,
         remaining_cost: float,
-        shortlist_limit: int = 5,
+        shortlist_limit: int = 8,
         namespace: ScopeKey | None = None,
         conversation_kind: str | None = None,
         tool_embeddings: dict[str, EmbeddingVector] | None = None,

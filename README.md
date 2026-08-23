@@ -321,25 +321,58 @@ Leo uses a model-assisted coordinator, not a framework-owned agent runtime. The 
 iteration, authority, context selection, tool routing, budgets, persistence, verification, and
 terminal truth.
 
-### One turn at a time
+### The plan/act/observe loop
 
 Each model request is built from a typed `RunBundle` and a fresh `ModelRequest`:
 
 1. The runtime creates an objective, task lineage, run phase, scope, and completion contract.
-2. Deliberation scores ambiguity, context sufficiency, freshness/evidence needs, dependencies,
-   effect risk, eligible tool health, information gain, and remaining budget.
-3. The harness presents the model with only the permitted tools and selected context.
-4. The model can answer, clarify, select a read, request independent reads, or prepare bounded
-   delegation within the supplied policy.
+2. Deliberation sets a depth envelope from ambiguity, context sufficiency, freshness/evidence
+   needs, effect risk, and remaining budget. The envelope is a floor and ceiling, not a route.
+3. Capability selection ranks the eligible catalog by hybrid retrieval — BM25 over tool metadata
+   and cosine similarity over description embeddings, fused with reciprocal rank fusion — and
+   presents the top candidates plus any always-available tools.
+4. The model chooses: answer, clarify, read one tool, read several in parallel, or delegate. It
+   also states a one-sentence `plan` describing what it is trying to establish.
 5. Tool calls are validated for name, arguments, effect, phase, role, and budget before execution.
 6. Integration results are recorded as normalized observations with provider, reference, freshness,
-   and bounded payload metadata.
-7. The next model request receives those observations and can reason through their actual normalized
-   content to produce the answer or request the next allowed read.
-8. The verifier checks completion against the request, evidence requirements, context authority,
+   and bounded payload metadata. Oversize payloads are truncated with a marker, never discarded.
+7. The harness appends a `ReasoningStep` — the model's plan, the action it took, and the outcome
+   **as observed by the harness** — to the task's durable scratchpad.
+8. The next model request carries the observations *and* that scratchpad, so the model can build
+   on its own prior work instead of cold-starting. Failed tool calls arrive as corrective feedback
+   naming the tool and the reason, so the model can fix arguments or switch tools.
+9. The verifier checks completion against the request, evidence requirements, context authority,
    formatting constraints, and safety rules. Rejected work receives structured feedback for a
    bounded corrective model turn.
-9. A verified result becomes durable terminal state and a Slack delivery intent.
+10. A verified result becomes durable terminal state and a Slack delivery intent. If the run
+    exhausts its budget while holding a substantive answer, that answer is delivered as a
+    best-effort completion rather than replaced by a failure message.
+
+The scratchpad is what makes this a loop rather than a sequence of independent turns. The `plan`
+is model-authored because only the model knows its intent; the `outcome` is always written by the
+harness from what actually happened, so a model cannot record its own success and read it back as
+fact on a later turn. The trace carries no authority — it cannot grant a capability, cite evidence,
+or satisfy a verifier check.
+
+### Routing: retrieval proposes, the model disposes
+
+Tool selection is hybrid retrieval, not a keyword table. Two independent channels are fused:
+
+- **Lexical (BM25)** over each tool's id, domain, short description, and curated tags. Literal by
+  design — it is what catches an exact provider or ticker mention.
+- **Semantic (embeddings)** over each tool's natural-language description of what it does and
+  returns. Deliberately *not* the tag bag: embedding a keyword salad makes the semantic channel a
+  blurry copy of the lexical one and re-imports its blind spots.
+
+Vectors are `openai/text-embedding-3-small` via OpenRouter, cached in-process and persisted to
+Postgres (`capability_embeddings`, pgvector) keyed by content hash, so a tool is embedded once per
+description change rather than once per turn.
+
+Research availability inverts the burden of proof. A confident lexical signal makes an external
+read *obligatory*; its absence does not make research unavailable. Anything not recognizably a
+self-contained conversational turn keeps the full web-search ladder advertised, so "no confident
+tool match" degrades to "search the web", never to "no tools at all". A search that was not needed
+costs a few cents; a question that goes unanswered costs the product.
 
 The model never grants itself a new conversation, actor, organization, strategy, capability, or
 write permission. A child task receives a least-needed projection of parent authority and can return
@@ -373,8 +406,15 @@ human-readable response and a useful next step.
 
 ### Verification and response rendering
 
-The verifier is responsible for whether a run is complete, not for exposing internal tool details.
-Slack rendering uses the model's consolidated answer and adds a financial-research disclaimer where
+The verifier decides whether a run is complete, not whether Leo is allowed to be useful. It holds
+the anti-fabrication line — claims must cite real observation IDs, quoted market figures must match
+a retrieved quote, and Leo may not claim a read it did not perform — while process and formatting
+failures degrade to corrective feedback rather than a terminal refusal. The harness never authors
+answer content: a shape mismatch returns the model's real answer, never a substitute.
+
+Slack rendering converts the model's Markdown to Slack `mrkdwn` (bold, links, bullets, headings)
+after HTML-escaping, so a well-formed answer does not arrive full of literal asterisks and brackets.
+Fenced and inline code are preserved verbatim. A financial-research disclaimer is added where
 appropriate. Evidence, source, uncertainty, observation, verifier, and run metadata remain available
 in durable records and replay artifacts rather than being appended to ordinary Slack messages.
 
@@ -386,6 +426,18 @@ Context and memory are related but separate systems:
   conversation turns, current task lineage, model observations, tools, skills, and verifier feedback.
 - **Memory** is durable information deliberately promoted from a conversation or other authorized
   source for later retrieval.
+
+### Working memory (the ReAct scratchpad)
+
+`tasks.scratchpad` holds a bounded list of `{iteration, plan, action, outcome}` steps — Leo's record
+of what it tried this run and why. The most recent twelve reach each model request as
+`previous_steps`; the durable column keeps up to thirty-two so a resumed run does not cold-start.
+
+Without it, every iteration rebuilt a stateless prompt, and by iteration four the model could not
+tell which tools it had already called, with what arguments, or what it was trying to establish.
+Multi-step work ("I have the quote, now I need earnings, then I compare") was impossible, and
+near-identical prompts produced near-identical decisions that then tripped the no-progress guard.
+`GET /dashboard/runs/{run_id}/reasoning` exposes the trace for operators.
 
 ### Context assembly
 

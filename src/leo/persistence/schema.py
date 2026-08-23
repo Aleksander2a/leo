@@ -95,6 +95,11 @@ class TaskRow(Base):
     status: Mapped[str] = mapped_column(String(32), nullable=False)
     observation_ids: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
     verifier_feedback: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    # Leo's ReAct working memory: the plan/action/result trace of this task's own
+    # earlier iterations, so a resumed or multi-turn run does not cold-start.
+    scratchpad: Mapped[list[dict[str, object]]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
     final_output: Mapped[str | None] = mapped_column(Text)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(

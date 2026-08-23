@@ -152,6 +152,54 @@ def render_research_result(
     )
 
 
+_MD_FENCE = re.compile(r"```[\s\S]*?```")
+_MD_INLINE_CODE = re.compile(r"`[^`\r\n]+`")
+_MD_LINK = re.compile(r"\[([^\]\r\n]{1,256})\]\((https?://[^\s)]{1,2000})\)")
+_MD_HEADING = re.compile(r"(?m)^\s{0,3}#{1,6}\s+(.+?)\s*#*\s*$")
+_MD_BOLD = re.compile(r"\*\*(?!\s)([^*\r\n]+?)(?<!\s)\*\*")
+_MD_BOLD_UNDERSCORE = re.compile(r"(?<![\w_])__(?!\s)([^_\r\n]+?)(?<!\s)__(?![\w_])")
+_MD_BULLET = re.compile(r"(?m)^(\s*)[-*+]\s+")
+_MD_RULE = re.compile(r"(?m)^\s*(?:---+|\*\*\*+|___+)\s*$")
+
+
+def markdown_to_mrkdwn(text: str) -> str:
+    """Convert the Markdown models actually emit into Slack's mrkdwn dialect.
+
+    Slack does not render Markdown. Answers were posted verbatim, so a model's
+    ``**bold**`` arrived as literal asterisks, ``[label](url)`` as literal
+    brackets, and ``## Heading`` as a stray hash -- a good answer that looked
+    broken. Fenced and inline code are masked first so their contents survive
+    untouched, and the substitutions are deliberately conservative: anything not
+    confidently recognized is left exactly as written.
+    """
+
+    protected: list[str] = []
+
+    def _mask(match: re.Match[str]) -> str:
+        protected.append(match.group(0))
+        return f"\x00{len(protected) - 1}\x00"
+
+    masked = _MD_FENCE.sub(_mask, text)
+    masked = _MD_INLINE_CODE.sub(_mask, masked)
+
+    # Links first: their label may itself contain emphasis markers.
+    masked = _MD_LINK.sub(lambda m: f"<{m.group(2)}|{m.group(1)}>", masked)
+    # Slack has no headings; bold carries the same weight.
+    masked = _MD_HEADING.sub(lambda m: f"*{m.group(1)}*", masked)
+    masked = _MD_BOLD.sub(lambda m: f"*{m.group(1)}*", masked)
+    masked = _MD_BOLD_UNDERSCORE.sub(lambda m: f"*{m.group(1)}*", masked)
+    masked = _MD_BULLET.sub(lambda m: f"{m.group(1)}• ", masked)
+    masked = _MD_RULE.sub("", masked)
+
+    # Restore highest index first. Inline-code spans are masked after fenced
+    # blocks, so an inline-code original can itself contain a fence placeholder;
+    # restoring forwards would reinsert that placeholder after its turn had
+    # already passed and leave the marker in the delivered text.
+    for index in range(len(protected) - 1, -1, -1):
+        masked = masked.replace(f"\x00{index}\x00", protected[index])
+    return masked.replace("\x00", "")
+
+
 class SlackRenderPolicyError(ValueError):
     """The typed result cannot be rendered under the conservative policy."""
 
@@ -161,7 +209,9 @@ def render_slack_text(text: str, *, max_chars: int = MAX_SLACK_CHARS) -> Rendere
         raise ValueError("max_chars must be positive")
     if not text:
         raise ValueError("Slack text must be non-empty")
-    return _chunk_sanitized_text(_escape_text(text), max_chars=max_chars)
+    # Conversion runs *after* escaping so the `<url|label>` markup it emits is
+    # not itself escaped, and so no `<` in the model's prose can forge markup.
+    return _chunk_sanitized_text(markdown_to_mrkdwn(_escape_text(text)), max_chars=max_chars)
 
 
 def render_terminal_result(
@@ -182,7 +232,10 @@ def render_terminal_result(
     normalized_status = status.strip()[:64].casefold()
     if normalized_status == RunStatus.COMPLETED.value and result.completed_output:
         return _chunk_sanitized_text(
-            _hide_internal_run_id(_escape_text(result.completed_output), run_id),
+            _hide_internal_run_id(
+                markdown_to_mrkdwn(_escape_text(result.completed_output)),
+                run_id,
+            ),
             max_chars=max_chars,
         )
 

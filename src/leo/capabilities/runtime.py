@@ -75,12 +75,14 @@ class CapabilityRuntime:
         always_available_tool_names: frozenset[str] = frozenset(),
         required_tool_names: frozenset[str] = frozenset(),
         profile: str = "research",
-        # Wide enough that a broad web-search tool and a narrow provider-specific
-        # tool can both surface for an ambiguous query (fusion ranks them, the
-        # model chooses), not so wide that every turn's prompt carries schemas the
-        # query never plausibly needed.
-        shortlist_limit: int = 5,
-        max_selected_tools: int = 6,
+        # Hybrid retrieval (BM25 + embedding cosine, fused by RRF) proposes; the
+        # model disposes. The shortlist therefore needs to be wide enough that a
+        # comparison or aggregation question sees several providers at once --
+        # at 5/6 a question needing three market providers plus web search had to
+        # win a ranking contest to see them all, and a near-miss silently became
+        # "no tool for this". Schemas are small next to the cost of not answering.
+        shortlist_limit: int = 8,
+        max_selected_tools: int = 10,
         max_search_calls: int = 2,
         max_describe_calls: int = 2,
         max_described_tools: int = 3,
@@ -145,6 +147,13 @@ class CapabilityRuntime:
             namespace=trusted_scope.namespace,
             conversation_kind=conversation_kind,
         )
+        # A tool that requires a URL it cannot invent is a *follow-up* to a
+        # search, not a candidate for answering a question outright. Leaving it
+        # in the shortlist let phrases like "look up ..." rank a page-fetcher
+        # against the provider tool that could actually answer, spending a slot
+        # on a tool the turn has no argument for. Once a search has produced a
+        # URL it becomes eligible again.
+        eligible = _drop_unusable_url_tools(eligible, bundle)
         selected_skills = self._select_skills(bundle.task.objective, eligible)
         routing_objective = _routing_objective(bundle.task.objective, selected_skills)
         route = self._router.route(
@@ -472,6 +481,36 @@ class CapabilityRuntime:
             return skill_catalog.discover()
         except (OSError, SkillLoadError, ValueError):
             return ()
+
+
+def _requires_a_url_argument(spec: ToolSpec) -> bool:
+    required = spec.input_schema.get("required")
+    if not isinstance(required, list):
+        return False
+    return any(
+        isinstance(name, str) and (name == "url" or name.endswith("_url")) for name in required
+    )
+
+
+def _a_url_is_available(bundle: RunBundle) -> bool:
+    if "http://" in bundle.task.objective or "https://" in bundle.task.objective:
+        return True
+    return any(
+        "http://" in serialized or "https://" in serialized
+        for observation in bundle.observations
+        if (serialized := json.dumps(observation.data, default=str))
+    )
+
+
+def _drop_unusable_url_tools(
+    eligible: tuple[CatalogTool, ...],
+    bundle: RunBundle,
+) -> tuple[CatalogTool, ...]:
+    """Hide URL-consuming tools until some URL actually exists to pass them."""
+
+    if _a_url_is_available(bundle):
+        return eligible
+    return tuple(record for record in eligible if not _requires_a_url_argument(record.spec))
 
 
 def _routing_objective(objective: str, skills: tuple[SkillSummary, ...]) -> str:

@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 
 from leo.harness.models import (
     BudgetUsage,
+    ReasoningStep,
     Run,
     RunStatus,
     Task,
@@ -164,6 +165,7 @@ def advance_step(
     usage: BudgetUsage,
     observation_ids: tuple[str, ...] | None = None,
     verifier_feedback: tuple[str, ...] | None = None,
+    reasoning_step: ReasoningStep | None = None,
 ) -> tuple[Task, Run]:
     _require_active(task, run)
     task_update: dict[str, object] = {"version": task.version + 1}
@@ -171,6 +173,10 @@ def advance_step(
         task_update["observation_ids"] = observation_ids
     if verifier_feedback is not None:
         task_update["verifier_feedback"] = verifier_feedback
+    if reasoning_step is not None:
+        # Bounded: the oldest steps fall off so a long run cannot grow the task
+        # row without limit, while the recent trace the model needs stays intact.
+        task_update["scratchpad"] = (*task.scratchpad, reasoning_step)[-32:]
     return (
         task.model_copy(update=task_update),
         run.model_copy(

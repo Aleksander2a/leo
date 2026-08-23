@@ -52,7 +52,16 @@ _SYSTEM_PROMPT_PREFIX = (
     "recommendation questions), call multiple relevant tools or providers and synthesize "
     "across their results instead of stopping after one or giving up with a caveat and no "
     "content; for a single specific fact with one clear authoritative source, one call is "
-    "enough."
+    "enough. "
+    "You are running a plan/act/observe loop. previous_steps is your own record of what "
+    "you already tried this run and what came back; read it first and build on it rather "
+    "than repeating a call. Always set `plan` to one sentence describing what you are "
+    "trying to establish with this decision -- it becomes the next turn's memory. "
+    "If a tool failed, previous_steps and verifier_feedback say why: correct the "
+    "arguments or choose a different tool rather than reissuing the same call. "
+    "If you cannot fully answer, give the most useful partial answer you can with an "
+    "explicit caveat about what is missing; never reply with only an apology or a "
+    "request for a source when a web search is available to you."
 )
 
 
@@ -121,6 +130,8 @@ class _CompletionPayload(BaseModel):
     inferences: tuple[_InferencePayload, ...]
     affected_assumption: str | None = Field(default=None, min_length=1)
     uncertainty: str | None = Field(default=None, min_length=1)
+    # One sentence of intent, carried into the next turn's working memory.
+    plan: str = Field(default="", max_length=600)
 
 
 class OpenRouterGateway:
@@ -209,7 +220,14 @@ class OpenRouterGateway:
                     )
                 )
             return ModelTurnResult(
-                decision=ToolRequests(calls=tuple(calls)),
+                # A tool-calling turn has no JSON body, so any prose the model
+                # emitted alongside its calls is its stated intent. Recording it
+                # keeps the plan/act/observe trace continuous across both
+                # decision shapes rather than only on completions.
+                decision=ToolRequests(
+                    calls=tuple(calls),
+                    plan=" ".join((message.content or "").split())[:600],
+                ),
                 provider="openrouter",
                 model=completion.model,
                 request_id=completion.id,
@@ -250,6 +268,7 @@ class OpenRouterGateway:
                 claims=claims,
                 affected_assumption=payload.affected_assumption,
                 uncertainty=payload.uncertainty,
+                plan=payload.plan,
             ),
             provider="openrouter",
             model=completion.model,
@@ -295,6 +314,12 @@ class OpenRouterGateway:
             "verifier_feedback": request.verifier_feedback,
             "tool_choice_policy": request.tool_choice.model_dump(mode="json"),
             "completion_contract": request.completion_contract.model_dump(mode="json"),
+            # Working memory from this run's own earlier iterations. Without it
+            # each turn was a cold start: the model could not tell what it had
+            # already tried, so multi-step work was impossible and near-identical
+            # inputs produced near-identical outputs that tripped the
+            # no-progress guard.
+            "previous_steps": [step.render() for step in request.scratchpad],
         }
         return {
             "model": self._model,
@@ -387,9 +412,16 @@ def _completion_schema(
     required = schema.get("required")
     if not isinstance(required, list):
         raise RuntimeError("completion schema has no required property list")
-    for field_name in ("affected_assumption", "uncertainty"):
+    for field_name in ("affected_assumption", "uncertainty", "plan"):
         if field_name not in required:
             required.append(field_name)
+    plan = properties.get("plan")
+    if isinstance(plan, dict):
+        plan["description"] = (
+            "One sentence stating what you are trying to establish with this decision. "
+            "It becomes the next turn's working memory, so make it specific enough to "
+            "build on."
+        )
     _set_item_bounds(
         source_claims,
         contract.source_claim_count.minimum,

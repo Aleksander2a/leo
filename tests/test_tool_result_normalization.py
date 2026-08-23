@@ -11,7 +11,6 @@ from leo.harness.models import (
     EventType,
     EvidenceQuality,
     RunPhase,
-    RunStatus,
     SourceRef,
     ToolEffect,
     ToolExecutionContext,
@@ -86,15 +85,23 @@ def _malformed() -> ToolSuccess:
     ("factory", "expected_code"),
     [
         (_non_finite, "TOOL_RESULT_NON_FINITE"),
-        (_oversized, "TOOL_RESULT_TOO_LARGE"),
         (_malformed, "TOOL_RESULT_INVALID"),
     ],
-    ids=("nonfinite", "oversized", "malformed"),
+    ids=("nonfinite", "malformed"),
 )
-async def test_invalid_parallel_provider_result_is_an_atomic_typed_failure(
+async def test_unusable_provider_result_fails_without_voiding_its_siblings(
     factory: Callable[[], ToolSuccess],
     expected_code: str,
 ) -> None:
+    """A structurally unusable result costs that call, not the whole batch.
+
+    Non-finite numbers and non-JSON values cannot become evidence at all, so the
+    call still fails with its typed code. What must NOT happen is the sibling's
+    good observation being discarded: the harness previously voided every
+    successfully normalized result in the batch, so Leo threw away market data it
+    had already paid for and then reported that it had no source.
+    """
+
     result = await run_quote_smoke(
         model=TwoToolBatchModel(),
         tool_registry=ToolRegistry(
@@ -106,16 +113,44 @@ async def test_invalid_parallel_provider_result_is_an_atomic_typed_failure(
         limits=BudgetLimits(max_iterations=2, max_model_calls=2, max_tool_calls=2),
     )
 
-    assert result.run.status is RunStatus.FAILED
-    assert result.run.terminal_reason == f"tool_failure:{expected_code}"
-    assert result.observations == ()
-    assert result.task.observation_ids == ()
-    assert EventType.OBSERVATION_CREATED not in {event.type for event in result.events}
-    assert EventType.TOOL_COMPLETED not in {event.type for event in result.events}
     failed = [event for event in result.events if event.type is EventType.TOOL_FAILED]
-    assert len(failed) == 1
-    assert failed[0].payload["code"] == expected_code
-    assert failed[0].payload["retryable"] is False
+    assert [event.payload["code"] for event in failed] == [expected_code]
+
+    # The healthy sibling's evidence survives and is durably linked to the task.
+    assert [observation.kind for observation in result.observations] == ["market.get_quote"]
+    assert result.task.observation_ids == (result.observations[0].id,)
+    assert EventType.OBSERVATION_CREATED in {event.type for event in result.events}
+
+
+@pytest.mark.asyncio
+async def test_oversized_provider_result_is_truncated_rather_than_discarded() -> None:
+    """Oversize evidence is cut down to the ceiling, not thrown away.
+
+    Discarding it meant Leo could fetch a long filing or article, drop the entire
+    result, and then answer that it had no reliable source. Several tools also
+    declare result caps above the normalization ceiling, which made those routes
+    structurally unable to ever succeed.
+    """
+
+    result = await run_quote_smoke(
+        model=TwoToolBatchModel(),
+        tool_registry=ToolRegistry(
+            (
+                FakeQuoteTool(FixedClock()),
+                _InvalidResultTool(_oversized),
+            )
+        ),
+        limits=BudgetLimits(max_iterations=2, max_model_calls=2, max_tool_calls=2),
+    )
+
+    kinds = {observation.kind for observation in result.observations}
+    assert kinds == {"market.get_quote", "market.fail"}
+    truncated = next(item for item in result.observations if item.kind == "market.fail")
+    payload = truncated.data["payload"]
+    assert isinstance(payload, str)
+    assert payload.startswith("x")
+    assert payload.endswith("[truncated by Leo's evidence boundary]")
+    assert not [event for event in result.events if event.type is EventType.TOOL_FAILED]
 
 
 def test_integration_api_reexports_the_harness_normalizer_for_adapter_mcp_parity() -> None:

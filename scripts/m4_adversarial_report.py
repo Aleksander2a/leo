@@ -30,12 +30,13 @@ class ThreatCase:
 
 CASES = (
     ThreatCase(
-        id="provider-result-atomicity",
-        threat="Malformed, non-finite, or oversized provider output creates evidence",
+        id="provider-result-integrity",
+        threat="Malformed or non-finite provider output creates evidence",
         expected_result="blocked",
         safety_counter="false_success_count",
         selectors=(
-            "tests/test_tool_result_normalization.py::test_invalid_parallel_provider_result_is_an_atomic_typed_failure",
+            "tests/test_tool_result_normalization.py::test_unusable_provider_result_fails_without_voiding_its_siblings",
+            "tests/test_tool_result_normalization.py::test_oversized_provider_result_is_truncated_rather_than_discarded",
         ),
     ),
     ThreatCase(

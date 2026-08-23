@@ -14,6 +14,8 @@ import json
 import re
 from enum import StrEnum
 
+from pydantic import JsonValue
+
 from leo.harness.models import (
     CandidateClaim,
     ClaimKind,
@@ -27,6 +29,7 @@ from leo.harness.models import (
     ModelTurnResult,
     ModelUsage,
     NonEmptyStr,
+    Observation,
     ObservationStatus,
     ToolChoiceMode,
     ToolEffect,
@@ -1072,7 +1075,6 @@ def _recover_non_terminal_deferral(
     missing_input_question = _missing_research_input_question(request, envelope)
     canonical_exa = _canonical_exa_deferral_completion(request)
     selected_url = selected_tavily_result_url(request)
-    family_observed = any(item.kind == "web.research_verified" for item in request.observations)
     sealed_required_read = _sealed_required_read(request)
     repaired_decision: ToolRequests | CompletionProposal
     if missing_input_question is not None:
@@ -1099,61 +1101,10 @@ def _recover_non_terminal_deferral(
         )
         finish_reason = "tool_calls"
         model = "elastic-research-fetch-v1"
-    elif selected_url is None and not family_observed and "web.research_verified" in advertised:
-        query = " ".join(request.objective.split())[:256].strip()
-        if len(query) < 2:
-            query = "reliable source"
-        repaired_decision = ToolRequests(
-            calls=(
-                ToolRequest(
-                    id=f"elastic-verified-web-{request.iteration}",
-                    name="web.research_verified",
-                    arguments={"query": query},
-                ),
-            )
-        )
+    elif (next_search := _next_untried_search(request, advertised)) is not None:
+        repaired_decision = ToolRequests(calls=(next_search,))
         finish_reason = "tool_calls"
-        model = "elastic-verified-web-v1"
-    elif (
-        selected_url is None
-        and not family_observed
-        and "web.search_tavily" in advertised
-        and "web.search_exa" not in advertised
-    ):
-        query = " ".join(request.objective.split())[:256].strip()
-        if len(query) < 2:
-            query = "reliable source"
-        repaired_decision = ToolRequests(
-            calls=(
-                ToolRequest(
-                    id=f"elastic-search-{request.iteration}",
-                    name="web.search_tavily",
-                    arguments={
-                        "query": query,
-                        "max_results": 3,
-                        "search_depth": "basic",
-                        "topic": "general",
-                    },
-                ),
-            )
-        )
-        finish_reason = "tool_calls"
-        model = "elastic-research-search-v1"
-    elif selected_url is None and not family_observed and "web.search_exa" in advertised:
-        query = " ".join(request.objective.split())[:512].strip()
-        if len(query) < 2:
-            query = "reliable source"
-        repaired_decision = ToolRequests(
-            calls=(
-                ToolRequest(
-                    id=f"elastic-exa-search-{request.iteration}",
-                    name="web.search_exa",
-                    arguments={"query": query},
-                ),
-            )
-        )
-        finish_reason = "tool_calls"
-        model = "elastic-exa-search-v1"
+        model = f"elastic-{next_search.name.replace('.', '-').replace('_', '-')}-v2"
     elif (
         "memory.search" in advertised
         and not any(item.kind == "memory.search" for item in request.observations)
@@ -1174,14 +1125,13 @@ def _recover_non_terminal_deferral(
         finish_reason = "tool_calls"
         model = "elastic-memory-search-v1"
     else:
-        repaired_decision = CompletionProposal(
-            answer=(
-                "I'm missing a reliable source needed for that answer. Could you share the "
-                "source or specific material I should use?"
-            )
-        )
-        finish_reason = "stop"
-        model = "elastic-research-clarification-v1"
+        # Nothing left to try deterministically. Historically this branch emitted
+        # "I'm missing a reliable source needed for that answer", which discarded
+        # a real model answer and told the user nothing. The model's own proposal
+        # is strictly more useful than that sentence, so keep it: the verifier
+        # still gets to judge it, and terminal delivery still applies its own
+        # caveats. Refusal is never manufactured here.
+        return result
     return result.model_copy(
         update={
             "decision": repaired_decision,
@@ -1190,6 +1140,77 @@ def _recover_non_terminal_deferral(
             "finish_reason": finish_reason,
         }
     )
+
+
+_SEARCH_LADDER: tuple[str, ...] = (
+    "web.research_verified",
+    "web.search_exa",
+    "web.search_tavily",
+    "web.search_public",
+)
+
+
+def _search_arguments(name: str, query: str) -> dict[str, JsonValue]:
+    if name == "web.search_tavily":
+        return {
+            "query": query,
+            "max_results": 5,
+            "search_depth": "advanced",
+            "topic": "general",
+        }
+    return {"query": query}
+
+
+def _productive_observation(observation: Observation) -> bool:
+    """Return whether a read actually yielded something worth reasoning over.
+
+    A retrieved-but-empty search is not evidence that the web has been
+    consulted. Treating it as such was what capped Leo at one search attempt per
+    run: the next branch was skipped because an observation of that kind merely
+    *existed*.
+    """
+
+    if observation.status is not ObservationStatus.RETRIEVED:
+        return False
+    for field in ("results", "statements", "highlights", "items"):
+        value = observation.data.get(field)
+        if isinstance(value, list) and value:
+            return True
+    text = observation.data.get("text")
+    return isinstance(text, str) and len(text.strip()) > 40
+
+
+def _next_untried_search(
+    request: ModelRequest,
+    advertised: frozenset[str],
+) -> ToolRequest | None:
+    """Pick the next advertised search provider that has not yet produced evidence.
+
+    This replaces a mutually-exclusive if/elif chain in which Tavily was only
+    reachable when Exa was *absent*, and in which any single attempt -- however
+    empty -- suppressed every remaining provider. Failover is the point: if one
+    provider returns nothing useful, try the next one before giving up.
+    """
+
+    productive = {
+        observation.kind
+        for observation in request.observations
+        if _productive_observation(observation)
+    }
+    if productive.intersection(_SEARCH_LADDER):
+        return None
+    attempted = {observation.kind for observation in request.observations}
+    query = " ".join(request.objective.split())[:400].strip()
+    if len(query) < 2:
+        return None
+    for name in _SEARCH_LADDER:
+        if name in advertised and name not in attempted:
+            return ToolRequest(
+                id=f"elastic-{name.replace('.', '-')}-{request.iteration}",
+                name=name,
+                arguments=_search_arguments(name, query),
+            )
+    return None
 
 
 def _missing_research_input_question(
@@ -1281,16 +1302,62 @@ def _canonical_exa_deferral_completion(request: ModelRequest) -> CompletionPropo
     return None
 
 
+_SUBSTANTIVE_CONTENT = re.compile(
+    # A number, a money/percent figure, a date, a ticker, or a proper noun --
+    # anything indicating the answer carries content rather than only an apology.
+    r"\d|\$|%|\b[A-Z]{2,6}\b|\b[A-Z][a-z]{2,}\b"
+)
+
+
+def answer_is_substantive(answer: str) -> bool:
+    """Return whether an answer carries content a reader could actually use.
+
+    Length alone is a poor signal (a long apology is still an apology), so this
+    also requires at least one concrete token: a figure, a date, a symbol, or a
+    proper noun.
+    """
+
+    stripped = answer.strip()
+    if len(stripped.split()) < 12:
+        return False
+    return _SUBSTANTIVE_CONTENT.search(stripped) is not None
+
+
 def _is_non_terminal_deferral(answer: str) -> bool:
+    """Detect an answer that defers work instead of delivering it.
+
+    Two deliberate narrowings relative to the original predicate:
+
+    1. A *substantive* answer is never a deferral. Previously any answer
+       containing "I don't have current data ..." was rewritten -- including
+       "I don't have current market data for GOOG, but consensus year-end
+       targets cluster around $210-$230", which is a genuinely useful reply.
+       Rewriting those both discarded good work and applied steady pressure
+       toward unhedged, overconfident prose.
+    2. The missing-evidence phrasing must be the answer's *substance*, not an
+       aside inside a real answer.
+
+    A forward promise of work Leo will not actually do stays a deferral at any
+    length: that one is a broken promise regardless of what surrounds it.
+    """
+
+    if contains_future_action_promise(answer):
+        return True
+    if answer_is_substantive(answer):
+        return False
     normalized = " ".join(answer.casefold().replace("\u2019", "'").replace("\u2018", "'").split())
     missing_evidence = re.search(
         r"\b(?:i|we)\s+(?:do not|don't|cannot|can't)\s+(?:have|know)\b.{0,100}"
         r"\b(?:reliable|current|enough|source|information|evidence|detail)\b"
         r"|\b(?:i|we)\s+(?:still\s+)?(?:need|require)\b.{0,80}"
-        r"\b(?:source|information|evidence|provider data|web access)\b",
+        r"\b(?:source|information|evidence|provider data|web access)\b"
+        # "I'm missing a reliable source ..." -- the harness's own former canned
+        # refusal, which its own classifier did not recognize as one.
+        r"|\b(?:i'm|i am|we're|we are)\s+missing\b.{0,80}"
+        r"\b(?:source|information|evidence|data|material)\b",
         normalized,
     )
-    return contains_future_action_promise(answer) or missing_evidence is not None
+    return missing_evidence is not None
 
 
 def ranked_tavily_result_urls(request: ModelRequest) -> tuple[str, ...]:

@@ -126,6 +126,11 @@ class DefaultContextAssembler:
             completion_contract=self._completion_contract,
             manifest=manifest,
             context_items=selected_context_items,
+            # Working memory is small and bounded, and it is the only thing
+            # letting iteration N build on iteration N-1. Keep the most recent
+            # steps rather than the oldest: what Leo just tried matters more than
+            # how it opened.
+            scratchpad=bundle.task.scratchpad[-12:],
         )
 
     def _budget_for(self, bundle: RunBundle) -> ContextBudget:

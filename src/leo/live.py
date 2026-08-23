@@ -190,6 +190,16 @@ _SKILL_ROOT = Path(__file__).resolve().parents[2] / "resources" / "leo-skills"
 _EMPTY_MEMORY_SCOPE_INFERENCE = (
     "No matching authorized memory was found in this conversation scope."
 )
+# Kept in sync with `deliberation._SEARCH_LADDER`, which walks the same routes as
+# a deterministic failover order when the model itself stops making progress.
+_WEB_SEARCH_LADDER = frozenset(
+    {
+        "web.research_verified",
+        "web.search_exa",
+        "web.search_tavily",
+        "web.search_public",
+    }
+)
 _PARENT_ORCHESTRATION_TOOL_NAMES = frozenset(
     {
         "agent.delegate_research",
@@ -874,7 +884,11 @@ async def run_live_conversation(
         )
         research_tools.append(exa_tool)
         if tavily_tool is not None:
-            # Advertise a provider family only when both routes really exist. The
+            # The family tool exists to fail over *between* providers, so it is
+            # only meaningful when both routes are configured. A single-provider
+            # deployment is still guaranteed a web fallback: every registered
+            # search route is advertised via `_WEB_SEARCH_LADDER`, and
+            # `deliberation._next_untried_search` walks the same ladder. The
             # instances share their credential-level gates with the direct tools.
             research_tools.append(
                 VerifiedWebResearchTool(
@@ -1085,6 +1099,20 @@ async def run_live_conversation(
             or category_screening_research_required
         )
     )
+    # Availability is decided before capability selection so the search ladder can
+    # be advertised even when neither lexical nor semantic ranking produces a
+    # confident match. "No obvious tool" must degrade to "search the web", never
+    # to "no tools at all".
+    # A memory turn no longer *forbids* research. "Remember what we said about
+    # NVDA, then check where it's trading" is one question, and treating memory
+    # and integrations as mutually exclusive made it unanswerable by
+    # construction. The memory obligation still runs first via REQUIRED tool
+    # choice; once it is satisfied, later AUTO turns may also read the web.
+    research_tools_available = not direct_tool_free_turn and (
+        direct_external_evidence_required
+        or _research_is_available(objective, ())
+        or _research_is_available(routing_objective, ())
+    )
     verified_web_objective = (
         objective if explicit_provider_intent is not None else routing_objective
     )
@@ -1144,12 +1172,12 @@ async def run_live_conversation(
         skill_catalog=None if direct_tool_free_turn else SkillCatalog(_SKILL_ROOT),
         always_available_tool_names=(
             _PARENT_ORCHESTRATION_TOOL_NAMES
-            # A general web-research fallback stays genuinely available regardless
-            # of what lexical/semantic ranking surfaces for an ambiguous or
-            # multi-entity query -- the model may still reason its way to it even
-            # when no narrower provider tool obviously fits. Only takes effect if
-            # the tool is actually registered (a search provider is configured).
-            | frozenset({"web.research_verified"})
+            # Every registered web-search route stays advertised whenever research
+            # is available -- not just the combined family tool. Ranking decides
+            # what Leo reaches for *first*; it must never decide whether searching
+            # is possible at all. Names for unregistered tools are inert here, so
+            # a single-provider deployment simply advertises fewer of them.
+            | (_WEB_SEARCH_LADDER if research_tools_available else frozenset())
             | frozenset(tool.spec.name for tool in navigation_tools)
             | frozenset(tool.spec.name for tool in thread_context_tools)
         )
@@ -1223,6 +1251,9 @@ async def run_live_conversation(
         if memory_bound_turn or direct_tool_free_turn or plain_single_evidence_lookup
         else _selected_research_requirement(objective, skill_items)
     )
+    # Obligation: raises the deliberation floor so the model must actually read
+    # something. Reserved for the confident lexical signal so a trivial turn is
+    # not forced into a pointless tool call.
     external_evidence_required = (
         not memory_bound_turn
         and not direct_tool_free_turn
@@ -1292,11 +1323,17 @@ async def run_live_conversation(
             clock,
         )
     coordinator_model = ElasticDeliberationGateway(coordinator_model, deliberation)
+    # `external_evidence_required` makes research *available* and raises the
+    # deliberation floor; it deliberately does NOT make the verifier demand a
+    # source claim. Those were previously the same flag, so widening research
+    # availability would have simultaneously tightened completion -- the exact
+    # combination that turns "no confident tool match" into a refusal. The
+    # verifier stays strict only where a concrete evidence obligation was
+    # actually detected.
     evidence_required = (
         research_requirement is not None
         or orchestration_required
         or bool(detected_evidence_requirements)
-        or external_evidence_required
     )
     completion_guidance = _conversation_completion_guidance(
         memory_required=required_memory_tool is not None,
@@ -1878,9 +1915,30 @@ _LEGACY_RUNTIME_HEALTH_PROVIDERS: dict[str, frozenset[str]] = {
 
 
 def _capability_embedding_text(record: CatalogTool) -> str:
-    """Match the exact text basis DiscoveryBroker uses for lexical scoring."""
+    """Describe a capability in prose, because that is what embeddings encode.
 
-    return " ".join((record.id, record.spec.domain, record.short_description, *record.tags))
+    This previously reused the lexical scoring basis verbatim, which appended the
+    hand-maintained keyword tag bag ("outlook forecast prognosis trend ...") to
+    every vector. Embedding a keyword salad makes the semantic channel a blurry
+    copy of the lexical one and re-imports its blind spots -- a synonym missing
+    from the tag list stayed missing from both signals, which is exactly how a
+    stock-forecast question matched no research tool.
+
+    The two channels are now genuinely independent: BM25 keeps the tags (it is
+    supposed to be literal), while the vector encodes the tool's own
+    natural-language description of what it does and what it returns.
+    """
+
+    return " ".join(
+        part
+        for part in (
+            record.id.replace(".", " ").replace("_", " "),
+            record.spec.domain,
+            record.short_description,
+            record.long_description or record.spec.description,
+        )
+        if part
+    )
 
 
 def _conversation_capability_catalog(
@@ -2254,11 +2312,16 @@ def _is_plain_single_evidence_lookup(
 
 
 def _primary_source_search_query(objective: str) -> str:
-    """Bias trusted discovery toward citeable first-party documentation."""
+    """Search for what the user actually asked.
 
-    normalized = " ".join(objective.split()).strip()
-    suffix = " official documentation primary source"
-    return f"{normalized[: 256 - len(suffix)].rstrip()}{suffix}"
+    This previously appended " official documentation primary source" to every
+    query, so "what's the year end forecast for GOOG?" was sent to Tavily/Exa as
+    a developer-docs lookup and returned nothing usable. Search providers already
+    rank authoritative sources; steering them with a fixed suffix mostly steered
+    them away from the subject. The user's own wording is the better query.
+    """
+
+    return " ".join(objective.split()).strip()[:400]
 
 
 def _requires_verified_web_chain(objective: str) -> bool:
@@ -2828,6 +2891,79 @@ def _requires_external_evidence(
         or open_current_event
         or versioned_change
     )
+
+
+def _research_is_available(objective: str, skill_items: tuple[ContextItem, ...]) -> bool:
+    """Return whether research tools should be advertised for this turn.
+
+    `_requires_external_evidence` above is a fast, high-confidence *yes*. Its
+    absence was previously treated as a *no*, which is what broke the reported
+    turn: "what's the year end forecast for GOOG?" contains no freshness word
+    and no market word, so the envelope collapsed to depth-0 `direct`, no tool
+    was ever advertised, and the run ended in a canned "I'm missing a reliable
+    source" reply.
+
+    Burden of proof is therefore inverted here. Research stays *available* for
+    anything not recognizably self-contained, while remaining *obligatory* only
+    under the confident signal -- so an unnecessary search costs a few cents and
+    a trivial question still answers in one turn.
+    """
+
+    if _requires_external_evidence(objective, skill_items):
+        return True
+    return not _is_self_contained_conversational_turn(objective)
+
+
+_CONVERSATIONAL_ONLY = re.compile(
+    r"^(?:"
+    r"(?:hi|hey|hello|yo|thanks|thank you|thx|ty|ok|okay|got it|nice|cool|great|"
+    r"good morning|good afternoon|good evening|gm|gn)\b"
+    r"|(?:who are you|what are you|what can you do|what do you do|help|"
+    r"how do you work|what tools do you have)\b"
+    r")",
+    re.IGNORECASE,
+)
+_SELF_REFERENTIAL_TASK = re.compile(
+    r"\b(?:rewrite|rephrase|reword|summari[sz]e|shorten|translate|proofread|"
+    r"format|reformat|bullet|tidy up|clean up)\b\s+(?:this|that|the above|it|my)\b",
+    re.IGNORECASE,
+)
+# A question *about the conversation* ("what did we call the demo?") is answered
+# from context or memory. The public web does not know what you and Leo agreed,
+# so advertising search for it is pure noise.
+_CONVERSATION_REFERENCE = re.compile(
+    # Both the plain past ("we called it X") and the auxiliary-plus-base form
+    # produced by questions ("what did we call it?").
+    r"\b(?:we|you|i)\s+(?:just\s+|already\s+|previously\s+)?"
+    r"(?:say|said|call|called|name|named|discuss|discussed|mention|mentioned|"
+    r"agree|agreed|decide|decided|choose|chose|pick|picked|"
+    r"talk(?:ed)? about|went with|go with|settle[d]? on)\b",
+    re.IGNORECASE,
+)
+
+
+def _is_self_contained_conversational_turn(objective: str) -> bool:
+    """Recognize turns that genuinely need no external lookup.
+
+    Deliberately small and high-precision. Anything not matched here keeps
+    research available -- a false negative costs one search, a false positive
+    costs an unanswered question.
+    """
+
+    normalized = " ".join(objective.split())
+    if not normalized:
+        return True
+    if _explicitly_requests_tool_free_answer(objective):
+        return True
+    if _CONVERSATIONAL_ONLY.match(normalized) and len(normalized.split()) <= 8:
+        return True
+    # "summarize this", "rewrite the above" operate on supplied material.
+    if _SELF_REFERENTIAL_TASK.search(normalized):
+        return True
+    if _CONVERSATION_REFERENCE.search(normalized):
+        return True
+    # Pure arithmetic with no prose subject.
+    return bool(re.fullmatch(r"[\d\s+\-*/().,%^=]+\??", normalized))
 
 
 def _child_evidence_requirements(

@@ -276,6 +276,19 @@ async def _terminal_recovery(scenario: Scenario) -> RevisedM5Observed:
     )
 
 
+_ANSWER_REACHABILITY_PROBES: tuple[str, ...] = (
+    # The reported production failure, verbatim.
+    "what's the year end forecast for GOOG?",
+    "should I buy NVDA at these levels?",
+    "what's the target price for TSLA?",
+    "how did Microsoft's cloud margins trend last quarter?",
+    "what's the outlook for semiconductor demand?",
+    "is the Fed likely to cut in December?",
+    "compare AMD and NVDA on gross margin",
+    "what happened to Intel's foundry business?",
+)
+
+
 async def _elastic_deliberation(scenario: Scenario) -> RevisedM5Observed:
     if scenario.budget.max_model_calls < 14 or scenario.budget.max_tool_calls < 2:
         raise RevisedM5UnsupportedScenario("elastic_deliberation_budget_too_small")
@@ -505,7 +518,26 @@ async def _elastic_deliberation(scenario: Scenario) -> RevisedM5Observed:
             for feedback in action_claim_delegate.requests[1].verifier_feedback
         )
     )
+    # Answer reachability. Every metric in this registry measured gate
+    # compliance or safety; none measured whether Leo could answer at all. A
+    # system optimizes what it measures, which is how a stock-forecast question
+    # came to be routed as needing no research and ended in a canned refusal.
+    # These are ordinary questions a user would ask in Slack: none of them may
+    # land in an envelope that forbids tools while demanding clarification,
+    # because that combination has no path to an answer.
+    unanswerable_routes = 0
+    for probe in _ANSWER_REACHABILITY_PROBES:
+        envelope = policy.assess(
+            probe,
+            external_evidence_required=False,
+            available_tool_names=parent_tools,
+        )
+        if envelope.hard_disable_tools and envelope.hard_require_clarification:
+            unanswerable_routes += 1
+
     invariants: set[str] = set()
+    if unanswerable_routes == 0:
+        invariants.add("ordinary_questions_have_a_route_to_an_answer")
     if direct_ok:
         invariants.add("short_prompt_can_answer_directly")
     if clarify_ok:
@@ -527,6 +559,8 @@ async def _elastic_deliberation(scenario: Scenario) -> RevisedM5Observed:
     return RevisedM5Observed(
         invariants=frozenset(invariants),
         metrics={
+            "unanswerable_route_count": unanswerable_routes,
+            "answer_reachability_probe_count": len(_ANSWER_REACHABILITY_PROBES),
             "elastic_route_count": sum(
                 (
                     direct_ok,

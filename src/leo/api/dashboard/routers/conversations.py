@@ -23,7 +23,10 @@ async def list_conversations(
         (
             await session.execute(
                 select(ConversationRow)
-                .order_by(ConversationRow.updated_at.desc())
+                # `updated_at` alone is not a total order: conversations touched in
+                # the same transaction share a timestamp, so paging could show one
+                # twice and skip another. The id breaks the tie deterministically.
+                .order_by(ConversationRow.updated_at.desc(), ConversationRow.id)
                 .limit(page.limit)
                 .offset(page.offset)
             )
@@ -32,15 +35,24 @@ async def list_conversations(
         .all()
     )
 
+    # One grouped count for the whole page instead of a query per row -- at the
+    # 200-row page cap that was 200 round trips to render one list.
+    # `conversation_threads` is a newer, still-unpopulated join table; the durable
+    # thread<->conversation link in this demo dataset lives on `threads.conversation_id`.
+    thread_counts: dict[str, int] = {}
+    if rows:
+        counted = await session.execute(
+            select(ThreadRow.conversation_id, func.count())
+            .where(ThreadRow.conversation_id.in_([item.id for item in rows]))
+            .group_by(ThreadRow.conversation_id)
+        )
+        thread_counts = {
+            conversation_id: count for conversation_id, count in counted.all() if conversation_id
+        }
+
     items = []
     for conversation in rows:
-        # `conversation_threads` is a newer, still-unpopulated join table; the durable
-        # thread<->conversation link in this demo dataset lives on `threads.conversation_id`.
-        thread_count = await session.scalar(
-            select(func.count())
-            .select_from(ThreadRow)
-            .where(ThreadRow.conversation_id == conversation.id)
-        )
+        thread_count = thread_counts.get(conversation.id, 0)
         items.append(
             {
                 "id": conversation.id,

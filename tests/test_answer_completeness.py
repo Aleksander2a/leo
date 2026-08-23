@@ -539,7 +539,16 @@ async def test_names_format_recovery_handles_different_invalid_retries() -> None
 
 
 @pytest.mark.asyncio
-async def test_names_format_recovery_has_bounded_creative_fallback() -> None:
+async def test_names_format_recovery_never_fabricates_the_answer() -> None:
+    """A format mismatch must not license the harness to author the content.
+
+    This previously asserted the opposite: that an unrepairable answer was
+    replaced with a hardcoded list ("Signal Harbor", "Trust Compass", ...) and
+    delivered as Leo's own words. That is a fabrication path inside the component
+    whose entire purpose is preventing fabrication. Whatever Leo finally says
+    here must be traceable to the model, never invented by the harness.
+    """
+
     delegate = _RepairingGateway(("I can help with that, but first let me think.",) * 2)
     model = ElasticDeliberationGateway(
         delegate,
@@ -552,8 +561,9 @@ async def test_names_format_recovery_has_bounded_creative_fallback() -> None:
         limits=BudgetLimits(max_iterations=3, max_model_calls=3, max_tool_calls=0),
     )
 
-    assert result.run.status is RunStatus.COMPLETED
-    assert result.run.final_output == "Signal Harbor\nTrust Compass\nClarity Trail"
+    delivered = result.run.final_output or ""
+    for invented in ("Signal Harbor", "Trust Compass", "Clarity Trail"):
+        assert invented not in delivered
 
 
 @pytest.mark.asyncio

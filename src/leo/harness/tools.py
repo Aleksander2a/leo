@@ -133,7 +133,11 @@ class ToolRegistry:
         if tool is None:
             return ToolFailure(
                 code="UNKNOWN_TOOL",
-                safe_message=f"Tool {request.name!r} is not registered.",
+                retryable=True,
+                safe_message=(
+                    f"Tool {request.name!r} is not registered. "
+                    "Choose one of the advertised tools instead."
+                ),
             )
         if not _effect_allowed(phase, tool.spec.effect):
             return ToolFailure(
@@ -148,15 +152,26 @@ class ToolRegistry:
         if not tool.spec.required_roles.issubset(context.trusted_scope.roles):
             return ToolFailure(
                 code="TOOL_PERMISSION_DENIED",
-                safe_message=f"Tool {request.name!r} is unavailable for the current role.",
+                retryable=True,
+                safe_message=(
+                    f"Tool {request.name!r} is unavailable for the current role. "
+                    "Use a different advertised tool."
+                ),
             )
         try:
             arguments = tool.validate(request.arguments)
         except (ValidationError, ValueError, TypeError) as exc:
+            # A malformed argument is the most ordinary model mistake there is,
+            # and the one a ReAct loop is supposed to recover from. Marking it
+            # non-retryable ended the entire Slack turn on a single misspelled
+            # key, and the model was never told what was wrong.
             return ToolFailure(
                 code="INVALID_TOOL_ARGUMENTS",
+                retryable=True,
                 safe_message=(
-                    f"Arguments for {request.name!r} failed validation: {type(exc).__name__}."
+                    f"Arguments for {request.name!r} failed validation "
+                    f"({type(exc).__name__}: {exc}). Re-read the tool's schema and "
+                    "call it again with corrected arguments."
                 ),
             )
         try:
@@ -169,12 +184,26 @@ class ToolRegistry:
                 safe_message=f"Tool {request.name!r} timed out.",
             )
         except Exception as exc:
+            # One provider returning an unexpected shape should cost that one
+            # tool, not the whole conversation: other tools may still answer.
             outcome = ToolFailure(
                 code="TOOL_EXECUTION_ERROR",
-                safe_message=f"Tool {request.name!r} failed with {type(exc).__name__}.",
+                retryable=True,
+                safe_message=(
+                    f"Tool {request.name!r} failed with {type(exc).__name__}. "
+                    "Try a different tool or a different argument set."
+                ),
             )
         if isinstance(outcome, ToolFailure):
-            if outcome.retryable and tool.spec.retry.max_attempts <= 1:
+            # `spec.retry` governs re-executing the *same* call against the same
+            # provider. Model-correctable failures are a different thing: the run
+            # should continue so the model can choose different arguments or a
+            # different tool, which no provider-level retry budget can express.
+            if (
+                outcome.retryable
+                and tool.spec.retry.max_attempts <= 1
+                and outcome.code not in _MODEL_CORRECTABLE_FAILURE_CODES
+            ):
                 return outcome.model_copy(update={"retryable": False})
             return outcome
         if isinstance(outcome, ToolSuccess):
@@ -193,6 +222,17 @@ class ToolRegistry:
                 )
         return outcome
 
+
+_MODEL_CORRECTABLE_FAILURE_CODES = frozenset(
+    {
+        "INVALID_TOOL_ARGUMENTS",
+        "UNKNOWN_TOOL",
+        "TOOL_PERMISSION_DENIED",
+        "TOOL_NOT_ALLOWED_IN_PHASE",
+        "TOOL_EFFECT_NOT_ALLOWED_IN_PHASE",
+        "TOOL_EXECUTION_ERROR",
+    }
+)
 
 _EFFECT_ALLOWED_PHASES: dict[ToolEffect, frozenset[RunPhase]] = {
     ToolEffect.READ: frozenset(RunPhase),

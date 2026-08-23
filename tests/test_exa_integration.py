@@ -765,10 +765,7 @@ async def test_live_catalog_discovers_and_executes_exa_then_verifies_exact_highl
             exa_calls += 1
             assert request.headers["x-api-key"] == "exa-key"
             assert json.loads(request.content) == {
-                "query": (
-                    "Search the web for an official Python 3.14 noteworthy change "
-                    "official documentation primary source"
-                ),
+                "query": "Search the web for an official Python 3.14 noteworthy change",
                 "type": "auto",
                 "contents": {"highlights": True},
             }
@@ -870,9 +867,7 @@ async def test_live_natural_version_prompt_preserves_tavily_then_fetch_with_exa_
         if request.url.host == "api.tavily.com":
             tavily_calls += 1
             payload = json.loads(request.content)
-            assert payload["query"] == (
-                "What's one noteworthy change in Python 3.14? official documentation primary source"
-            )
+            assert payload["query"] == "What's one noteworthy change in Python 3.14?"
             return httpx.Response(
                 200,
                 json={

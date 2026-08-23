@@ -88,6 +88,30 @@ class Thread(ContractModel):
     version: int = Field(default=0, ge=0)
 
 
+class ReasoningStep(ContractModel):
+    """One iteration's plan and action, carried forward as working memory.
+
+    This is Leo's ReAct trace. It is model-authored narration, never authority:
+    nothing here can grant a capability, cite evidence, or satisfy a verifier
+    check. Its only job is to let the next turn know what the previous turns were
+    trying to do, so the model can build on its own work instead of restarting.
+    """
+
+    iteration: int = Field(ge=0)
+    # What the model intends to establish, in its own words.
+    plan: str = Field(min_length=1, max_length=600)
+    # What it actually did: a tool call summary, or "answered".
+    action: str = Field(min_length=1, max_length=300)
+    # What came back, summarized by the harness from real outcomes -- not by the
+    # model, so a hallucinated success cannot enter the trace.
+    outcome: str = Field(min_length=1, max_length=300)
+
+    def render(self) -> str:
+        return (
+            f"[{self.iteration}] plan: {self.plan} | action: {self.action} | result: {self.outcome}"
+        )
+
+
 class Task(ContractModel):
     id: NonEmptyStr
     thread_id: NonEmptyStr
@@ -99,6 +123,14 @@ class Task(ContractModel):
     status: TaskStatus = TaskStatus.QUEUED
     observation_ids: tuple[str, ...] = ()
     verifier_feedback: tuple[str, ...] = ()
+    # The model's own running account of what it has tried and what it intends
+    # next. Without it every iteration rebuilt a stateless prompt, so on turn
+    # four the model could not tell which tools it had already called, with what
+    # arguments, or what it was trying to establish -- it saw only a bag of
+    # observations and a growing list of complaints. Multi-step reasoning
+    # ("I have the quote, now I need earnings, then I compare") is impossible
+    # when the intermediate reasoning is discarded every turn.
+    scratchpad: tuple[ReasoningStep, ...] = Field(default=(), max_length=32)
     final_output: str | None = None
     version: int = Field(default=0, ge=0)
 
@@ -269,6 +301,9 @@ class ToolRequest(ContractModel):
 class ToolRequests(ContractModel):
     kind: Literal["tool_requests"] = "tool_requests"
     calls: tuple[ToolRequest, ...] = Field(min_length=1)
+    # What the model is trying to establish with these calls. Recorded into the
+    # scratchpad so the next iteration inherits the intent, not just the result.
+    plan: str = Field(default="", max_length=600)
 
 
 class ClaimKind(StrEnum):
@@ -296,6 +331,7 @@ class CompletionProposal(ContractModel):
     claims: tuple[CandidateClaim, ...] = ()
     affected_assumption: NonEmptyStr | None = None
     uncertainty: NonEmptyStr | None = None
+    plan: str = Field(default="", max_length=600)
 
 
 ModelDecision = Annotated[ToolRequests | CompletionProposal, Field(discriminator="kind")]
@@ -746,6 +782,8 @@ class ModelRequest(ContractModel):
     completion_contract: CompletionContract = Field(default_factory=CompletionContract)
     manifest: ContextManifest
     context_items: tuple[ContextItem, ...] = Field(default=(), max_length=128)
+    # Prior iterations' plan/action/result trace. Advisory working memory only.
+    scratchpad: tuple[ReasoningStep, ...] = Field(default=(), max_length=32)
 
     @model_validator(mode="after")
     def required_tool_is_advertised_safe_tool(self) -> ModelRequest:

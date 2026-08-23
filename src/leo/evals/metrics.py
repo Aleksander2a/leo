@@ -673,6 +673,27 @@ DEFAULT_METRIC_REGISTRY: tuple[MetricDefinition, ...] = (
         ),
     ),
     MetricDefinition(
+        id="answer-reachability",
+        raw_name="unanswerable_route_count",
+        category=MetricCategory.QUALITY,
+        unit="questions",
+        aggregation="sum",
+        source_scenario_ids=("elastic_deliberation",),
+        description=(
+            "Ordinary Slack questions routed into an envelope that forbids tools while "
+            "demanding clarification, which has no path to an answer. Every other metric "
+            "here measures gate compliance or safety; this one measures whether Leo can "
+            "answer at all, so that tightening a gate can no longer silently trade away "
+            "usefulness."
+        ),
+        threshold=_threshold(
+            "answer-reachability",
+            "unanswerable_route_count",
+            ThresholdOperator.MAXIMUM,
+            0,
+        ),
+    ),
+    MetricDefinition(
         id="elastic-route-coverage",
         raw_name="elastic_route_count",
         category=MetricCategory.QUALITY,

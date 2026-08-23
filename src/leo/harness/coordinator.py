@@ -12,6 +12,7 @@ from pydantic import JsonValue
 
 from leo.harness.capability_selection import capability_selection_fingerprint
 from leo.harness.context import context_manifest_event_payload
+from leo.harness.deliberation import answer_is_substantive
 from leo.harness.models import (
     BudgetUsage,
     CapabilitySelection,
@@ -25,6 +26,7 @@ from leo.harness.models import (
     ModelTurnResult,
     ModelUsage,
     Observation,
+    ReasoningStep,
     Run,
     RunBundle,
     RunStatus,
@@ -158,6 +160,7 @@ class RunCoordinator:
         if bundle.run.started_at is None:
             raise RuntimeError("running run has no durable start time")
         started_at = bundle.run.started_at
+        best_proposal: CompletionProposal | None = None
 
         while bundle.run.status is RunStatus.RUNNING:
             now = self._clock.now()
@@ -184,7 +187,9 @@ class RunCoordinator:
             elapsed_seconds = (now - started_at).total_seconds()
             exhausted_reason = _budget_reason(bundle, elapsed_seconds)
             if exhausted_reason is not None:
-                bundle = await self._commit_exhaustion(bundle, exhausted_reason)
+                bundle = await self._commit_exhaustion(
+                    bundle, exhausted_reason, best_proposal=best_proposal
+                )
                 break
 
             available_specs = self._tools.specs_for_context(
@@ -327,7 +332,19 @@ class RunCoordinator:
                 else:
                     failure_code = type(exc).__name__
                     safe_detail = "The model gateway failed unexpectedly."
-                usage = _model_call_usage(bundle.run.usage, reconcile_reservation=False)
+                # The model call was attempted and failed, so its budget
+                # reservation must be released exactly as the success path does.
+                # Leaving it open made the retry branch below unreachable:
+                # `_budget_reason` checks `reservation_id is not None` first, so
+                # the very next loop iteration exhausted the run with
+                # `model_budget_reservation_unreconciled` instead of giving the
+                # model its corrective turn. One truncated JSON completion ended
+                # the whole Slack turn.
+                usage = _model_call_usage(
+                    bundle.run.usage,
+                    reserved_cost=reservation_cost,
+                    reconcile_reservation=True,
+                )
                 if fallback_answer is not None:
                     # The gateway gave up trying to get a *better* completion but
                     # attached an earlier, self-contained answer. Deliver it instead
@@ -445,6 +462,7 @@ class RunCoordinator:
                     cost_reason,
                     usage=usage,
                     preceding_events=tuple(common_events),
+                    best_proposal=best_proposal,
                 )
                 break
             # A tool-choice or completion-contract violation is almost always a
@@ -505,6 +523,10 @@ class RunCoordinator:
                 failure_reason = ""
                 failure: ToolFailure | None = None
                 execution_results: list[tuple[ToolRequest, ToolOutcome]] = []
+                # Every failed call is reported to the model, not just the first.
+                # Retaining only the first meant a sibling's broken arguments
+                # were invisible and got re-issued verbatim on every later turn.
+                all_failures: list[tuple[str, ToolFailure]] = []
                 parallel_safe = self._tools.requests_are_parallel_safe(
                     decision.calls,
                     bundle.run.phase,
@@ -595,14 +617,12 @@ class RunCoordinator:
                     break
 
                 pending_successes: list[tuple[ToolRequest, Observation]] = []
-                normalization_failed = False
                 for raw_call, raw_outcome in execution_results:
                     call = raw_call
                     tool_outcome = raw_outcome
                     if isinstance(tool_outcome, ToolFailure):
                         tool_failed = True
-                        if tool_outcome.code.startswith("TOOL_RESULT_"):
-                            normalization_failed = True
+                        all_failures.append((call.name, tool_outcome))
                         if failure is None:
                             failure = tool_outcome
                             failure_reason = f"tool_failure:{tool_outcome.code}"
@@ -622,11 +642,11 @@ class RunCoordinator:
                         continue
                     if not isinstance(tool_outcome, ToolSuccess):
                         tool_failed = True
-                        normalization_failed = True
                         invalid = ToolFailure(
                             code="TOOL_RESULT_INVALID",
                             safe_message="Tool result failed bounded normalization.",
                         )
+                        all_failures.append((call.name, invalid))
                         if failure is None:
                             failure = invalid
                             failure_reason = f"tool_failure:{invalid.code}"
@@ -656,11 +676,11 @@ class RunCoordinator:
                         )
                     except NormalizationFailure as exc:
                         tool_failed = True
-                        normalization_failed = True
                         invalid = ToolFailure(
                             code=_normalization_failure_code(exc.safe_code),
                             safe_message="Tool result failed bounded normalization.",
                         )
+                        all_failures.append((call.name, invalid))
                         if failure is None:
                             failure = invalid
                             failure_reason = f"tool_failure:{invalid.code}"
@@ -680,9 +700,12 @@ class RunCoordinator:
                         continue
                     pending_successes.append((call, observation))
 
-                if not normalization_failed:
-                    new_observations.extend(observation for _, observation in pending_successes)
-                for call, observation in () if normalization_failed else pending_successes:
+                # Successfully normalized evidence is independent of a sibling
+                # call's failure. Voiding the whole batch meant one oversize
+                # fetch silently threw away the market data retrieved beside it,
+                # and the run then failed for lacking evidence it had paid for.
+                new_observations.extend(observation for _, observation in pending_successes)
+                for call, observation in pending_successes:
                     common_events.extend(
                         (
                             EventDraft(
@@ -733,7 +756,12 @@ class RunCoordinator:
                     observation_ids = bundle.task.observation_ids + tuple(
                         item.id for item in new_observations
                     )
-                    if failure is not None and failure.retryable:
+                    # A batch is recoverable when *any* of its failures is, and
+                    # the model is told about all of them. Branching on only the
+                    # first failure made recoverability depend on call order and
+                    # left the model re-issuing a broken sibling call every turn.
+                    batch_retryable = any(item.retryable for _name, item in all_failures)
+                    if failure is not None and (failure.retryable or batch_retryable):
                         task, run = advance_step(
                             bundle.task,
                             bundle.run,
@@ -741,7 +769,12 @@ class RunCoordinator:
                             observation_ids=observation_ids,
                             verifier_feedback=(
                                 *bundle.task.verifier_feedback,
-                                failure.safe_message,
+                                *_tool_failure_feedback(all_failures, failure),
+                            ),
+                            reasoning_step=_reasoning_step(
+                                bundle.run.iteration,
+                                decision,
+                                outcome=_batch_outcome(all_failures, new_observations),
                             ),
                         )
                         bundle = await self._commit(
@@ -783,6 +816,11 @@ class RunCoordinator:
                     bundle.run,
                     usage=usage,
                     observation_ids=observation_ids,
+                    reasoning_step=_reasoning_step(
+                        bundle.run.iteration,
+                        decision,
+                        outcome=_batch_outcome(all_failures, new_observations),
+                    ),
                 )
                 bundle = await self._commit(
                     bundle,
@@ -795,6 +833,15 @@ class RunCoordinator:
 
             if not isinstance(decision, CompletionProposal):
                 raise TypeError(f"unsupported model decision: {type(decision).__name__}")
+
+            # Remember the best answer the model actually produced. If the run
+            # later runs out of budget or turns, delivering this beats a canned
+            # "I reached this request's processing limit" that discards work the
+            # user already paid for.
+            if answer_is_substantive(decision.answer):
+                best_proposal = decision
+            elif best_proposal is None:
+                best_proposal = decision
 
             common_events.append(
                 EventDraft(
@@ -826,6 +873,15 @@ class RunCoordinator:
                 bundle.run,
                 usage=usage,
                 verifier_feedback=bundle.task.verifier_feedback + feedback,
+                reasoning_step=_reasoning_step(
+                    bundle.run.iteration,
+                    decision,
+                    outcome=(
+                        f"answer rejected by verifier: {feedback[0]}"
+                        if feedback
+                        else "answer rejected by verifier"
+                    ),
+                ),
             )
             common_events.append(
                 EventDraft(
@@ -880,13 +936,18 @@ class RunCoordinator:
                 raise ValueError("selector returned a schema outside the eligible registry view")
             return selection
         except Exception:
-            # Capability recall is optional for direct conversational answers. Fail closed
-            # on tool authority, but do not turn an unavailable index/router into a Slack
-            # availability error. Required sealed tools still fail in context assembly.
+            # Degrade to the phase/role-eligible registry view rather than to no
+            # tools at all. This path previously returned an empty selection, so
+            # a transient embedding or database hiccup silently converted a
+            # research turn into a tool-free one -- the model could only answer
+            # from priors and the run ended in a canned "no reliable source"
+            # reply, with nothing user-visible indicating that selection failed.
+            # The registry view is already policy-filtered, so it is exactly as
+            # safe on tool authority while keeping Leo able to answer.
             logger.exception(
-                "Capability selection failed closed; continuing without optional tools"
+                "Capability selection failed; falling back to the eligible registry view"
             )
-            return _empty_selection(bundle, available_specs)
+            return _registry_selection(bundle, available_specs)
 
     async def _execute_tool(
         self,
@@ -932,8 +993,24 @@ class RunCoordinator:
         *,
         usage: BudgetUsage | None = None,
         preceding_events: tuple[EventDraft, ...] = (),
+        best_proposal: CompletionProposal | None = None,
     ) -> RunBundle:
         next_usage = bundle.run.usage if usage is None else usage
+        if best_proposal is not None and answer_is_substantive(best_proposal.answer):
+            # The run ran out of road, but the model had already produced a real
+            # answer. Delivering it with an explicit best-effort marker is
+            # strictly more useful than a canned processing-limit message, and
+            # the marker keeps the record honest about what was not verified.
+            return await self._store.complete_verified(
+                expected_task_version=bundle.task.version,
+                expected_run_version=bundle.run.version,
+                task_id=bundle.task.id,
+                run_id=bundle.run.id,
+                scope=bundle.run.scope,
+                usage=next_usage,
+                completion=_best_effort_completion(best_proposal.answer, reason),
+                preceding_events=preceding_events,
+            )
         task, run = exhaust_task_and_run(
             bundle.task,
             bundle.run,
@@ -1054,10 +1131,20 @@ def _model_call_usage(
 def _add_metric(
     previous: int | float | None, current: int | float | None, prior_calls: int
 ) -> int | float | None:
+    """Accumulate a usage metric, tolerating turns the provider did not report.
+
+    A single response without a usage block used to null the running total
+    permanently, which silently disabled cost-budget enforcement for the rest of
+    the run. An unreported turn is missing information about *that* turn, not a
+    reason to forget everything already counted.
+    """
+
     if prior_calls == 0:
         return current
-    if previous is None or current is None:
-        return None
+    if previous is None:
+        return current
+    if current is None:
+        return previous
     return previous + current
 
 
@@ -1226,6 +1313,70 @@ def _best_effort_completion(answer: str, failure_code: str) -> VerifiedCompletio
             allow_unsourced_completion=True,
         ),
     )
+
+
+def _reasoning_step(
+    iteration: int,
+    decision: ModelDecision,
+    *,
+    outcome: str,
+) -> ReasoningStep:
+    """Record one plan/action/result triple for the next iteration to read.
+
+    The plan is the model's own (it is the only party that knows its intent), but
+    the *outcome* is always summarized by the harness from what actually
+    happened. A model cannot write "succeeded" into its own history.
+    """
+
+    if isinstance(decision, ToolRequests):
+        action = ", ".join(
+            f"{call.name}({', '.join(sorted(call.arguments))})" for call in decision.calls
+        )[:300]
+    else:
+        action = "proposed an answer"
+    plan = (decision.plan or "").strip() or "(no plan stated)"
+    return ReasoningStep(
+        iteration=iteration,
+        plan=plan[:600],
+        action=action or "(no action)",
+        outcome=(outcome or "(no result)")[:300],
+    )
+
+
+def _batch_outcome(
+    failures: list[tuple[str, ToolFailure]],
+    observations: list[Observation],
+) -> str:
+    parts: list[str] = []
+    if observations:
+        parts.append("retrieved " + ", ".join(sorted({item.kind for item in observations})))
+    for name, item in failures:
+        parts.append(f"{name} failed [{item.code}]")
+    return "; ".join(parts) or "no result"
+
+
+def _tool_failure_feedback(
+    failures: list[tuple[str, ToolFailure]],
+    fallback: ToolFailure,
+) -> tuple[str, ...]:
+    """Describe every failed call so the model can repair the right one.
+
+    Each line names the tool and its failure code alongside the safe message,
+    because "Tool 'x' timed out." gives the model no way to tell which of three
+    parallel calls it needs to change.
+    """
+
+    if not failures:
+        return (fallback.safe_message,)
+    seen: set[tuple[str, str]] = set()
+    lines: list[str] = []
+    for name, item in failures:
+        key = (name, item.code)
+        if key in seen:
+            continue
+        seen.add(key)
+        lines.append(f"Tool {name!r} failed [{item.code}]: {item.safe_message}")
+    return tuple(lines)
 
 
 def _normalization_failure_code(safe_code: str) -> str:

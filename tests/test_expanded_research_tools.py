@@ -1588,7 +1588,10 @@ async def test_live_version_question_repairs_future_work_into_tavily_fetch_chain
         if request.url.host == "api.tavily.com":
             tavily_calls += 1
             search_payload = json.loads(request.content)
-            assert search_payload["query"].endswith("official documentation primary source")
+            # The user's own question is the query. Appending a fixed
+            # "official documentation primary source" suffix used to steer every
+            # search away from its subject.
+            assert search_payload["query"] == objective
             assert search_payload["max_results"] == 5
             assert search_payload["search_depth"] == "advanced"
             return httpx.Response(

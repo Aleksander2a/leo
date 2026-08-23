@@ -43,15 +43,27 @@ def test_embeddings_migration_is_the_single_forward_head() -> None:
     assert revision.down_revision == "20260823_0027"
 
 
-def test_model_call_transcripts_migration_is_the_single_forward_head() -> None:
+def test_model_call_transcripts_migration_chains_from_embeddings() -> None:
     config = Config(ROOT / "alembic.ini")
     config.set_main_option("script_location", str(ROOT / "migrations"))
     scripts = ScriptDirectory.from_config(config)
     revision = scripts.get_revision("20260823_0029")
 
-    assert scripts.get_current_head() == "20260823_0029"
     assert revision is not None
     assert revision.down_revision == "20260823_0028"
+
+
+def test_task_scratchpad_migration_is_the_single_forward_head() -> None:
+    """The ReAct working-memory column is the current head of a linear history."""
+
+    config = Config(ROOT / "alembic.ini")
+    config.set_main_option("script_location", str(ROOT / "migrations"))
+    scripts = ScriptDirectory.from_config(config)
+    revision = scripts.get_revision("20260824_0030")
+
+    assert scripts.get_current_head() == "20260824_0030"
+    assert revision is not None
+    assert revision.down_revision == "20260823_0029"
 
 
 def test_model_call_transcripts_migration_has_client_deny() -> None:
