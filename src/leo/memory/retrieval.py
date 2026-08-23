@@ -140,6 +140,15 @@ def search_memory_with_trace(
             max(record_candidates, key=lambda item: (item.revision.number, item.revision.id))
         )
 
+    # An empty token set (query normalized away entirely) is trivially a subset
+    # of every candidate's searchable tokens, so every authorized/current
+    # record below is eligible -- this is the deliberate browse-style fallback,
+    # not an accidental match-everything bug.
+    match_reason = (
+        "browse_fallback:no_lexical_tokens"
+        if not tokens
+        else f"lexical_all:{len(tokens)}/{len(tokens)}"
+    )
     eligible: list[MemorySearchHit] = []
     for candidate in current:
         revision = candidate.revision
@@ -152,7 +161,7 @@ def search_memory_with_trace(
                 revision=revision.number,
                 content=revision.content,
                 score=1,
-                match_reason=f"lexical_all:{len(tokens)}/{len(tokens)}",
+                match_reason=match_reason,
                 recorded_at=revision.recorded_at,
                 visibility=revision.visibility,
                 namespace_id=revision.namespace_id,
@@ -304,17 +313,27 @@ def _query_tokens(query: str) -> tuple[str, ...]:
         match.group(0).lower() for match in re.finditer(r"[\w]{2,64}(?:[.-][\w]{1,64})*", query)
     )
     relevant = tuple(token for token in raw if token not in _MEMORY_QUERY_STOP_WORDS)
-    # A query made entirely of conversational scaffolding is not useful retrieval
-    # authority. Preserve the empty result so the caller fails closed.
+    # A query made entirely of conversational scaffolding (e.g. "what do you
+    # remember about our conversation?") carries no useful full-text signal.
+    # The empty result is not treated as an error: callers use it as the
+    # signal to skip lexical filtering and fall back to a bounded browse of
+    # the most recent authorized, non-retracted records instead.
     return tuple(dict.fromkeys(relevant))
 
 
 def normalize_memory_query(query: str) -> str:
-    """Return the deterministic lexical representation shared by retrieval and caching."""
+    """Return the deterministic lexical representation shared by retrieval and caching.
+
+    A query that normalizes away entirely (pure stop words or punctuation)
+    returns an empty string rather than raising. This is a graceful,
+    browse-style fallback, not a security relaxation: every authorization,
+    lifecycle, and sensitivity filter downstream of this function still
+    applies verbatim, so an empty normalized query can only ever surface
+    records the caller was already authorized to search -- it just skips the
+    lexical-match predicate instead of failing the request outright.
+    """
 
     tokens = _query_tokens(query)
-    if not tokens:
-        raise MemoryRetrievalError("empty_search_query")
     return " ".join(tokens)
 
 

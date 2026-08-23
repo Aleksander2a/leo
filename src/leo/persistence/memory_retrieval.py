@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import ColumnElement, and_, func, or_, select
+from sqlalchemy import ColumnElement, and_, func, literal, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.sql import Select
 
@@ -127,8 +127,24 @@ def build_memory_search_statement(
     """Build a bounded query whose hard filters precede ranking and limiting."""
 
     normalized = normalize_memory_query(request.query)
-    query_vector = func.plainto_tsquery("english", normalized)
-    rank = func.ts_rank(MemoryRevisionRow.search_vector, query_vector)
+    has_lexical_query = bool(normalized)
+    where_clauses: list[ColumnElement[bool]] = list(_authorized_hard_filters(request))
+    rank: ColumnElement[float]
+    if has_lexical_query:
+        query_vector = func.plainto_tsquery("english", normalized)
+        rank = func.ts_rank(MemoryRevisionRow.search_vector, query_vector)
+        where_clauses.append(MemoryRevisionRow.search_vector.op("@@")(query_vector))
+    else:
+        # The query carries no lexical content after normalization (e.g. pure
+        # stop words like "what do you remember about our conversation?").
+        # An empty tsquery reliably matches zero rows via `@@` in Postgres, so
+        # filtering on it would silently return nothing instead of degrading
+        # gracefully. This is not a security relaxation -- every authorization,
+        # lifecycle, sensitivity, and validity filter in `where_clauses` still
+        # applies verbatim -- it only drops the lexical-match predicate and
+        # ranks by recency instead, i.e. a plain browse of the record the
+        # caller was already authorized to search.
+        rank = literal(0.0)
     # PostgreSQL applies this SELECT's WHERE clause before computing rank/order.
     # Unauthorized, stale, superseded, retracted, expired, or over-sensitivity rows
     # therefore cannot enter the ranked pool. Overflow fails closed in the adapter.
@@ -159,10 +175,7 @@ def build_memory_search_statement(
             (MemoryRecordRow.id == MemoryRevisionRow.record_id)
             & (MemoryRecordRow.current_revision == MemoryRevisionRow.number),
         )
-        .where(
-            *_authorized_hard_filters(request),
-            MemoryRevisionRow.search_vector.op("@@")(query_vector),
-        )
+        .where(*where_clauses)
     )
     if record_ids_hint is not None:
         authorized_ranked = authorized_ranked.where(MemoryRecordRow.id.in_(record_ids_hint))

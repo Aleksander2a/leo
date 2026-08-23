@@ -9,11 +9,12 @@ from leo.memory.cache import RetrievalCache, RetrievalCacheEntry, RetrievalCache
 from leo.memory.models import MemoryRevision, MemoryStatus, MemoryVisibility
 from leo.memory.retrieval import (
     AuthorizedMemoryNamespace,
-    MemoryRetrievalError,
     MemorySearchRequest,
     ScopedMemoryCandidate,
     channel_authorized_namespaces,
     dm_authorized_namespaces,
+    normalize_memory_query,
+    normalized_query_hash,
     search_memory,
 )
 
@@ -73,6 +74,24 @@ def _request(**updates: object) -> MemorySearchRequest:
     return MemorySearchRequest(**payload)
 
 
+def test_normalize_memory_query_returns_empty_string_instead_of_raising() -> None:
+    """A pure-stop-word recall phrasing (the exact shape live.py's direct_recall
+    regex forces memory.search for) must normalize to "" deterministically,
+    never raise -- normalized_query_hash must stay a pure function of that
+    empty string too, since it feeds both the SQL cache key and the trace.
+    """
+    assert normalize_memory_query("What do you remember about our conversation?") == ""
+    assert normalize_memory_query("! @ #") == ""
+    assert normalize_memory_query("") == ""
+    assert normalized_query_hash("What do you remember about our conversation?") == (
+        normalized_query_hash("! @ #")
+    )
+
+    # Real lexical content still normalizes exactly as before.
+    assert normalize_memory_query("NVDA demand") == "nvda demand"
+    assert normalize_memory_query("  NVDA   DEMAND ") == "nvda demand"
+
+
 def test_retrieval_filters_scope_status_sensitivity_and_time_before_rank() -> None:
     candidates = (
         _candidate("allowed", "NVDA demand remains constructive."),
@@ -89,14 +108,31 @@ def test_retrieval_filters_scope_status_sensitivity_and_time_before_rank() -> No
     assert [hit.record_id for hit in hits] == ["allowed"]
 
 
-def test_retrieval_is_bounded_deterministic_and_rejects_empty_or_injected_query_safely() -> None:
+def test_retrieval_is_bounded_deterministic_and_rejects_injected_query_safely() -> None:
     candidates = tuple(_candidate(f"memory-{index}", "NVDA demand") for index in range(4))
     request = _request(limit=2)
     assert search_memory(candidates, request) == search_memory(candidates, request)
     assert len(search_memory(candidates, request)) == 2
     assert search_memory(candidates, _request(query="' OR 1=1 --")) == ()
-    with pytest.raises(MemoryRetrievalError, match="empty_search_query"):
-        search_memory(candidates, _request(query="! @ #"))
+
+
+def test_query_with_no_lexical_content_falls_back_to_recent_authorized_browse() -> None:
+    """A query that normalizes away entirely (stop words/punctuation only) must
+    never raise -- it degrades to a bounded browse of the caller's own
+    already-authorized, non-retracted records rather than failing the turn.
+    """
+    candidates = tuple(_candidate(f"memory-{index}", "NVDA demand") for index in range(4))
+
+    all_stop_words = search_memory(
+        candidates, _request(query="What do you remember about our conversation?")
+    )
+    assert {hit.record_id for hit in all_stop_words} == {c.revision.record_id for c in candidates}
+
+    punctuation_only = search_memory(candidates, _request(query="! @ #"))
+    assert {hit.record_id for hit in punctuation_only} == {c.revision.record_id for c in candidates}
+
+    bounded = search_memory(candidates, _request(query="! @ #", limit=2))
+    assert len(bounded) == 2
 
 
 def test_channel_authority_reads_only_the_exact_channel_namespace() -> None:

@@ -215,3 +215,29 @@ def test_postgres_fts_statement_filters_exact_authority_and_time_in_inner_cte() 
     assert "memory_revisions.expires_at is null" in compiled
     assert "namespace_rank" not in compiled
     assert 1001 in parameters
+
+
+def test_postgres_statement_falls_back_to_recency_browse_with_no_lexical_content() -> None:
+    """"What do you remember about our conversation?" normalizes to nothing --
+    the statement must drop the `@@` predicate entirely (an empty tsquery
+    matches zero rows in Postgres) rather than silently returning nothing,
+    while every authorization/lifecycle/sensitivity filter still applies.
+    """
+    stop_word_request = _request(query="What do you remember about our conversation?")
+    statement = build_memory_search_statement(stop_word_request)
+    compiled = str(statement.compile(dialect=postgresql.dialect())).lower()
+
+    assert "plainto_tsquery" not in compiled
+    assert "search_vector @@" not in compiled
+    # The authorization/lifecycle contract must survive the fallback verbatim.
+    assert "memory_revisions.organization_id =" in compiled
+    assert "memory_revisions.visibility =" in compiled
+    assert "memory_revisions.namespace_id =" in compiled
+    assert "memory_revisions.valid_from <=" in compiled
+    assert "memory_revisions.sensitivity <=" in compiled
+
+    lexical_request = _request(query="Atlas delivery target")
+    lexical_statement = build_memory_search_statement(lexical_request)
+    lexical_compiled = str(lexical_statement.compile(dialect=postgresql.dialect())).lower()
+    assert "plainto_tsquery" in lexical_compiled
+    assert "search_vector @@" in lexical_compiled
