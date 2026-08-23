@@ -20,6 +20,7 @@ jobs:
           enable-cache: true
       - run: uv python install ${{ matrix.python-version }}
       - run: uv python pin ${{ matrix.python-version }}
+      - run: uv sync --locked --dev
       # Prime the shared cache with the PEP 517 backend before the quality
       # gate intentionally builds the artifacts offline. Editable sync alone
       # does not need to resolve hatchling.
