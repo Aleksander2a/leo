@@ -218,7 +218,7 @@ def test_postgres_fts_statement_filters_exact_authority_and_time_in_inner_cte() 
 
 
 def test_postgres_statement_falls_back_to_recency_browse_with_no_lexical_content() -> None:
-    """"What do you remember about our conversation?" normalizes to nothing --
+    """ "What do you remember about our conversation?" normalizes to nothing --
     the statement must drop the `@@` predicate entirely (an empty tsquery
     matches zero rows in Postgres) rather than silently returning nothing,
     while every authorization/lifecycle/sensitivity filter still applies.

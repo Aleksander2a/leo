@@ -1395,8 +1395,7 @@ def _claim_support(
         )
     supported, detail = rule(claim_kind, statement, answer, observation)
     if supported or not (
-        relax_integration_grounding
-        and _is_relaxed_integration_observation(observation, claim_kind)
+        relax_integration_grounding and _is_relaxed_integration_observation(observation, claim_kind)
     ):
         return supported, detail
     # Relaxation trusts a claim's WORDING against a connected-integration payload --

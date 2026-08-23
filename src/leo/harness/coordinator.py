@@ -1180,8 +1180,7 @@ def _completion_contract_error_feedback(code: str, request: ModelRequest) -> str
             "observation IDs. Adjust your citations so each claim fits that range."
         )
     return (
-        "Your last completion violated the harness completion contract. Reconsider and "
-        "try again."
+        "Your last completion violated the harness completion contract. Reconsider and try again."
     )
 
 

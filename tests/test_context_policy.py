@@ -650,9 +650,7 @@ async def test_coordinator_enforces_completion_contract_before_verification() ->
     # budget, and verification is still never reached for this malformed shape.
     assert result.run.status is RunStatus.BUDGET_EXHAUSTED
     assert result.run.usage.model_calls > 1
-    assert any(
-        "observation id" in feedback.lower() for feedback in result.task.verifier_feedback
-    )
+    assert any("observation id" in feedback.lower() for feedback in result.task.verifier_feedback)
     assert EventType.VERIFICATION_STARTED not in {event.type for event in result.events}
 
 

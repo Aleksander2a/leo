@@ -955,9 +955,7 @@ async def test_live_composition_rejects_wrong_symbol_before_finnhub_execution() 
     assert result.run.usage.model_calls > 1
     assert result.run.usage.tool_calls == 0
     assert finnhub_calls == 0
-    assert any(
-        "argument" in feedback.lower() for feedback in result.task.verifier_feedback
-    )
+    assert any("argument" in feedback.lower() for feedback in result.task.verifier_feedback)
 
 
 @pytest.mark.asyncio
@@ -1513,9 +1511,7 @@ async def test_live_current_quote_pins_tool_and_stops_repeated_fabricated_citati
     assert model_calls == 2
     assert finnhub_calls == 0
     assert not any(event.type is EventType.VERIFICATION_FAILED for event in result.events)
-    assert any(
-        "market.get_quote" in feedback for feedback in result.task.verifier_feedback
-    )
+    assert any("market.get_quote" in feedback for feedback in result.task.verifier_feedback)
 
 
 @pytest.mark.parametrize(
@@ -2055,9 +2051,7 @@ async def test_live_latest_sec_lookup_pins_one_tool_without_thesis_hijack() -> N
     assert model_calls == 2
     assert sec_calls == 0
     assert not any(event.type is EventType.VERIFICATION_FAILED for event in result.events)
-    assert any(
-        "sec.get_recent_filings" in feedback for feedback in result.task.verifier_feedback
-    )
+    assert any("sec.get_recent_filings" in feedback for feedback in result.task.verifier_feedback)
 
 
 @pytest.mark.asyncio
