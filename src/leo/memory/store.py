@@ -7,7 +7,14 @@ import asyncio
 from leo.harness.models import ScopeKey
 from leo.harness.store_errors import ConcurrencyError, NotFoundError, StoreError
 from leo.memory.lifecycle import next_record, validate_append_revision, validate_initial_revision
-from leo.memory.models import MemoryRecord, MemoryRevision, MemorySource, MemoryStatus
+from leo.memory.models import (
+    MemoryKind,
+    MemoryRecord,
+    MemoryRevision,
+    MemorySource,
+    MemoryStatus,
+    MemoryVisibility,
+)
 from leo.memory.ports import MemoryStore
 
 
@@ -115,3 +122,24 @@ class InMemoryMemoryStore(MemoryStore):
             self._revisions[(record.id, revision.number)] = revision
             self._records[record.id] = updated
             return updated
+
+    async def list_active(
+        self,
+        scope: ScopeKey,
+        *,
+        visibility: MemoryVisibility,
+        namespace_id: str,
+        kind: MemoryKind | None = None,
+        limit: int = 50,
+    ) -> tuple[tuple[str, MemoryRevision], ...]:
+        async with self._lock:
+            matches = tuple(
+                (record.id, self._revisions[(record.id, record.current_revision)])
+                for record in self._records.values()
+                if record.scope == scope
+                and record.visibility is visibility
+                and record.namespace_id == namespace_id
+                and record.status is MemoryStatus.ACTIVE
+                and (kind is None or record.kind is kind)
+            )
+            return matches[:limit]

@@ -412,7 +412,7 @@ async def _execute_tool_recall(scenario: Scenario) -> ClosureObserved:
         available_tools=specs,
         conversation_kind="channel",
     )
-    discovered = runtime.search(
+    discovered = await runtime.search(
         run_id=run.id,
         trusted_scope=trusted,
         query="current market quote",
@@ -431,7 +431,7 @@ async def _execute_tool_recall(scenario: Scenario) -> ClosureObserved:
     )
     no_progress_guarded = False
     try:
-        runtime.search(
+        await runtime.search(
             run_id=run.id,
             trusted_scope=trusted,
             query="current market quote",
@@ -441,7 +441,7 @@ async def _execute_tool_recall(scenario: Scenario) -> ClosureObserved:
         no_progress_guarded = exc.safe_code == "discovery_no_progress"
     authority_guarded = False
     try:
-        runtime.search(
+        await runtime.search(
             run_id=run.id,
             trusted_scope=trusted.model_copy(update={"actor_id": "forged-user"}),
             query="public website",

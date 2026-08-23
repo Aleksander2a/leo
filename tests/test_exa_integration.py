@@ -8,6 +8,7 @@ import httpx
 import pytest
 
 from leo.config import Settings
+from leo.harness.exa_search import normalize_complete_exa_result
 from leo.harness.models import (
     CandidateClaim,
     ClaimKind,
@@ -29,7 +30,6 @@ from leo.harness.models import (
     VerifierStatus,
 )
 from leo.harness.normalization import normalize_success
-from leo.harness.exa_search import normalize_complete_exa_result
 from leo.harness.verifier import DeterministicCompletionVerifier
 from leo.integrations.exa import ExaSearchTool
 from leo.integrations.fake import FixedClock, SequentialIdGenerator

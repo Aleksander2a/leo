@@ -325,6 +325,12 @@ class ModelTurnResult(ContractModel):
     request_id: NonEmptyStr | None = None
     finish_reason: str | None = None
     usage: ModelUsage = Field(default_factory=ModelUsage)
+    # Populated only by gateways that support it (OpenRouterGateway); legacy/fixture
+    # models leave these None. raw_request never carries the Authorization header --
+    # that lives in the HTTP client call, not the request body -- so it's safe for a
+    # best-effort dashboard transcript sink to persist verbatim.
+    raw_request: dict[str, JsonValue] | None = None
+    raw_response: dict[str, JsonValue] | None = None
 
 
 class ToolExecutionContext(ContractModel):

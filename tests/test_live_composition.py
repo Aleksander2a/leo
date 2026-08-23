@@ -317,6 +317,27 @@ def test_memory_question_routes_to_search_and_internal_inference_grounding() -> 
     assert not fabricated
 
 
+def test_current_thread_recall_uses_authoritative_transcript_before_memory_search() -> None:
+    thread_context = ContextItem(
+        id="thread-root",
+        kind=ContextItemKind.CONVERSATION_TURN,
+        content="User asked Leo to confirm receipt of the test.",
+        conversation_id="slack:T1:C1:1710000000.001",
+        source_scope=ScopeKey(organization_id="org", strategy_id="domain"),
+        retention=ContextItemRetention.THREAD_ROOT,
+    )
+
+    assert not _requires_memory_search(
+        "What did I ask you to do in this direct-message test? Answer briefly.",
+        (thread_context,),
+    )
+    assert not _requires_memory_search(
+        "What marker did I ask you to note? Answer with the marker only.",
+        (thread_context,),
+    )
+    assert _requires_memory_search("Search your memory for Project Borealis.", (thread_context,))
+
+
 @pytest.mark.parametrize(
     "objective",
     (
@@ -769,7 +790,8 @@ async def test_live_composition_runs_two_turn_fresh_context_contract() -> None:
             "observation.data.price without rounding. Do not make separate change, high, low, "
             "open, or previous-close claims."
         )
-        assert trusted_guidance in payload["messages"][0]["content"]
+        system = "".join(block["text"] for block in payload["messages"][0]["content"])
+        assert trusted_guidance in system
         user_payload = json.loads(payload["messages"][1]["content"])
         assert user_payload["completion_contract"]["guidance"] == trusted_guidance
         if not user_payload["observations"]:
@@ -2070,7 +2092,7 @@ async def test_live_latest_sec_lookup_canonicalizes_fresh_tuple_and_document_url
                     ],
                 },
             )
-        system = payload["messages"][0]["content"]
+        system = "".join(block["text"] for block in payload["messages"][0]["content"])
         assert (
             "ticker=NVDA; form=8-K; filing_date=2026-08-17; accession=0001045810-26-000069"
         ) in system

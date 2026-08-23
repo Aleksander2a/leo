@@ -11,6 +11,7 @@ from typing import Protocol
 from pydantic import ValidationError
 from slack_bolt.adapter.socket_mode.aiohttp import AsyncSocketModeHandler
 from slack_bolt.async_app import AsyncApp
+from slack_sdk.errors import SlackApiError
 from slack_sdk.web.async_client import AsyncWebClient
 
 from leo.config import Settings
@@ -54,6 +55,9 @@ from leo.persistence.slack_ingress import SlackFollowupBusyError
 
 LOGGER = logging.getLogger(__name__)
 RUNTIME_DEADLINE_CANCEL_MESSAGE = "slack_runtime_deadline_exceeded"
+_MISSING_SLACK_THREAD_ERRORS = frozenset(
+    {"message_not_found", "thread_not_found", "thread_deleted"}
+)
 
 
 class SlackJobRuntime(Protocol):
@@ -495,7 +499,8 @@ async def _handle_passive_message(
     sink: SlackIngressAdmission,
     fatal_errors: asyncio.Queue[BaseException],
     persistence_timeout_seconds: float,
-) -> None:
+    allow_mentioned_user_message: bool = False,
+) -> bool:
     """Persist passive context without admitting, launching, enqueuing, or replying."""
 
     try:
@@ -504,12 +509,13 @@ async def _handle_passive_message(
             expected_team_id=expected_team_id,
             bot_user_id=bot_user_id,
             bot_id=bot_id,
+            allow_mentioned_user_message=allow_mentioned_user_message,
         )
     except (SlackEventRejected, ValidationError) as exc:
         LOGGER.warning("Passive Slack message rejected: %s", exc)
-        return
+        return not allow_mentioned_user_message
     if message is None:
-        return
+        return True
     try:
         async with asyncio.timeout(persistence_timeout_seconds):
             await sink.record_passive_message(message, default_scope)
@@ -520,6 +526,8 @@ async def _handle_passive_message(
         )
         if fatal_errors.empty():
             fatal_errors.put_nowait(exc)
+        return False
+    return True
 
 
 async def _admit_and_enqueue(
@@ -534,6 +542,12 @@ async def _admit_and_enqueue(
     launch_preparer: SlackLaunchPreparer | None,
     cancellation_handler: SlackCancellationHandler | None = None,
 ) -> None:
+    if await _thread_root_is_missing(client, job):
+        LOGGER.warning(
+            "Slack event ignored because its thread root is missing",
+            extra={"event_id": job.event_id},
+        )
+        return
     eligibility = await _conversation_eligibility(client, job)
     context_conversation_ids: tuple[str, ...] = (job.channel_id,)
     context_projection_source = SlackContextProjectionSource.EXACT_DESTINATION
@@ -626,6 +640,51 @@ async def _admit_and_enqueue(
     # The preparer commits Thread/Task/Run before this notification point.  If the
     # local wake-up is rejected, the durable launch remains recoverable in Postgres.
     processor.enqueue(admitted)
+
+
+async def _thread_root_is_missing(
+    client: AsyncWebClient,
+    job: SlackMentionJob,
+) -> bool:
+    """Reject a definitively stale threaded event before durable/model work starts."""
+
+    if job.message_ts == job.thread_root_ts:
+        return False
+    probe = getattr(client, "conversations_replies", None)
+    if probe is None:
+        return False
+    try:
+        response = await probe(
+            channel=job.channel_id,
+            ts=job.thread_root_ts,
+            limit=1,
+        )
+    except SlackApiError as exc:
+        payload = getattr(exc.response, "data", None)
+        error = payload.get("error") if isinstance(payload, Mapping) else None
+        if error in _MISSING_SLACK_THREAD_ERRORS:
+            return True
+        LOGGER.warning(
+            "Slack thread-root probe failed; preserving event for durable handling",
+            extra={"event_id": job.event_id},
+        )
+        return False
+    except Exception:
+        LOGGER.warning(
+            "Slack thread-root probe failed; preserving event for durable handling",
+            extra={"event_id": job.event_id},
+        )
+        return False
+    payload = getattr(response, "data", response)
+    if not isinstance(payload, Mapping) or payload.get("ok") is not True:
+        return False
+    messages = payload.get("messages")
+    if not isinstance(messages, list):
+        return False
+    return not any(
+        isinstance(message, Mapping) and message.get("ts") == job.thread_root_ts
+        for message in messages
+    )
 
 
 async def _conversation_eligibility(
@@ -821,6 +880,19 @@ async def run_socket_mode(
     fatal_errors: asyncio.Queue[BaseException] = asyncio.Queue(maxsize=1)
 
     async def on_mention(body: dict[str, object]) -> None:
+        persisted = await _handle_passive_message(
+            body,
+            expected_team_id=settings.leo_slack_team_id or "",
+            bot_user_id=bot_user_id,
+            bot_id=bot_id,
+            default_scope=default_scope,
+            sink=selected_admission,
+            fatal_errors=fatal_errors,
+            persistence_timeout_seconds=admission_timeout_seconds,
+            allow_mentioned_user_message=True,
+        )
+        if not persisted:
+            return
         await _handle_app_mention(
             body,
             client=app.client,
@@ -866,7 +938,13 @@ async def run_socket_mode(
 
     app.event("app_mention")(on_mention)
     app.event("message")(on_message)
-    worker = asyncio.create_task(processor.run(), name="leo-slack-smoke-worker")
+    # Multiple independent conversations must not queue behind one another: each
+    # worker task drains the same admission queue, so up to `worker_concurrency`
+    # Slack jobs run genuinely concurrently instead of one at a time.
+    workers = {
+        asyncio.create_task(processor.run(), name=f"leo-slack-worker-{index}")
+        for index in range(max(1, settings.leo_slack_worker_concurrency))
+    }
     handler = AsyncSocketModeHandler(app, settings.slack_app_token.get_secret_value())
     socket = asyncio.create_task(
         handler.start_async(),  # type: ignore[no-untyped-call]
@@ -878,21 +956,23 @@ async def run_socket_mode(
     )
     fatal = asyncio.create_task(fatal_errors.get(), name="leo-slack-admission-failure")
     try:
-        done, _ = await asyncio.wait({worker, socket, fatal}, return_when=asyncio.FIRST_COMPLETED)
+        done, _ = await asyncio.wait(workers | {socket, fatal}, return_when=asyncio.FIRST_COMPLETED)
         if fatal in done:
             raise RuntimeError("Slack event admission failed") from fatal.result()
-        if worker in done:
-            error = worker.exception()
+        finished_workers = done & workers
+        if finished_workers:
+            error = finished_workers.pop().exception()
             if error is None:
                 raise RuntimeError("Slack job worker stopped unexpectedly")
             raise RuntimeError("Slack job worker crashed") from error
         await socket
     finally:
-        worker.cancel()
+        for task in workers:
+            task.cancel()
         socket.cancel()
         socket_monitor.cancel()
         fatal.cancel()
-        await asyncio.gather(worker, socket, socket_monitor, fatal, return_exceptions=True)
+        await asyncio.gather(*workers, socket, socket_monitor, fatal, return_exceptions=True)
         await handler.close_async()  # type: ignore[no-untyped-call]
         socket_readiness.record_stopped()
 

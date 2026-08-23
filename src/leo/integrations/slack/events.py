@@ -60,8 +60,10 @@ class MessageImCallback(SlackPayload):
 class PassiveMessageEvent(SlackPayload):
     """A channel/private-channel/MPIM message observed without launching Leo."""
 
-    type: Literal["message"]
-    channel_type: Literal["channel", "group", "mpim"]
+    type: Literal["message", "app_mention"]
+    # app_mention payloads from some Slack connector paths omit channel_type;
+    # conversation eligibility is re-derived from conversations.info before launch.
+    channel_type: Literal["channel", "group", "mpim"] | None = None
     user: str | None = None
     text: str = ""
     ts: str = Field(min_length=1, max_length=64)
@@ -531,6 +533,7 @@ def normalize_passive_message(
     expected_team_id: str,
     bot_user_id: str,
     bot_id: str | None = None,
+    allow_mentioned_user_message: bool = False,
 ) -> SlackPassiveMessage | None:
     """Normalize passive channel/group/MPIM messages without creating a run trigger."""
 
@@ -538,6 +541,8 @@ def normalize_passive_message(
     event = callback.event
     if callback.team_id != expected_team_id:
         raise SlackEventRejected("event came from an unconfigured Slack team")
+    if event.channel_type is None and not allow_mentioned_user_message:
+        raise SlackEventRejected("passive Slack message omitted channel type")
 
     # Edits, deletes, thread broadcasts, and other Slack subtypes never become a
     # second immutable message-plane row. Other bots are also excluded. Slack may
@@ -564,7 +569,9 @@ def normalize_passive_message(
     else:
         if event.user is None or event.bot_id is not None or event.subtype is not None:
             return None
-        if re.search(rf"<@{re.escape(bot_user_id)}>", event.text):
+        if re.search(rf"<@{re.escape(bot_user_id)}>", event.text) and not (
+            allow_mentioned_user_message
+        ):
             # The app_mention callback is the single persistence/launch authority for
             # mentioned messages, preventing duplicate rows across subscriptions.
             return None

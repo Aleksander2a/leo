@@ -1381,6 +1381,13 @@ def _claim_support(
         relax_integration_grounding and _is_relaxed_integration_observation(observation)
     ):
         return supported, detail
+    # Relaxation trusts a claim's WORDING against a connected-integration payload --
+    # the model may paraphrase/synthesize instead of copying exact prose. It must not
+    # trust the payload ITSELF once the tool's own grounding rule has flagged it as
+    # unsound (truncated, digest-mismatched/tampered, malformed, stale, expired,
+    # discovery-only). Those are integrity failures the generic structural checks
+    # above (exists/in-scope/fresh/quality) cannot detect -- only the grounding rule
+    # inspects payload content -- so they must still fail closed even when relaxed.
     if _looks_like_integration_payload_failure(detail):
         return False, detail
     return True, "Trusted integration payload is available; the model may synthesize the answer."
@@ -1395,6 +1402,13 @@ def _is_relaxed_integration_observation(observation: Observation) -> bool:
 
 
 def _looks_like_integration_payload_failure(detail: str) -> bool:
+    """True when a grounding rule rejected the payload itself, not just the wording.
+
+    Relaxation (see _claim_support) is meant to excuse a claim that paraphrases
+    real data instead of copying it verbatim -- never one built on data the tool
+    itself flagged as truncated, tampered, stale, or otherwise unsound.
+    """
+
     normalized = detail.casefold()
     return any(
         marker in normalized

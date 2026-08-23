@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     JSON,
     CheckConstraint,
@@ -21,6 +22,10 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+# openai/text-embedding-3-small via OpenRouter; a model/dimension change requires a
+# new migration (the column width is fixed, unlike TSVECTOR).
+_EMBEDDING_DIMENSION = 1536
 
 
 class Base(DeclarativeBase):
@@ -761,6 +766,10 @@ class MemoryRevisionRow(Base):
             "status <> 'superseded' OR supersedes_revision IS NOT NULL",
             name="ck_memory_revisions_superseded_parent",
         ),
+        CheckConstraint(
+            "source_type IN ('explicit', 'autonomous')",
+            name="ck_memory_revisions_source_type",
+        ),
         Index("ix_memory_revisions_record_number", "record_id", "number"),
         Index("ix_memory_revisions_scope_status", "organization_id", "strategy_id", "status"),
         Index("ix_memory_revisions_validity", "valid_from", "valid_until", "expires_at"),
@@ -792,7 +801,102 @@ class MemoryRevisionRow(Base):
     supersedes_revision: Mapped[int | None] = mapped_column(Integer)
     search_vector: Mapped[object] = mapped_column(
         TSVECTOR,
-        Computed("to_tsvector('simple', content)", persisted=True),
+        Computed("to_tsvector('english', content)", persisted=True),
+    )
+    # Harness-set provenance, never model/candidate-supplied: 'explicit' for a
+    # user-issued remember/correct command, 'autonomous' for a model-proposed
+    # memory.note capture that passed duplicate/contradiction governance.
+    source_type: Mapped[str] = mapped_column(String(16), nullable=False, server_default="explicit")
+
+
+class MemoryEmbeddingRow(Base):
+    """Disposable semantic index for one memory revision's canonical content.
+
+    Keyed by (revision_id, content_hash, model) so a content change or model
+    rotation creates a new row rather than silently reusing a stale vector;
+    old rows are cache-invalidated the same way memory_retrieval_cache is.
+    """
+
+    __tablename__ = "memory_embeddings"
+    __table_args__ = (
+        UniqueConstraint(
+            "revision_id", "content_hash", "model", name="uq_memory_embeddings_identity"
+        ),
+        Index("ix_memory_embeddings_scope", "organization_id", "strategy_id"),
+        Index("ix_memory_embeddings_record", "record_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    revision_id: Mapped[str] = mapped_column(
+        ForeignKey("memory_revisions.id", ondelete="CASCADE"), nullable=False
+    )
+    record_id: Mapped[str] = mapped_column(
+        ForeignKey("memory_records.id", ondelete="CASCADE"), nullable=False
+    )
+    organization_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    strategy_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    model: Mapped[str] = mapped_column(String(128), nullable=False)
+    embedding: Mapped[list[float]] = mapped_column(Vector(_EMBEDDING_DIMENSION), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class CapabilityEmbeddingRow(Base):
+    """Disposable semantic index for one tool/capability's catalog summary.
+
+    Process-global (not organization/strategy-scoped): the tool catalog is
+    static configuration, not tenant data, matching how capability eligibility
+    is already evaluated per-request rather than per-tenant-stored.
+    """
+
+    __tablename__ = "capability_embeddings"
+    __table_args__ = (
+        UniqueConstraint(
+            "capability_id", "content_hash", "model", name="uq_capability_embeddings_identity"
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    capability_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    model: Mapped[str] = mapped_column(String(128), nullable=False)
+    embedding: Mapped[list[float]] = mapped_column(Vector(_EMBEDDING_DIMENSION), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class ModelCallTranscriptRow(Base):
+    """Full request/response for one model call -- dashboard inspection only.
+
+    Deliberately separate from run_events: that table is capped at 8KB and
+    field-allowlisted per event type (see leo.harness.persistence_rules) to keep the
+    durable event log bounded and replayable, which a full transcript cannot respect.
+    This table carries no such bound and no replay authority; it exists purely so an
+    operator can see the exact message a model call sent and received. raw_request
+    never contains the Authorization header (that's set on the HTTP client, not the
+    request body), so it is safe to store without redaction.
+    """
+
+    __tablename__ = "model_call_transcripts"
+    __table_args__ = (
+        UniqueConstraint("run_id", "request_id", name="uq_model_call_transcripts_identity"),
+        Index("ix_model_call_transcripts_run", "run_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    run_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    task_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    organization_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    strategy_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    request_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    iteration: Mapped[int] = mapped_column(Integer, nullable=False)
+    raw_request: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
+    raw_response: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
 

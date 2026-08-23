@@ -420,3 +420,37 @@ async def test_known_permanent_slack_rejection_is_dead_without_retry() -> None:
     assert outbox.intent.state is DeliveryState.DEAD
     assert outbox.intent.retry_after is None
     assert outbox.intent.last_error == "slack_error_permanent"
+
+
+@pytest.mark.asyncio
+async def test_deleted_thread_root_is_dead_lettered_without_top_level_post() -> None:
+    outbox = _MemoryOutbox()
+
+    class Client:
+        def __init__(self) -> None:
+            self.probes = 0
+            self.posts = 0
+
+        async def conversations_replies(
+            self, *, channel: str, ts: str, limit: int = 1
+        ) -> object:
+            assert (channel, ts, limit) == ("channel-1", "thread-1", 1)
+            self.probes += 1
+            return {"ok": True, "messages": []}
+
+        async def chat_postMessage(self, *, channel: str, thread_ts: str, text: str) -> object:
+            del channel, thread_ts, text
+            self.posts += 1
+            return {"ok": True, "ts": "must-not-be-created"}
+
+    client = Client()
+    state = await SlackOutboxDispatcher(  # type: ignore[arg-type]
+        outbox,
+        owner="dispatcher-1",
+    ).dispatch_once(client)
+
+    assert state is DeliveryState.DEAD
+    assert client.probes == 1
+    assert client.posts == 0
+    assert outbox.intent.state is DeliveryState.DEAD
+    assert outbox.intent.last_error == "slack_thread_root_missing"

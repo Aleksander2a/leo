@@ -6,6 +6,7 @@ import hashlib
 import json
 from datetime import datetime
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import Field, JsonValue, model_validator
 
@@ -62,6 +63,7 @@ class MemoryRevision(ContractModel):
     actor_id: NonEmptyStr
     reason: NonEmptyStr
     supersedes_revision: int | None = Field(default=None, ge=1)
+    source_type: Literal["explicit", "autonomous"] = "explicit"
 
     @model_validator(mode="after")
     def validate_content_and_time(self) -> MemoryRevision:
@@ -96,6 +98,7 @@ class MemoryRevision(ContractModel):
         supersedes_revision: int | None = None,
         valid_until: datetime | None = None,
         expires_at: datetime | None = None,
+        source_type: Literal["explicit", "autonomous"] = "explicit",
     ) -> MemoryRevision:
         return cls(
             id=id,
@@ -115,6 +118,7 @@ class MemoryRevision(ContractModel):
             actor_id=actor_id,
             reason=reason,
             supersedes_revision=supersedes_revision,
+            source_type=source_type,
         )
 
 

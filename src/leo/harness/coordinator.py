@@ -8,6 +8,8 @@ import json
 import logging
 from datetime import datetime
 
+from pydantic import JsonValue
+
 from leo.harness.capability_selection import capability_selection_fingerprint
 from leo.harness.context import context_manifest_event_payload
 from leo.harness.models import (
@@ -47,6 +49,7 @@ from leo.harness.ports import (
     ContextAssembler,
     ContextAssemblyError,
     IdGenerator,
+    ModelCallTranscriptSink,
     ModelGateway,
     ModelGatewayError,
     RunStore,
@@ -61,6 +64,30 @@ from leo.harness.transitions import (
 )
 
 logger = logging.getLogger(__name__)
+
+_TRANSCRIPT_SINK_TIMEOUT_SECONDS = 5.0
+_MAX_EVENT_ARGUMENTS_BYTES = 4096
+
+
+def _bounded_tool_arguments(arguments: dict[str, JsonValue]) -> dict[str, JsonValue]:
+    """Cap tool-call arguments before they enter a durable event payload.
+
+    Event payloads are hard-capped at EVENT_PAYLOAD_MAX_BYTES with no size-projection
+    fallback for tool_started/tool_failed (only context_built has one, see
+    persistence_rules._project_context_built_payload) -- an oversize payload raises an
+    uncaught StoreError that would crash the whole run over one large-but-legitimate
+    tool call (e.g. a big subagent plan definition), not just fail that call. Most
+    arguments are a few hundred bytes; this only bites the rare outlier.
+    """
+
+    encoded = json.dumps(arguments, sort_keys=True, default=str)
+    if len(encoded.encode("utf-8")) <= _MAX_EVENT_ARGUMENTS_BYTES:
+        return arguments
+    return {
+        "_truncated": True,
+        "_original_byte_size": len(encoded.encode("utf-8")),
+        "_argument_keys": ", ".join(sorted(arguments.keys())),
+    }
 
 
 class ScopeMismatchError(RuntimeError):
@@ -81,6 +108,7 @@ class RunCoordinator:
         clock: Clock,
         ids: IdGenerator,
         capabilities: CapabilitySelector | None = None,
+        transcript_sink: ModelCallTranscriptSink | None = None,
     ) -> None:
         self._store = store
         self._model = model
@@ -90,6 +118,7 @@ class RunCoordinator:
         self._clock = clock
         self._ids = ids
         self._capabilities = capabilities
+        self._transcript_sink = transcript_sink
 
     async def run(
         self,
@@ -338,6 +367,38 @@ class RunCoordinator:
                     },
                 )
             )
+            if (
+                self._transcript_sink is not None
+                and turn_result.request_id is not None
+                and turn_result.raw_request is not None
+                and turn_result.raw_response is not None
+            ):
+                try:
+                    # Bounded independently of the run's own deadline: this is a
+                    # best-effort dashboard side-write, not run work, so a hang here
+                    # (pool exhaustion, lock contention, network stall -- not merely a
+                    # raised exception) must not be able to wedge this iteration, or by
+                    # extension a strictly-sequential durable worker with no other
+                    # timeout watching this await.
+                    async with asyncio.timeout(_TRANSCRIPT_SINK_TIMEOUT_SECONDS):
+                        await self._transcript_sink.record(
+                            run_id=bundle.run.id,
+                            task_id=bundle.task.id,
+                            scope=bundle.run.scope,
+                            request_id=turn_result.request_id,
+                            iteration=bundle.run.iteration,
+                            raw_request=turn_result.raw_request,
+                            raw_response=turn_result.raw_response,
+                            occurred_at=self._clock.now(),
+                        )
+                except Exception:
+                    logger.warning(
+                        "model call transcript recording failed for run %s request %s; "
+                        "dashboard inspection for this turn will be degraded",
+                        bundle.run.id,
+                        turn_result.request_id,
+                        exc_info=True,
+                    )
             cost_reason = _cost_budget_reason(bundle.run, usage)
             if cost_reason is not None:
                 bundle = await self._commit_exhaustion(
@@ -425,7 +486,12 @@ class RunCoordinator:
                             EventDraft(
                                 type=EventType.TOOL_STARTED,
                                 iteration=bundle.run.iteration,
-                                payload={"tool_call_id": call.id, "tool": call.name},
+                                payload={
+                                    "tool_call_id": call.id,
+                                    "tool": call.name,
+                                    "arguments": _bounded_tool_arguments(call.arguments),
+                                    "parallel_batch": True,
+                                },
                             )
                         )
                     remaining_seconds = _remaining_seconds(
@@ -458,7 +524,12 @@ class RunCoordinator:
                         EventDraft(
                             type=EventType.TOOL_STARTED,
                             iteration=bundle.run.iteration,
-                            payload={"tool_call_id": call.id, "tool": call.name},
+                            payload={
+                                "tool_call_id": call.id,
+                                "tool": call.name,
+                                "arguments": _bounded_tool_arguments(call.arguments),
+                                "parallel_batch": False,
+                            },
                         )
                     )
                     remaining_seconds = _remaining_seconds(
@@ -512,6 +583,7 @@ class RunCoordinator:
                                 payload={
                                     "tool_call_id": call.id,
                                     "tool": call.name,
+                                    "arguments": _bounded_tool_arguments(call.arguments),
                                     "code": tool_outcome.code,
                                     "retryable": tool_outcome.retryable,
                                 },
@@ -535,6 +607,7 @@ class RunCoordinator:
                                 payload={
                                     "tool_call_id": call.id,
                                     "tool": call.name,
+                                    "arguments": _bounded_tool_arguments(call.arguments),
                                     "code": invalid.code,
                                     "retryable": False,
                                 },
@@ -568,6 +641,7 @@ class RunCoordinator:
                                 payload={
                                     "tool_call_id": call.id,
                                     "tool": call.name,
+                                    "arguments": _bounded_tool_arguments(call.arguments),
                                     "code": invalid.code,
                                     "retryable": False,
                                 },

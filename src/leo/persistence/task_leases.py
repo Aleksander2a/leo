@@ -340,6 +340,7 @@ class PostgresTaskLeaseStore:
 def _eligible_tasks(current_time: object, max_attempts: int) -> ColumnElement[bool]:
     return and_(
         TaskRow.status.in_(("queued", "active")),
+        TaskRow.continuation_kind != "subagent",
         TaskRow.attempt_count < max_attempts,
         or_(TaskRow.retry_after.is_(None), TaskRow.retry_after <= current_time),
         or_(
@@ -352,6 +353,7 @@ def _eligible_tasks(current_time: object, max_attempts: int) -> ColumnElement[bo
 def _exhausted_tasks(current_time: object, max_attempts: int) -> ColumnElement[bool]:
     return and_(
         TaskRow.status.in_(("queued", "active")),
+        TaskRow.continuation_kind != "subagent",
         TaskRow.attempt_count >= max_attempts,
         or_(
             TaskRow.lease_expires_at.is_(None),

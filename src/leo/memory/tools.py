@@ -100,7 +100,7 @@ class MemoryMutationAuthority(ContractModel):
     task_id: NonEmptyStr
     run_id: NonEmptyStr
     message_reference: NonEmptyStr
-    intent: ExplicitMemoryIntent
+    intent: ExplicitMemoryIntent | None = None
 
     @model_validator(mode="after")
     def validate_slack_destination(self) -> MemoryMutationAuthority:
@@ -223,8 +223,55 @@ def bind_memory_mutation_authority(
     )
 
 
+def bind_autonomous_memory_authority(
+    *,
+    scope: ScopeKey,
+    team_id: str,
+    conversation_id: str,
+    conversation_kind: ConversationKind,
+    actor_id: str,
+    event_id: str,
+    task_id: str,
+    run_id: str,
+    message_reference: str,
+) -> MemoryMutationAuthority:
+    """Bind server-derived destination authority for every turn, not just explicit commands.
+
+    Unlike ``bind_memory_mutation_authority``, this never depends on the user's raw
+    text matching a command pattern -- it is available whenever a Slack destination is
+    admitted, so the model may propose a memory candidate on any turn it judges
+    something worth remembering.
+    """
+
+    destination = ConversationRef(
+        provider="slack",
+        team_id=team_id,
+        external_id=conversation_id,
+        kind=conversation_kind,
+        actor_id=actor_id if conversation_kind is ConversationKind.DM else None,
+    )
+    return MemoryMutationAuthority(
+        scope=scope,
+        destination=destination,
+        actor_id=actor_id,
+        event_id=event_id,
+        task_id=task_id,
+        run_id=run_id,
+        message_reference=message_reference,
+        intent=None,
+    )
+
+
 class _NoArguments(ContractModel):
     pass
+
+
+class _AutonomousMemoryArguments(ContractModel):
+    """Model-supplied content only; scope/visibility/namespace stay harness-derived."""
+
+    content: NonEmptyStr = Field(max_length=2_000)
+    kind: MemoryKind = MemoryKind.NOTE
+    reason: NonEmptyStr = Field(max_length=200)
 
 
 class ExplicitMemoryMutationTool:
@@ -237,11 +284,14 @@ class ExplicitMemoryMutationTool:
         authority: MemoryMutationAuthority,
         clock: Clock,
     ) -> None:
+        if authority.intent is None:
+            raise ValueError("explicit memory mutation requires a parsed intent")
         self._service = service
         self._authority = authority
+        self._intent = authority.intent
         self._clock = clock
         self._outcome: ToolOutcome | None = None
-        command = authority.intent.command
+        command = self._intent.command
         self._spec = ToolSpec(
             name=f"memory.{command.value}",
             description=(
@@ -291,13 +341,19 @@ class ExplicitMemoryMutationTool:
             return self._outcome
         authority = self._authority
         sources = authority.sources()
-        intent = authority.intent
+        intent = self._intent
         try:
             if intent.command is MemoryMutationCommand.REMEMBER:
                 assert intent.content is not None
                 record = await self._service.remember(
                     authority.scope,
-                    _candidate(authority, intent.content, sources, self._clock.now()),
+                    _candidate(
+                        authority,
+                        intent.content,
+                        sources,
+                        self._clock.now(),
+                        reason=f"explicit Slack {intent.command.value}",
+                    ),
                     actor_id=authority.actor_id,
                     sources=sources,
                     confirmed=True,
@@ -307,7 +363,13 @@ class ExplicitMemoryMutationTool:
                 record = await self._service.correct(
                     authority.scope,
                     intent.record_id,
-                    _candidate(authority, intent.content, sources, self._clock.now()),
+                    _candidate(
+                        authority,
+                        intent.content,
+                        sources,
+                        self._clock.now(),
+                        reason=f"explicit Slack {intent.command.value}",
+                    ),
                     actor_id=authority.actor_id,
                     sources=sources,
                     confirmed=True,
@@ -357,6 +419,124 @@ def build_explicit_memory_tools(
     return (ExplicitMemoryMutationTool(service=service, authority=authority, clock=clock),)
 
 
+class AutonomousMemoryTool:
+    """Let the model capture a durable fact/preference on any turn, not just on command.
+
+    The model supplies only free-text content, a coarse kind, and a short reason; the
+    harness still derives scope/visibility/namespace/provenance from the sealed Slack
+    destination authority, so this cannot widen disclosure or forge sources. Candidates
+    are routed through duplicate/contradiction governance (``assess_candidate``) and
+    committed immediately -- no separate confirmation turn -- so memory accumulates as
+    a natural side effect of conversation instead of only through an explicit command.
+    """
+
+    def __init__(
+        self,
+        *,
+        service: ExplicitMemoryService,
+        authority: MemoryMutationAuthority,
+        clock: Clock,
+    ) -> None:
+        self._service = service
+        self._authority = authority
+        self._clock = clock
+        self._spec = ToolSpec(
+            name="memory.note",
+            description=(
+                "Save one durable fact, decision, or preference from this conversation for "
+                "future turns to recall -- use this proactively whenever the user states a "
+                "preference, correction, or fact worth remembering, not only when asked to "
+                "remember. Content is scoped automatically to this destination; do not "
+                "include secrets."
+            ),
+            domain="memory",
+            input_schema=_AutonomousMemoryArguments.model_json_schema(),
+            effect=ToolEffect.STATE_MUTATION,
+            allowed_phases=frozenset({RunPhase.RESEARCH}),
+            retry=ToolRetryPolicy(max_attempts=1),
+            timeout_seconds=10,
+            max_result_bytes=2_048,
+            required_roles=frozenset({"researcher"}),
+        )
+
+    @property
+    def spec(self) -> ToolSpec:
+        return self._spec
+
+    def validate(self, arguments: dict[str, JsonValue]) -> dict[str, JsonValue]:
+        return _AutonomousMemoryArguments.model_validate(arguments).model_dump(mode="json")
+
+    async def execute(
+        self,
+        arguments: dict[str, JsonValue],
+        context: ToolExecutionContext,
+    ) -> ToolOutcome:
+        try:
+            parsed = _AutonomousMemoryArguments.model_validate(arguments)
+        except (ValidationError, ValueError, TypeError):
+            return ToolFailure(
+                code="MEMORY_ARGUMENTS_INVALID",
+                safe_message="The memory note content was not valid.",
+            )
+        mismatch = _authority_mismatch(self._authority, context)
+        if mismatch is not None:
+            return ToolFailure(
+                code="MEMORY_AUTHORITY_MISMATCH",
+                safe_message=f"The memory note was not committed: {mismatch}.",
+            )
+        authority = self._authority
+        sources = authority.sources()
+        candidate = MemoryCandidate(
+            kind=parsed.kind,
+            content=parsed.content,
+            source_ids=tuple(source.id for source in sources),
+            visibility=authority.visibility,
+            namespace_id=authority.namespace_id,
+            sensitivity=0.2,
+            valid_from=self._clock.now(),
+            reason=f"autonomous capture: {parsed.reason}",
+        )
+        try:
+            decision, record = await self._service.propose_autonomous(
+                authority.scope,
+                candidate,
+                actor_id=authority.actor_id,
+                sources=sources,
+            )
+        except MemoryCommandRejected as exc:
+            return ToolFailure(
+                code="MEMORY_COMMAND_REJECTED",
+                safe_message=f"The memory note was not committed: {exc.safe_code}.",
+            )
+        except StoreError:
+            return ToolFailure(
+                code="MEMORY_STORE_ERROR",
+                safe_message="The memory note could not be committed safely.",
+            )
+        return ToolSuccess(
+            data={
+                "operation": "autonomous_note",
+                "promotion_status": decision.status.value,
+                "record_id": record.id if record is not None else None,
+                "revision": record.current_revision if record is not None else None,
+            },
+            source=SourceRef(
+                provider="leo_memory",
+                reference=record.id if record is not None else "duplicate",
+            ),
+            observed_at=self._clock.now(),
+        )
+
+
+def build_autonomous_memory_tools(
+    *,
+    service: ExplicitMemoryService,
+    authority: MemoryMutationAuthority,
+    clock: Clock,
+) -> tuple[AutonomousMemoryTool, ...]:
+    return (AutonomousMemoryTool(service=service, authority=authority, clock=clock),)
+
+
 def _validated_intent(**values: object) -> ExplicitMemoryIntent | None:
     try:
         return ExplicitMemoryIntent.model_validate(values)
@@ -385,6 +565,8 @@ def _candidate(
     content: str,
     sources: tuple[MemorySource, ...],
     now: datetime,
+    *,
+    reason: str,
 ) -> MemoryCandidate:
     return MemoryCandidate(
         kind=MemoryKind.NOTE,
@@ -394,7 +576,7 @@ def _candidate(
         namespace_id=authority.namespace_id,
         sensitivity=0.2,
         valid_from=now,
-        reason=f"explicit Slack {authority.intent.command.value}",
+        reason=reason,
     )
 
 

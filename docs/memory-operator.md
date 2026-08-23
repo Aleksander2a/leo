@@ -5,6 +5,39 @@ channel can read and write only its exact conversation namespace. A 1:1 DM may a
 the current user's same-workspace conversations where Leo is currently present. Group DMs remain
 isolated. Optional strategy labels are provenance and never grant access.
 
+## Autonomous capture
+
+Alongside the explicit `remember`/`correct`/`forget` commands below, Leo can also save a note on its
+own initiative during an ordinary conversational turn via the `memory.note` tool
+(`src/leo/memory/tools.py:AutonomousMemoryTool`). The model supplies only free-text content, a coarse
+kind, and a short reason; scope/visibility/namespace/provenance are still entirely harness-derived
+from the sealed Slack destination authority, exactly as with the explicit commands. Every proposal is
+routed through `ExplicitMemoryService.propose_autonomous`, which runs it against
+`memory.policy.assess_candidate` for duplicate/contradiction governance before committing: an exact
+duplicate is a no-op, a single conflicting active record in the same namespace is updated via
+`correct` (a new revision superseding it) rather than creating a disconnected duplicate, and
+anything else becomes a new record. There is no separate interactive confirmation step for this
+path — it is designed to make memory accumulate as a side effect of conversation rather than only
+through an explicit command.
+
+## Semantic recall
+
+Retrieval is hybrid, not lexical-only. Every remembered/corrected/autonomously-captured revision is
+embedded (`openai/text-embedding-3-small` via OpenRouter) and persisted into the `memory_embeddings`
+pgvector table (`src/leo/persistence/memory_embeddings.py`), alongside a `source_type` tag
+(`explicit` vs `autonomous`) recorded directly on the revision. A search with a query embedding runs
+a parallel vector-KNN pool (cosine distance) against a lexical full-text pool and fuses the two with
+reciprocal rank fusion (`src/leo/harness/fusion.py`, the same technique used for tool discovery) --
+so a conceptual query with no shared vocabulary with the stored content can still surface it. Both
+pools apply the identical scope/visibility/sensitivity/temporal authorization filter
+(`_authorized_hard_filters` in `src/leo/persistence/memory_retrieval.py`); the vector query never
+sees a row the lexical query would not have been authorized to see either.
+
+Embedding is best-effort and asynchronous to the write it accompanies: a gateway failure or missing
+API key degrades that one revision to lexical-only recall, never blocks or rolls back the memory
+write itself. A revision with no embedding row simply never enters the vector pool -- it stays fully
+findable through FTS.
+
 ## Read-only projection
 
 `memory-project` renders escaped Markdown from explicit visibility/namespace pairs. It never reads

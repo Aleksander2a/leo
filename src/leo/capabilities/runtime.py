@@ -14,6 +14,7 @@ from leo.capabilities.discovery import (
     query_hash,
     search_tokens,
 )
+from leo.capabilities.embeddings import EmbeddingVector, OpenRouterEmbeddingGateway
 from leo.capabilities.router import AdaptiveRouter
 from leo.capabilities.skills import SkillCatalog, SkillLoadError, SkillSummary
 from leo.harness.capability_selection import capability_selection_fingerprint
@@ -74,12 +75,19 @@ class CapabilityRuntime:
         always_available_tool_names: frozenset[str] = frozenset(),
         required_tool_names: frozenset[str] = frozenset(),
         profile: str = "research",
-        shortlist_limit: int = 3,
+        # Wide enough that a broad web-search tool and a narrow provider-specific
+        # tool can both surface for an ambiguous query (fusion ranks them, the
+        # model chooses), not so wide that every turn's prompt carries schemas the
+        # query never plausibly needed.
+        shortlist_limit: int = 5,
         max_selected_tools: int = 6,
         max_search_calls: int = 2,
         max_describe_calls: int = 2,
         max_described_tools: int = 3,
         describe_max_bytes: int = 16_384,
+        embedding_gateway: OpenRouterEmbeddingGateway | None = None,
+        tool_embeddings: dict[str, EmbeddingVector] | None = None,
+        query_embedding: EmbeddingVector | None = None,
     ) -> None:
         if not 1 <= shortlist_limit <= 10:
             raise ValueError("shortlist_limit must be between 1 and 10")
@@ -109,6 +117,9 @@ class CapabilityRuntime:
         self._sessions: dict[str, _DiscoverySession] = {}
         self._skill_catalog = skill_catalog
         self._skill_summaries = self._discover_skills(skill_catalog)
+        self._embedding_gateway = embedding_gateway
+        self._tool_embeddings = tool_embeddings or {}
+        self._query_embedding = query_embedding
 
     @property
     def catalog_fingerprint(self) -> str:
@@ -145,6 +156,8 @@ class CapabilityRuntime:
             shortlist_limit=self._shortlist_limit,
             namespace=trusted_scope.namespace,
             conversation_kind=conversation_kind,
+            tool_embeddings=self._tool_embeddings,
+            query_embedding=self._query_embedding,
         )
         eligible_ids = frozenset(record.id for record in eligible)
         catalog_ids = frozenset(record.id for record in self._catalog.records())
@@ -259,7 +272,7 @@ class CapabilityRuntime:
             )
         return tuple(items)
 
-    def search(
+    async def search(
         self,
         *,
         run_id: str,
@@ -275,6 +288,13 @@ class CapabilityRuntime:
             raise CapabilityDiscoveryError("discovery_no_progress")
         session.search_calls += 1
         session.search_hashes.add(digest)
+        # The model may search with different words than the turn's own objective
+        # (which already has a precomputed embedding), so embed this query fresh;
+        # a failed/unavailable embedding call just falls back to lexical ranking.
+        query_embedding = self._query_embedding
+        if self._embedding_gateway is not None:
+            (fresh_embedding,) = await self._embedding_gateway.embed((query,))
+            query_embedding = fresh_embedding
         summaries = self._broker.search(
             DiscoveryQuery(query=query, limit=min(limit, self._shortlist_limit)),
             phase=session.phase,
@@ -283,6 +303,8 @@ class CapabilityRuntime:
             remaining_cost=session.remaining_cost,
             namespace=session.namespace,
             conversation_kind=session.conversation_kind,
+            tool_embeddings=self._tool_embeddings,
+            query_embedding=query_embedding,
         )
         selected = tuple(item for item in summaries if item.id in session.eligible_ids)
         session.discovered_ids.update(item.id for item in selected)

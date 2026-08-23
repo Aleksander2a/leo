@@ -9,6 +9,7 @@ from pydantic import Field
 
 from leo.capabilities.catalog import InMemoryToolCatalog
 from leo.capabilities.discovery import DiscoveryBroker, DiscoveryQuery
+from leo.capabilities.embeddings import EmbeddingVector
 from leo.harness.models import ContractModel, NonEmptyStr, RunPhase, ScopeKey
 
 
@@ -44,6 +45,8 @@ class AdaptiveRouter:
         shortlist_limit: int = 5,
         namespace: ScopeKey | None = None,
         conversation_kind: str | None = None,
+        tool_embeddings: dict[str, EmbeddingVector] | None = None,
+        query_embedding: EmbeddingVector | None = None,
     ) -> RouteDecision:
         eligible = self._catalog.eligible(
             phase=phase,
@@ -81,6 +84,8 @@ class AdaptiveRouter:
             remaining_cost=remaining_cost,
             namespace=namespace,
             conversation_kind=conversation_kind,
+            tool_embeddings=tool_embeddings,
+            query_embedding=query_embedding,
         )
         candidates = tuple(item.id for item in summaries)
         complexity = (
@@ -91,8 +96,8 @@ class AdaptiveRouter:
             mode="discovery" if candidates else "direct",
             candidates=candidates,
             selected=candidates,
-            reason="bounded lexical eligible shortlist"
+            reason="bounded lexical+semantic eligible shortlist"
             if candidates
-            else "no eligible lexical match; direct conversation remains available",
+            else "no eligible lexical or semantic match; direct conversation remains available",
             catalog_version=self._catalog.version,
         )

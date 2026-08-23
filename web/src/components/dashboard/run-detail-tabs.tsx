@@ -1,8 +1,10 @@
 "use client";
 
 import { EventTimeline } from "@/components/dashboard/event-timeline";
+import { ModelCallPanel } from "@/components/dashboard/model-call-panel";
 import { PlanTree } from "@/components/dashboard/plan-tree";
 import { JsonTree } from "@/components/ui/json-tree";
+import { ProvenanceBadge } from "@/components/ui/provenance-badge";
 import { StatusPill } from "@/components/ui/status-pill";
 import { Tabs } from "@/components/ui/tabs";
 import { formatDateTime } from "@/lib/utils";
@@ -20,11 +22,21 @@ export function RunDetailTabs({
   const contextEntries = timeline.filter((entry) => entry.kind === "context_built");
   const toolEntries = timeline.filter((entry) => entry.kind === "tool_call" || entry.kind === "evidence_normalized");
   const verificationEntries = timeline.filter((entry) => entry.kind === "verification");
+  const modelCallEntries = timeline.filter((entry) => entry.kind === "model_called");
 
   return (
     <Tabs
       tabs={[
-        { id: "timeline", label: "Timeline", content: <EventTimeline entries={timeline} /> },
+        {
+          id: "timeline",
+          label: "Timeline",
+          content: <EventTimeline entries={timeline} observations={detail.observations} />,
+        },
+        {
+          id: "model-calls",
+          label: `Model Calls (${modelCallEntries.length})`,
+          content: <ModelCallsTab entries={modelCallEntries} timeline={timeline} detail={detail} />,
+        },
         {
           id: "context",
           label: "Context",
@@ -52,6 +64,33 @@ export function RunDetailTabs({
         },
       ]}
     />
+  );
+}
+
+function ModelCallsTab({
+  entries,
+  timeline,
+  detail,
+}: {
+  entries: TimelineEntry[];
+  timeline: TimelineEntry[];
+  detail: RunDetail;
+}) {
+  if (entries.length === 0) {
+    return <p className="text-sm text-gray-400">No model calls were recorded for this run.</p>;
+  }
+  return (
+    <div className="space-y-4">
+      {entries.map((entry) => (
+        <div key={entry.sequence} className="rounded-lg border border-gray-200 p-3 dark:border-gray-800">
+          <div className="mb-3 flex items-center gap-2 text-xs text-gray-400">
+            <span>turn #{entry.sequence}</span>
+            <span>{formatDateTime(entry.occurred_at)}</span>
+          </div>
+          <ModelCallPanel entry={entry} timeline={timeline} observations={detail.observations} />
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -110,6 +149,7 @@ function ToolsTab({ detail, toolEvents }: { detail: RunDetail; toolEvents: Timel
                 <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
                   <StatusPill status={observation.status} />
                   <span className="font-medium text-gray-700 dark:text-gray-300">{observation.kind}</span>
+                  <ProvenanceBadge callKind={observation.call_kind} integration={observation.integration} />
                   {observation.source?.provider ? (
                     <span className="rounded bg-gray-100 px-1.5 py-0.5 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
                       {observation.source.provider}
@@ -210,6 +250,7 @@ function EventList({ entries }: { entries: TimelineEntry[] }) {
           <div className="mb-2 flex items-center gap-2 text-xs text-gray-400">
             <span>#{entry.sequence}</span>
             <span>{formatDateTime(entry.occurred_at)}</span>
+            {entry.call_kind ? <ProvenanceBadge callKind={entry.call_kind} integration={entry.integration} /> : null}
           </div>
           <JsonTree data={entry.raw_payload} />
         </li>

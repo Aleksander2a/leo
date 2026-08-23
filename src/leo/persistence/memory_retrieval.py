@@ -5,10 +5,11 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import ColumnElement, and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.sql import Select
 
+from leo.harness.fusion import reciprocal_rank_fusion
 from leo.harness.models import ScopeKey
 from leo.memory.models import MemoryRevision, MemoryStatus, MemoryVisibility
 from leo.memory.retrieval import (
@@ -20,10 +21,15 @@ from leo.memory.retrieval import (
     normalize_memory_query,
     select_bounded_memory_hits,
 )
-from leo.persistence.schema import MemoryRecordRow, MemoryRevisionRow
+from leo.persistence.schema import MemoryEmbeddingRow, MemoryRecordRow, MemoryRevisionRow
 
 _SEARCH_POOL_LIMIT = 1_000
-_RETRIEVAL_POLICY = "postgres-fts-scope-first-v2"
+_VECTOR_POOL_LIMIT = 200
+_LEXICAL_POLICY = "postgres-fts-scope-first-v2"
+_VECTOR_POLICY = "postgres-vector-knn-v1"
+_HYBRID_POLICY = "postgres-hybrid-fts-vector-rrf-v1"
+# Retained for callers that still reference the pre-hybrid name.
+_RETRIEVAL_POLICY = _LEXICAL_POLICY
 
 
 class PostgresMemoryRetriever:
@@ -41,26 +47,53 @@ async def execute_memory_search(
     *,
     record_ids_hint: tuple[str, ...] | None = None,
 ) -> tuple[MemorySearchHit, ...]:
-    """Execute scope-first retrieval inside a caller-owned authorization transaction."""
+    """Execute scope-first retrieval inside a caller-owned authorization transaction.
 
-    statement = build_memory_search_statement(request, record_ids_hint=record_ids_hint)
-    rows = (await session.execute(statement)).mappings().all()
-    if len(rows) > _SEARCH_POOL_LIMIT:
+    Lexical (FTS) hits are always computed. When the caller supplied a query
+    embedding, a parallel vector-KNN pool is also computed and the two rankings
+    are fused with reciprocal rank fusion -- the same technique used for tool
+    discovery -- so a conceptual query with little lexical overlap can still
+    surface a semantically close memory.
+    """
+
+    lexical_statement = build_memory_search_statement(request, record_ids_hint=record_ids_hint)
+    lexical_rows = (await session.execute(lexical_statement)).mappings().all()
+    if len(lexical_rows) > _SEARCH_POOL_LIMIT:
         raise MemoryRetrievalError("authorized_search_pool_exhausted")
-    hits = tuple(_hit_from_mapping(dict(row)) for row in rows)
-    return select_bounded_memory_hits(hits, request)
+    lexical_hits = tuple(
+        _hit_from_mapping(dict(row), match_reason=_LEXICAL_POLICY) for row in lexical_rows
+    )
+    if request.query_embedding is None:
+        return select_bounded_memory_hits(lexical_hits, request)
+
+    vector_statement = build_vector_search_statement(request, record_ids_hint=record_ids_hint)
+    vector_rows = (await session.execute(vector_statement)).mappings().all()
+    vector_hits = tuple(
+        _hit_from_mapping(dict(row), match_reason=_VECTOR_POLICY) for row in vector_rows
+    )
+    if not vector_hits:
+        return select_bounded_memory_hits(lexical_hits, request)
+
+    fused = reciprocal_rank_fusion(
+        tuple((hit, hit.score) for hit in lexical_hits),
+        tuple((hit, hit.score) for hit in vector_hits),
+        key=lambda hit: (hit.record_id, hit.revision),
+    )
+    fused_hits = tuple(
+        hit.model_copy(update={"score": score, "match_reason": _HYBRID_POLICY})
+        for hit, score in fused
+    )
+    return select_bounded_memory_hits(fused_hits, request)
 
 
-def build_memory_search_statement(
-    request: MemorySearchRequest,
-    *,
-    record_ids_hint: tuple[str, ...] | None = None,
-) -> Select[Any]:
-    """Build a bounded query whose hard filters precede ranking and limiting."""
+def _authorized_hard_filters(request: MemorySearchRequest) -> tuple[ColumnElement[bool], ...]:
+    """Filters shared verbatim by the lexical and vector candidate queries.
 
-    normalized = normalize_memory_query(request.query)
-    query_vector = func.plainto_tsquery("simple", normalized)
-    rank = func.ts_rank(MemoryRevisionRow.search_vector, query_vector)
+    Both queries must apply identical authorization/lifecycle predicates -- a
+    drift between them (e.g. the vector query forgetting the sensitivity cap)
+    would be a silent disclosure bug, not just a ranking inconsistency.
+    """
+
     authorized = tuple(
         and_(
             MemoryRevisionRow.visibility == item.visibility.value,
@@ -73,6 +106,29 @@ def build_memory_search_statement(
             key=lambda item: (item.visibility.value, item.namespace_id),
         )
     )
+    return (
+        MemoryRevisionRow.organization_id == request.scope.organization_id,
+        MemoryRecordRow.organization_id == request.scope.organization_id,
+        MemoryRecordRow.status.in_((MemoryStatus.ACTIVE.value, MemoryStatus.CONTESTED.value)),
+        MemoryRevisionRow.status.in_((MemoryStatus.ACTIVE.value, MemoryStatus.CONTESTED.value)),
+        or_(*authorized),
+        MemoryRevisionRow.sensitivity <= request.max_sensitivity,
+        MemoryRevisionRow.valid_from <= request.as_of,
+        (MemoryRevisionRow.valid_until.is_(None) | (MemoryRevisionRow.valid_until > request.as_of)),
+        (MemoryRevisionRow.expires_at.is_(None) | (MemoryRevisionRow.expires_at > request.as_of)),
+    )
+
+
+def build_memory_search_statement(
+    request: MemorySearchRequest,
+    *,
+    record_ids_hint: tuple[str, ...] | None = None,
+) -> Select[Any]:
+    """Build a bounded query whose hard filters precede ranking and limiting."""
+
+    normalized = normalize_memory_query(request.query)
+    query_vector = func.plainto_tsquery("english", normalized)
+    rank = func.ts_rank(MemoryRevisionRow.search_vector, query_vector)
     # PostgreSQL applies this SELECT's WHERE clause before computing rank/order.
     # Unauthorized, stale, superseded, retracted, expired, or over-sensitivity rows
     # therefore cannot enter the ranked pool. Overflow fails closed in the adapter.
@@ -104,21 +160,7 @@ def build_memory_search_statement(
             & (MemoryRecordRow.current_revision == MemoryRevisionRow.number),
         )
         .where(
-            MemoryRevisionRow.organization_id == request.scope.organization_id,
-            MemoryRecordRow.organization_id == request.scope.organization_id,
-            MemoryRecordRow.status.in_((MemoryStatus.ACTIVE.value, MemoryStatus.CONTESTED.value)),
-            MemoryRevisionRow.status.in_((MemoryStatus.ACTIVE.value, MemoryStatus.CONTESTED.value)),
-            or_(*authorized),
-            MemoryRevisionRow.sensitivity <= request.max_sensitivity,
-            MemoryRevisionRow.valid_from <= request.as_of,
-            (
-                MemoryRevisionRow.valid_until.is_(None)
-                | (MemoryRevisionRow.valid_until > request.as_of)
-            ),
-            (
-                MemoryRevisionRow.expires_at.is_(None)
-                | (MemoryRevisionRow.expires_at > request.as_of)
-            ),
+            *_authorized_hard_filters(request),
             MemoryRevisionRow.search_vector.op("@@")(query_vector),
         )
     )
@@ -136,7 +178,62 @@ def build_memory_search_statement(
     )
 
 
-def _hit_from_mapping(row: dict[str, Any]) -> MemorySearchHit:
+def build_vector_search_statement(
+    request: MemorySearchRequest,
+    *,
+    record_ids_hint: tuple[str, ...] | None = None,
+) -> Select[Any]:
+    """Build the top-K nearest-neighbor pool for the request's query embedding.
+
+    Unlike the FTS query, this is inherently bounded (ORDER BY distance LIMIT K),
+    so it needs no separate pool-overflow failure mode.
+    """
+
+    if request.query_embedding is None:
+        raise ValueError("vector search requires a query embedding")
+    raw_similarity = 1 - MemoryEmbeddingRow.embedding.cosine_distance(list(request.query_embedding))
+    # MemorySearchHit.score requires >= 0; cosine similarity is mathematically in
+    # [-1, 1], so an opposite-direction pair must be clamped rather than rejected.
+    similarity = func.greatest(0.0, raw_similarity).label("score")
+    statement = (
+        select(
+            MemoryRevisionRow.id.label("revision_id"),
+            MemoryRevisionRow.record_id,
+            MemoryRevisionRow.number,
+            MemoryRevisionRow.content,
+            MemoryRevisionRow.content_hash,
+            MemoryRevisionRow.source_ids,
+            MemoryRevisionRow.visibility,
+            MemoryRevisionRow.namespace_id,
+            MemoryRevisionRow.sensitivity,
+            MemoryRevisionRow.valid_from,
+            MemoryRevisionRow.valid_until,
+            MemoryRevisionRow.recorded_at,
+            MemoryRevisionRow.expires_at,
+            MemoryRevisionRow.status.label("revision_status"),
+            MemoryRevisionRow.actor_id,
+            MemoryRevisionRow.reason,
+            MemoryRevisionRow.supersedes_revision,
+            MemoryRecordRow.status.label("record_status"),
+            similarity,
+        )
+        .select_from(MemoryEmbeddingRow)
+        .join(MemoryRevisionRow, MemoryRevisionRow.id == MemoryEmbeddingRow.revision_id)
+        .join(
+            MemoryRecordRow,
+            (MemoryRecordRow.id == MemoryRevisionRow.record_id)
+            & (MemoryRecordRow.current_revision == MemoryRevisionRow.number),
+        )
+        .where(*_authorized_hard_filters(request))
+    )
+    if record_ids_hint is not None:
+        statement = statement.where(MemoryRecordRow.id.in_(record_ids_hint))
+    return statement.order_by(similarity.desc()).limit(_VECTOR_POOL_LIMIT)
+
+
+def _hit_from_mapping(
+    row: dict[str, Any], *, match_reason: str = _LEXICAL_POLICY
+) -> MemorySearchHit:
     revision = MemoryRevision(
         id=str(row["revision_id"]),
         record_id=str(row["record_id"]),
@@ -166,7 +263,7 @@ def _hit_from_mapping(row: dict[str, Any]) -> MemorySearchHit:
         revision=revision.number,
         content=revision.content,
         score=float(row["score"]),
-        match_reason=_RETRIEVAL_POLICY,
+        match_reason=match_reason,
         recorded_at=revision.recorded_at,
         visibility=revision.visibility,
         namespace_id=revision.namespace_id,

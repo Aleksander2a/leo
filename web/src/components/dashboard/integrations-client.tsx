@@ -1,6 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ProvenanceBadge } from "@/components/ui/provenance-badge";
 import { formatNumber, formatPercent } from "@/lib/utils";
 import type { IntegrationsResponse } from "@/lib/types";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -34,7 +35,7 @@ export function IntegrationsClient({ data }: { data: IntegrationsResponse }) {
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
           <thead className="bg-gray-50 dark:bg-gray-900">
             <tr>
-              {["Provider", "Total calls", "Retrieved", "Stale", "Rejected", "Success rate"].map((header) => (
+              {["Provider", "Kind", "Total calls", "Retrieved", "Stale", "Rejected", "Success rate"].map((header) => (
                 <th
                   key={header}
                   className="px-4 py-2 text-left text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400"
@@ -48,6 +49,9 @@ export function IntegrationsClient({ data }: { data: IntegrationsResponse }) {
             {data.providers.map((provider) => (
               <tr key={provider.provider} className="text-sm">
                 <td className="px-4 py-2 font-medium text-gray-800 dark:text-gray-200">{provider.display_name}</td>
+                <td className="px-4 py-2">
+                  <ProvenanceBadge callKind={provider.call_kind} />
+                </td>
                 <td className="px-4 py-2 tabular-nums text-gray-600 dark:text-gray-400">
                   {formatNumber(provider.total)}
                 </td>
@@ -80,7 +84,10 @@ export function IntegrationsClient({ data }: { data: IntegrationsResponse }) {
             <ul className="divide-y divide-gray-100 dark:divide-gray-800">
               {data.tool_failures.map((failure) => (
                 <li key={failure.key} className="flex items-center justify-between py-2 text-sm">
-                  <span className="font-mono text-gray-700 dark:text-gray-300">{failure.key}</span>
+                  <span className="flex items-center gap-2">
+                    <span className="font-mono text-gray-700 dark:text-gray-300">{failure.key}</span>
+                    <ProvenanceBadge callKind={failure.call_kind} integration={failure.integration} />
+                  </span>
                   <span className="font-medium tabular-nums text-gray-900 dark:text-gray-100">
                     {failure.count}
                   </span>

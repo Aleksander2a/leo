@@ -407,6 +407,30 @@ def test_passive_channel_root_is_context_only_and_cannot_attest_coverage() -> No
     assert message.conversation_kind is SlackConversationKind.ORDINARY_INTERNAL
 
 
+def test_app_mention_can_be_persisted_before_launch_when_requested() -> None:
+    body = _passive_message_body(
+        event_update={
+            "type": "app_mention",
+            "text": "<@UBOT> Continue this thread.",
+            "thread_ts": "300.001",
+        }
+    )
+    event = body["event"]
+    assert isinstance(event, dict)
+    event.pop("channel_type")
+
+    message = normalize_passive_message(
+        body,
+        expected_team_id="T123",
+        bot_user_id="UBOT",
+        allow_mentioned_user_message=True,
+    )
+
+    assert message is not None
+    assert message.actor_id == "U123"
+    assert message.thread_root_ts == "300.001"
+
+
 @pytest.mark.parametrize(
     ("channel_type", "expected_kind"),
     [

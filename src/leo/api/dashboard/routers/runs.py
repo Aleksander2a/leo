@@ -9,6 +9,7 @@ from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from leo.api.dashboard.deps import PageParams, get_session
+from leo.api.dashboard.provenance import classify_call
 from leo.persistence.schema import (
     ClaimRow,
     DeliveryOutboxRow,
@@ -204,15 +205,22 @@ def _delivery_summary(delivery: DeliveryOutboxRow) -> dict[str, Any]:
 
 
 def _observation_summary(observation: ObservationRow) -> dict[str, Any]:
+    source = observation.source or {}
+    provider = source.get("provider")
+    provenance = classify_call(
+        tool_name=observation.kind,
+        provider=provider if isinstance(provider, str) else None,
+    )
     return {
         "id": observation.id,
         "tool_call_id": observation.tool_call_id,
         "kind": observation.kind,
         "data": observation.data,
-        "source": observation.source or {},
+        "source": source,
         "status": observation.status,
         "quality": observation.quality,
         "observed_at": observation.observed_at,
         "expires_at": observation.expires_at,
         "rejection_code": observation.rejection_code,
+        **provenance,
     }

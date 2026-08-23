@@ -47,6 +47,10 @@ class MemorySearchRequest(ContractModel):
     as_of: datetime
     limit: int = Field(default=10, ge=1, le=100)
     per_namespace_limit: int | None = Field(default=None, ge=1, le=50)
+    # Deliberately excluded from the retrieval cache key (see RetrievalCacheKey):
+    # it is a deterministic function of `query`, so a text-based cache hit already
+    # implies the same vector. Absent entirely, hybrid search degrades to lexical-only.
+    query_embedding: tuple[float, ...] | None = None
 
 
 class MemorySearchHit(ContractModel):

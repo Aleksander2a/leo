@@ -9,6 +9,7 @@ import {
   Plug,
   PlayCircle,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
@@ -28,9 +29,12 @@ export function Sidebar() {
   return (
     <aside className="flex h-full w-56 shrink-0 flex-col border-r border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950">
       <div className="flex items-center justify-between px-4 py-4">
-        <div>
-          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Leo</p>
-          <p className="text-xs text-gray-400 dark:text-gray-500">Admin dashboard</p>
+        <div className="flex items-center gap-2">
+          <Image src="/leo_logo.png" alt="" width={28} height={28} className="rounded-md" />
+          <div>
+            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Leo</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500">Admin dashboard</p>
+          </div>
         </div>
         <ThemeToggle />
       </div>

@@ -342,7 +342,7 @@ async def test_openrouter_marks_verifier_feedback_as_trusted_correction_guidance
 
     def handler(request: httpx.Request) -> httpx.Response:
         payload = json.loads(request.content)
-        system = payload["messages"][0]["content"]
+        system = "".join(block["text"] for block in payload["messages"][0]["content"])
         assert "verifier_feedback is trusted correction guidance" in system
         user_payload = json.loads(payload["messages"][1]["content"])
         assert user_payload["verifier_feedback"] == [feedback]

@@ -8,6 +8,7 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from leo.capabilities.embeddings import OpenRouterEmbeddingGateway
 from leo.config import Settings
 from leo.domain.conversation import normalize_conversation_kind
 from leo.harness.context_budget import BudgetSegment, ContextBudget, assemble_budgeted_context
@@ -44,7 +45,7 @@ from leo.memory.navigation import (
     MemoryNavigationAuthority,
     ProgressiveMemoryItem,
 )
-from leo.memory.tools import bind_memory_mutation_authority
+from leo.memory.tools import bind_autonomous_memory_authority, bind_memory_mutation_authority
 from leo.persistence.context_loader import (
     ConversationContextRequest,
     PostgresConversationContextLoader,
@@ -137,7 +138,17 @@ async def run_admitted_slack_conversation(
         authority=thread_context_authority,
         clock=SystemClock(),
     )
-    progressive_memory = await PostgresProgressiveMemoryService(sessions).search(
+    embedding_gateway = (
+        OpenRouterEmbeddingGateway(
+            client=client,
+            api_key=settings.openrouter_api_key.get_secret_value(),
+        )
+        if settings.openrouter_api_key is not None
+        else None
+    )
+    progressive_memory = await PostgresProgressiveMemoryService(
+        sessions, embedding_gateway=embedding_gateway
+    ).search(
         memory_navigation_authority,
         query=job.prompt,
         now=SystemClock().now(),
@@ -152,6 +163,11 @@ async def run_admitted_slack_conversation(
         team_id=job.team_id,
         thread_root_ts=job.thread_root_ts,
         actor_id=job.user_id,
+        # Slack connector sends can be forwarded by the ChatGPT app in DMs and
+        # channels alike.  The durable ingress actor/content remains authoritative;
+        # the provider projection is accepted only when its exact root identity and
+        # normalized text still reconcile below.
+        allow_forwarded_app_root_actor=True,
     )
     trusted_scope = TrustedScope(
         namespace=admitted.resolution.scope,
@@ -169,6 +185,17 @@ async def run_admitted_slack_conversation(
         run_id=admitted.launch.run_id,
         message_reference=job.message_ts,
         objective=job.prompt,
+    )
+    autonomous_memory_authority = bind_autonomous_memory_authority(
+        scope=admitted.resolution.scope,
+        team_id=job.team_id,
+        conversation_id=job.channel_id,
+        conversation_kind=normalize_conversation_kind(job.conversation_kind.value),
+        actor_id=job.user_id,
+        event_id=job.event_id,
+        task_id=admitted.launch.task_id,
+        run_id=admitted.launch.run_id,
+        message_reference=job.message_ts,
     )
     result = await run_live_conversation(
         settings=settings,
@@ -198,6 +225,8 @@ async def run_admitted_slack_conversation(
         lease=lease,
         memory_authority=memory_authority,
         memory_navigation_authority=memory_navigation_authority,
+        autonomous_memory_authority=autonomous_memory_authority,
+        embedding_gateway=embedding_gateway,
         thread_context_tools=thread_tools,
         provider_gates=provider_gates,
     )
@@ -523,6 +552,7 @@ def _merge_authorized_context(
     team_id: str,
     thread_root_ts: str,
     actor_id: str,
+    allow_forwarded_app_root_actor: bool = False,
     max_tokens: int = 6_000,
 ) -> tuple[ContextItem, ...]:
     """Reauthorize and globally budget context after combining independent loaders."""
@@ -541,6 +571,7 @@ def _merge_authorized_context(
         destination_id=destination_id,
         expected_slack_root_id=(f"slack-thread:{team_id}:{destination_id}:{thread_root_ts}"),
         actor_id=actor_id,
+        allow_forwarded_app_root_actor=allow_forwarded_app_root_actor,
     )
     budgeted = assemble_budgeted_context(
         tuple(
@@ -573,6 +604,7 @@ def _reconcile_exact_thread_roots(
     destination_id: str,
     expected_slack_root_id: str,
     actor_id: str,
+    allow_forwarded_app_root_actor: bool,
 ) -> tuple[ContextItem, ...]:
     """Collapse only the two equivalent authoritative projections of one Slack root.
 
@@ -599,7 +631,10 @@ def _reconcile_exact_thread_roots(
         raise ValueError("authoritative thread root escaped the exact destination")
     if slack_root.id != expected_slack_root_id:
         raise ValueError("Slack thread root identity mismatch")
-    if durable_root.source_actor_id != actor_id or slack_root.source_actor_id != actor_id:
+    slack_actor_matches = slack_root.source_actor_id == actor_id or (
+        allow_forwarded_app_root_actor and _is_forwarded_app_root(slack_root)
+    )
+    if durable_root.source_actor_id != actor_id or not slack_actor_matches:
         raise ValueError("authoritative thread root actor mismatch")
     if _durable_root_text(durable_root) != _slack_root_text(slack_root):
         raise ValueError("authoritative thread root content mismatch")
@@ -613,7 +648,7 @@ def _durable_root_text(item: ContextItem) -> str:
     content = item.content.strip()
     if not content.startswith("User:"):
         raise ValueError("durable thread root envelope is malformed")
-    return " ".join(content.removeprefix("User:").split())
+    return _strip_leading_slack_mention(content.removeprefix("User:"))
 
 
 def _slack_root_text(item: ContextItem) -> str:
@@ -621,10 +656,24 @@ def _slack_root_text(item: ContextItem) -> str:
     header, separator, body = content.partition("\n")
     if not separator or not header.startswith("[Slack exact thread;") or not header.endswith("]"):
         raise ValueError("Slack thread root envelope is malformed")
-    normalized = body.strip()
+    normalized = _strip_leading_slack_mention(body)
+    marker = "*sent using"
+    marker_index = normalized.casefold().find(marker)
+    if marker_index >= 0:
+        normalized = normalized[:marker_index].rstrip()
+    return " ".join(normalized.split())
+
+
+def _is_forwarded_app_root(item: ContextItem) -> bool:
+    return bool(item.source_actor_id and item.source_actor_id.startswith("app:"))
+
+
+def _strip_leading_slack_mention(content: str) -> str:
+    normalized = content.strip()
     if normalized.startswith("<@"):
         mention, separator, remainder = normalized.partition(">")
-        if not separator or len(mention) < 4 or not mention[2:].isalnum():
+        user_token = mention[2:].split("|", 1)[0]
+        if not separator or not user_token or not user_token.isalnum():
             raise ValueError("Slack thread root mention is malformed")
         normalized = remainder.strip()
     return " ".join(normalized.split())

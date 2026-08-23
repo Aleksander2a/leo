@@ -102,7 +102,7 @@ async def test_frozen_memory_corpus_postgres_metrics_and_query_plan(
 
 async def _assert_current_schema(session: AsyncSession) -> None:
     revision = await session.scalar(text("SELECT version_num FROM public.alembic_version"))
-    assert revision == "20260821_0025"
+    assert revision == "20260823_0028"
     constraints = set(
         await session.scalars(
             text(

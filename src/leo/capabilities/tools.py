@@ -65,7 +65,7 @@ class ToolSearchTool:
     ) -> ToolOutcome:
         parsed = _SearchArguments.model_validate(arguments)
         try:
-            summaries = self._runtime.search(
+            summaries = await self._runtime.search(
                 run_id=context.run_id,
                 trusted_scope=context.trusted_scope,
                 query=parsed.query,

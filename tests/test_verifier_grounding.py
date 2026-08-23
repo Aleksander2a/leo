@@ -313,6 +313,32 @@ def test_malformed_or_truncated_generic_payloads_fail_closed(
     assert outcome.completion is None
 
 
+_RELAXED_MALFORMED_CASES = tuple(
+    case for case in MALFORMED_CASES if case[0].startswith(("market.", "web.", "sec."))
+)
+
+
+@pytest.mark.parametrize(("kind", "data", "source", "statement"), _RELAXED_MALFORMED_CASES)
+def test_malformed_or_truncated_relaxed_integration_payloads_still_fail_closed(
+    kind: str,
+    data: dict[str, JsonValue],
+    source: SourceRef,
+    statement: str,
+) -> None:
+    """relax_integration_grounding excuses non-exact wording, never a corrupt payload.
+
+    Regression test for a real bug: relaxation must not convert a payload-integrity
+    rejection (truncated/malformed/tampered) into an accepted claim just because the
+    observation's kind happens to be a relaxed-integration one. Both of Leo's live
+    conversational entrypoints set relax_integration_grounding=True unconditionally,
+    so this combination is not a hypothetical -- it's the production configuration.
+    """
+
+    outcome = _verify(kind, deepcopy(data), source, statement, relax_integration_grounding=True)
+    assert outcome.result.status is VerifierStatus.FAIL
+    assert outcome.completion is None
+
+
 def test_generic_citation_without_payload_support_is_rejected() -> None:
     outcome = _verify(
         "agent.delegate_research",

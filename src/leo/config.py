@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     leo_max_tool_calls: int = Field(default=24, ge=0, le=64)
     leo_max_run_seconds: float = Field(default=600.0, ge=10.0, le=3600.0)
     leo_max_output_tokens: int = Field(default=2_000, ge=256, le=16_384)
+    leo_slack_worker_concurrency: int = Field(default=4, ge=1, le=32)
 
     slack_bot_token: SecretStr | None = None
     slack_app_token: SecretStr | None = None

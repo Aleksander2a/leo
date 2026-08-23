@@ -35,6 +35,7 @@ from leo.integrations.slack.socket_mode import (
     _handle_app_mention,
     _handle_message_im,
     _handle_passive_message,
+    _thread_root_is_missing,
 )
 from leo.persistence.outbox import DeliveryKind, DeliveryState
 from leo.persistence.slack_ingress import SlackFollowupBusyError
@@ -536,6 +537,16 @@ async def test_socket_mode_auto_ack_is_under_three_seconds_with_slow_admission()
     assert acknowledgement_seconds < 3
     await asyncio.wait_for(callback_finished.wait(), timeout=2)
     assert processor.queue.qsize() == 1
+
+
+@pytest.mark.asyncio
+async def test_stale_thread_root_is_rejected_before_admission() -> None:
+    class Client:
+        async def conversations_replies(self, **kwargs: str) -> dict[str, object]:
+            assert kwargs == {"channel": "C1", "ts": "1.0", "limit": 1}
+            return {"ok": True, "messages": []}
+
+    assert await _thread_root_is_missing(Client(), _job("Ev-stale")) is True  # type: ignore[arg-type]
 
 
 @pytest.mark.asyncio

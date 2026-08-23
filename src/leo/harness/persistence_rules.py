@@ -100,9 +100,13 @@ _EVENT_PAYLOAD_FIELDS: dict[EventType, frozenset[str]] = {
         }
     ),
     EventType.MODEL_BUDGET_RESERVED: frozenset({"reservation_id", "estimated_cost"}),
-    EventType.TOOL_STARTED: frozenset({"tool_call_id", "tool"}),
+    EventType.TOOL_STARTED: frozenset(
+        {"tool_call_id", "tool", "arguments", "parallel_batch"}
+    ),
     EventType.TOOL_COMPLETED: frozenset({"tool_call_id", "tool"}),
-    EventType.TOOL_FAILED: frozenset({"tool_call_id", "tool", "code", "retryable"}),
+    EventType.TOOL_FAILED: frozenset(
+        {"tool_call_id", "tool", "code", "retryable", "arguments"}
+    ),
     EventType.OBSERVATION_CREATED: frozenset({"observation_id", "tool_call_id"}),
     EventType.VERIFICATION_STARTED: frozenset(),
     EventType.VERIFICATION_FAILED: frozenset({"failed_checks", "retryable", "checks"}),

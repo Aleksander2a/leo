@@ -392,6 +392,7 @@ class ElasticDeliberationGateway:
 
         result = _recover_required_clarification(result, request, self._envelope)
         result = _recover_non_terminal_deferral(result, request, self._envelope)
+        result = _drop_unsourced_optional_claims(result, request)
 
         proposed_mode = _semantic_mode(result, request)
         if proposed_mode not in self._envelope.allowed_modes:
@@ -518,6 +519,43 @@ class ElasticDeliberationGateway:
             self._envelope.maximum_depth,
             max(self._recommended_depth + 1, _DEPTH_BY_MODE[self._recommended_mode]),
         )
+
+
+def _drop_unsourced_optional_claims(
+    result: ModelTurnResult,
+    request: ModelRequest,
+) -> ModelTurnResult:
+    """Remove citations that cannot be valid in a context-only turn.
+
+    Context items are selected server-side and are deliberately not Observation
+    records. If a provider cites a context-item ID while no observations exist and
+    source claims are optional, that is a format mistake rather than new evidence.
+    Discard those unsupported citations before they create a verifier retry loop.
+    """
+
+    if not isinstance(result.decision, CompletionProposal):
+        return result
+    contract = request.completion_contract
+    if request.observations or contract.source_claim_count.minimum > 0:
+        return result
+    valid_observation_ids = {observation.id for observation in request.observations}
+    claims = tuple(
+        claim
+        for claim in result.decision.claims
+        if claim.kind is ClaimKind.INFERENCE
+        and (
+            not claim.observation_ids
+            or all(
+                observation_id in valid_observation_ids
+                for observation_id in claim.observation_ids
+            )
+        )
+    )
+    if claims == result.decision.claims:
+        return result
+    return result.model_copy(
+        update={"decision": result.decision.model_copy(update={"claims": claims})}
+    )
 
 
 def apply_deliberation_guidance(base_guidance: str, envelope: DeliberationEnvelope) -> str:

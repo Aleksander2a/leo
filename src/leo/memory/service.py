@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime
+from typing import TYPE_CHECKING, Literal
 
 from pydantic import Field
 
@@ -17,7 +19,12 @@ from leo.memory.models import (
     MemoryStatus,
     MemoryVisibility,
 )
-from leo.memory.ports import MemoryStore
+from leo.memory.ports import MemoryEmbeddingIndexer, MemoryStore
+
+if TYPE_CHECKING:
+    from leo.memory.policy import PromotionDecision
+
+_logger = logging.getLogger(__name__)
 
 
 class MemoryCandidate(ContractModel):
@@ -42,10 +49,18 @@ class MemoryCommandRejected(RuntimeError):
 
 
 class ExplicitMemoryService:
-    def __init__(self, store: MemoryStore, clock: Clock, ids: IdGenerator) -> None:
+    def __init__(
+        self,
+        store: MemoryStore,
+        clock: Clock,
+        ids: IdGenerator,
+        *,
+        embedding_indexer: MemoryEmbeddingIndexer | None = None,
+    ) -> None:
         self._store = store
         self._clock = clock
         self._ids = ids
+        self._embedding_indexer = embedding_indexer
 
     async def remember(
         self,
@@ -55,6 +70,7 @@ class ExplicitMemoryService:
         actor_id: str,
         sources: tuple[MemorySource, ...],
         confirmed: bool,
+        source_type: Literal["explicit", "autonomous"] = "explicit",
     ) -> MemoryRecord:
         if not confirmed:
             raise MemoryCommandRejected("explicit_confirmation_required")
@@ -75,6 +91,7 @@ class ExplicitMemoryService:
             expires_at=candidate.expires_at,
             actor_id=actor_id,
             reason=candidate.reason,
+            source_type=source_type,
         )
         record = MemoryRecord(
             id=record_id,
@@ -84,7 +101,9 @@ class ExplicitMemoryService:
             namespace_id=candidate.namespace_id,
             created_at=revision.recorded_at,
         )
-        return await self._store.create(record, revision, sources)
+        created = await self._store.create(record, revision, sources)
+        await self._index_best_effort(scope, revision, source_type=source_type)
+        return created
 
     async def correct(
         self,
@@ -95,6 +114,7 @@ class ExplicitMemoryService:
         actor_id: str,
         sources: tuple[MemorySource, ...],
         confirmed: bool,
+        source_type: Literal["explicit", "autonomous"] = "explicit",
     ) -> MemoryRecord:
         if not confirmed:
             raise MemoryCommandRejected("explicit_confirmation_required")
@@ -127,14 +147,86 @@ class ExplicitMemoryService:
             actor_id=actor_id,
             reason=candidate.reason,
             supersedes_revision=current.number,
+            source_type=source_type,
         )
-        return await self._store.append_revision(
+        updated = await self._store.append_revision(
             scope,
             record_id,
             current.number,
             revision,
             sources,
         )
+        await self._index_best_effort(scope, revision, source_type=source_type)
+        return updated
+
+    async def _index_best_effort(
+        self, scope: ScopeKey, revision: MemoryRevision, *, source_type: str
+    ) -> None:
+        if self._embedding_indexer is None:
+            return
+        try:
+            await self._embedding_indexer.index(scope, revision, source_type=source_type)
+        except Exception:
+            _logger.warning(
+                "memory embedding index failed for revision %s; content remains "
+                "retrievable through lexical search",
+                revision.id,
+                exc_info=True,
+            )
+
+    async def propose_autonomous(
+        self,
+        scope: ScopeKey,
+        candidate: MemoryCandidate,
+        *,
+        actor_id: str,
+        sources: tuple[MemorySource, ...],
+    ) -> tuple[PromotionDecision, MemoryRecord | None]:
+        """Commit a model-proposed candidate without an interactive confirmation turn.
+
+        This is the autonomous counterpart to ``remember``: the harness still derives
+        every scope/visibility/namespace/source value (the candidate never carries
+        authority), but instead of requiring an explicit user command, it runs the
+        candidate through duplicate/contradiction governance and commits automatically.
+        A single contested conflict is treated as an update (a new revision superseding
+        the conflicting record); a duplicate is a no-op; anything else is a new record.
+        """
+
+        from leo.memory.policy import PromotionStatus, assess_candidate
+
+        _validate_sources(scope, candidate, sources)
+        current = await self._store.list_active(
+            scope,
+            visibility=candidate.visibility,
+            namespace_id=candidate.namespace_id,
+            kind=candidate.kind,
+        )
+        decision = assess_candidate(scope, candidate, current, confirmed=True)
+        if decision.status is PromotionStatus.DUPLICATE:
+            return decision, None
+        if (
+            decision.status is PromotionStatus.CONTESTED
+            and len(decision.contradiction_record_ids) == 1
+        ):
+            record = await self.correct(
+                scope,
+                decision.contradiction_record_ids[0],
+                candidate,
+                actor_id=actor_id,
+                sources=sources,
+                confirmed=True,
+                source_type="autonomous",
+            )
+            return decision, record
+        record = await self.remember(
+            scope,
+            candidate,
+            actor_id=actor_id,
+            sources=sources,
+            confirmed=True,
+            source_type="autonomous",
+        )
+        return decision, record
 
     async def forget(
         self,

@@ -13,6 +13,8 @@ from leo.harness.deliberation import (
 )
 from leo.harness.models import (
     BudgetLimits,
+    CandidateClaim,
+    ClaimKind,
     CompletionProposal,
     ContextItem,
     ContextItemKind,
@@ -423,6 +425,34 @@ async def test_gateway_has_bounded_escalation_even_when_provider_varies_output()
     assert captured.value.code == "deliberation_no_progress"
     assert len(delegate.requests) == 3
     assert gateway.decision.depth <= 6
+
+
+@pytest.mark.asyncio
+async def test_context_only_completion_drops_invalid_context_item_citations() -> None:
+    delegate = _RecordingGateway(
+        [
+            CompletionProposal(
+                answer="Confirm test received.",
+                claims=(
+                    CandidateClaim(
+                        kind=ClaimKind.SOURCE_CLAIM,
+                        statement="The test asked for a receipt confirmation.",
+                        observation_ids=("thread-message:context-only",),
+                    ),
+                ),
+            )
+        ]
+    )
+    decision = ElasticDeliberationPolicy().assess(
+        "Summarize my test request in exactly three words.",
+        context_item_count=2,
+    )
+    gateway = ElasticDeliberationGateway(delegate, decision)
+
+    result = await gateway.decide(_request(0))
+
+    assert isinstance(result.decision, CompletionProposal)
+    assert result.decision.claims == ()
 
 
 @pytest.mark.asyncio

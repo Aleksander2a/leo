@@ -15,10 +15,12 @@ from leo.capabilities.catalog import (
     CapabilityHealth,
     CapabilityLatency,
     CapabilitySensitivity,
+    CatalogTool,
     InMemoryToolCatalog,
 )
 from leo.capabilities.crypto_descriptors import CRYPTO_CAPABILITY_DESCRIPTORS
 from leo.capabilities.discovery import search_tokens
+from leo.capabilities.embeddings import OpenRouterEmbeddingGateway, ensure_tool_embeddings
 from leo.capabilities.equity_descriptors import EQUITY_CAPABILITY_DESCRIPTORS
 from leo.capabilities.runtime import CapabilityRuntime
 from leo.capabilities.skills import SkillCatalog
@@ -82,6 +84,11 @@ from leo.integrations.finnhub import (
     FinnhubQuoteTool,
     normalize_quote_symbol,
 )
+from leo.integrations.mcp_tools import (
+    build_alpha_vantage_mcp_tools,
+    build_coingecko_mcp_tools,
+    build_tavily_mcp_tools,
+)
 from leo.integrations.openrouter import OpenRouterGateway
 from leo.integrations.provider_runtime import ProviderGateRegistry
 from leo.integrations.sec_edgar import SecEdgarRecentFilingsTool
@@ -95,11 +102,15 @@ from leo.memory.navigation_tools import build_memory_navigation_tools
 from leo.memory.service import ExplicitMemoryService
 from leo.memory.tools import (
     MemoryMutationAuthority,
+    build_autonomous_memory_tools,
     build_explicit_memory_tools,
     parse_explicit_memory_intent,
 )
+from leo.persistence.capability_embeddings import PostgresCapabilityEmbeddingStore
+from leo.persistence.memory_embeddings import PostgresMemoryEmbeddingIndexer
 from leo.persistence.memory_navigation import PostgresProgressiveMemoryService
 from leo.persistence.memory_store import PostgresMemoryStore
+from leo.persistence.model_call_transcripts import PostgresModelCallTranscriptSink
 from leo.persistence.plan_store import PostgresPlanStore
 from leo.persistence.run_store import LeaseBoundRunStore, PostgresRunStore
 from leo.persistence.task_leases import TaskLease
@@ -657,6 +668,9 @@ async def run_live_quote(
             clock=clock,
             completion_contract=quote_completion_contract,
         ),
+        transcript_sink=(
+            PostgresModelCallTranscriptSink(sessions, ids=ids) if sessions is not None else None
+        ),
         verifier=DeterministicCompletionVerifier(
             ids,
             clock,
@@ -688,8 +702,10 @@ async def run_live_conversation(
     lease: TaskLease | None = None,
     memory_authority: MemoryMutationAuthority | None = None,
     memory_navigation_authority: MemoryNavigationAuthority | None = None,
+    autonomous_memory_authority: MemoryMutationAuthority | None = None,
     thread_context_tools: tuple[Tool, ...] = (),
     provider_gates: ProviderGateRegistry | None = None,
+    embedding_gateway: OpenRouterEmbeddingGateway | None = None,
 ) -> CoordinatorResult:
     """Run an open-ended conversational turn through Leo's bounded harness.
 
@@ -743,6 +759,14 @@ async def run_live_conversation(
     if memory_navigation_authority is not None:
         _validate_memory_navigation_authority(
             authority=memory_navigation_authority,
+            trusted_scope=execution_scope,
+            origin=origin,
+            sessions=sessions,
+            launch_ids=launch_ids,
+        )
+    if autonomous_memory_authority is not None:
+        _validate_autonomous_memory_authority(
+            authority=autonomous_memory_authority,
             trusted_scope=execution_scope,
             origin=origin,
             sessions=sessions,
@@ -852,6 +876,47 @@ async def run_live_conversation(
             provider_gates=provider_gate_registry,
         )
     )
+    # MCP-sourced tools are additive redundancy alongside the REST adapters above,
+    # not a replacement: the model may call both for the same fact and reconcile
+    # them itself. See leo.integrations.mcp_tools for why each endpoint is (or
+    # isn't) wired up this way.
+    if is_configured_secret(settings.tavily_endpoint):
+        assert settings.tavily_endpoint is not None
+        research_tools.extend(
+            build_tavily_mcp_tools(
+                endpoint=settings.tavily_endpoint.get_secret_value(),
+                clock=clock,
+                gate=provider_gate_registry.get(
+                    provider="tavily_mcp",
+                    max_concurrency=2,
+                    max_calls_per_minute=20,
+                ),
+            )
+        )
+    if is_configured_secret(settings.alpha_vantage_endpoint_legacy):
+        assert settings.alpha_vantage_endpoint_legacy is not None
+        research_tools.extend(
+            build_alpha_vantage_mcp_tools(
+                endpoint=settings.alpha_vantage_endpoint_legacy.get_secret_value(),
+                clock=clock,
+                gate=provider_gate_registry.get(
+                    provider="alpha_vantage_mcp",
+                    max_concurrency=2,
+                    max_calls_per_minute=settings.alpha_vantage_max_calls_per_minute,
+                ),
+            )
+        )
+    if is_configured_secret(settings.coingecko_endpoint):
+        research_tools.extend(
+            build_coingecko_mcp_tools(
+                clock=clock,
+                gate=provider_gate_registry.get(
+                    provider="coingecko_mcp",
+                    max_concurrency=2,
+                    max_calls_per_minute=30,
+                ),
+            )
+        )
     if is_configured_secret(settings.finnhub_api_key):
         assert settings.finnhub_api_key is not None
         finnhub_api_key = settings.finnhub_api_key.get_secret_value()
@@ -916,19 +981,42 @@ async def run_live_conversation(
             available_tool_names=child_tool_names,
         )
 
+    memory_embedding_indexer = (
+        PostgresMemoryEmbeddingIndexer(sessions, embedding_gateway, ids=ids)
+        if sessions is not None and embedding_gateway is not None
+        else None
+    )
     memory_tools: tuple[Tool, ...] = ()
     if memory_authority is not None:
         assert sessions is not None
         memory_tools = build_explicit_memory_tools(
-            service=ExplicitMemoryService(PostgresMemoryStore(sessions), clock, ids),
+            service=ExplicitMemoryService(
+                PostgresMemoryStore(sessions),
+                clock,
+                ids,
+                embedding_indexer=memory_embedding_indexer,
+            ),
             authority=memory_authority,
+            clock=clock,
+        )
+    autonomous_memory_tools: tuple[Tool, ...] = ()
+    if autonomous_memory_authority is not None:
+        assert sessions is not None
+        autonomous_memory_tools = build_autonomous_memory_tools(
+            service=ExplicitMemoryService(
+                PostgresMemoryStore(sessions),
+                clock,
+                ids,
+                embedding_indexer=memory_embedding_indexer,
+            ),
+            authority=autonomous_memory_authority,
             clock=clock,
         )
     navigation_tools: tuple[Tool, ...] = ()
     if memory_navigation_authority is not None:
         assert sessions is not None
         navigation_tools = build_memory_navigation_tools(
-            service=PostgresProgressiveMemoryService(sessions),
+            service=PostgresProgressiveMemoryService(sessions, embedding_gateway=embedding_gateway),
             authority=memory_navigation_authority,
             clock=clock,
         )
@@ -992,6 +1080,29 @@ async def run_live_conversation(
         [*research_tools, *navigation_tools, *thread_context_tools],
         provider_health=provider_health,
     )
+    # Semantic recall: lexical/tag matching alone cannot bridge a vocabulary gap
+    # between a conceptual query ("prognosis for the S&P 500") and a tool's literal
+    # description. Embedding the catalog's summaries and the turn's own objective
+    # lets discovery match by meaning, fused with the lexical score. This is a pure
+    # best-effort addition -- an absent embedding_gateway (the default) leaves
+    # discovery exactly as lexical-only as before, with zero extra HTTP calls; it
+    # is an explicit opt-in parameter rather than auto-constructed from settings so
+    # that callers using a mocked/test client never see an unexpected request.
+    tool_embeddings = await ensure_tool_embeddings(
+        embedding_gateway,
+        tuple(
+            (record.id, _capability_embedding_text(record))
+            for record in capability_catalog.records()
+        ),
+        cache=(
+            PostgresCapabilityEmbeddingStore(sessions, ids=ids) if sessions is not None else None
+        ),
+    )
+    (query_embedding,) = (
+        await embedding_gateway.embed((routing_objective,))
+        if embedding_gateway is not None
+        else (None,)
+    )
     required_capability_names = frozenset(
         name
         for name in (
@@ -1010,11 +1121,20 @@ async def run_live_conversation(
         skill_catalog=None if direct_tool_free_turn else SkillCatalog(_SKILL_ROOT),
         always_available_tool_names=(
             _PARENT_ORCHESTRATION_TOOL_NAMES
+            # A general web-research fallback stays genuinely available regardless
+            # of what lexical/semantic ranking surfaces for an ambiguous or
+            # multi-entity query -- the model may still reason its way to it even
+            # when no narrower provider tool obviously fits. Only takes effect if
+            # the tool is actually registered (a search provider is configured).
+            | frozenset({"web.research_verified"})
             | frozenset(tool.spec.name for tool in navigation_tools)
             | frozenset(tool.spec.name for tool in thread_context_tools)
         )
         - required_capability_names,
         required_tool_names=required_capability_names,
+        embedding_gateway=embedding_gateway,
+        tool_embeddings=tool_embeddings,
+        query_embedding=query_embedding,
     )
     selected_skill_items = (
         ()
@@ -1068,6 +1188,7 @@ async def run_live_conversation(
         else (
             *research_tools,
             *memory_tools,
+            *autonomous_memory_tools,
             *navigation_tools,
             *thread_context_tools,
             *parent_tools,
@@ -1180,6 +1301,9 @@ async def run_live_conversation(
         store=store,
         model=coordinator_model,
         tools=tools,
+        transcript_sink=(
+            PostgresModelCallTranscriptSink(sessions, ids=ids) if sessions is not None else None
+        ),
         context=DefaultContextAssembler(
             evidence_requirements=forced_evidence_requirements,
             clock=clock,
@@ -1280,6 +1404,46 @@ def _validate_memory_authority(
         raise ValueError("memory authority intent does not match objective")
 
 
+def _validate_autonomous_memory_authority(
+    *,
+    authority: MemoryMutationAuthority,
+    trusted_scope: TrustedScope,
+    origin: OriginRef | None,
+    sessions: async_sessionmaker[AsyncSession] | None,
+    launch_ids: tuple[str, str, str] | None,
+) -> None:
+    """Same durable-boundary checks as an explicit command, minus the intent match.
+
+    An autonomous proposal is not triggered by a parsed command phrase, so there is
+    no ``ExplicitMemoryIntent`` to cross-check the objective against -- every other
+    scope/actor/launch/origin boundary still applies.
+    """
+
+    if sessions is None or launch_ids is None or origin is None:
+        raise ValueError("memory authority requires a durable admitted Slack launch")
+    if origin.provider != "slack":
+        raise ValueError("memory authority requires a Slack origin")
+    if authority.intent is not None:
+        raise ValueError("autonomous memory authority must not carry a parsed intent")
+    _, task_id, run_id = launch_ids
+    if authority.scope != trusted_scope.namespace:
+        raise ValueError("memory authority scope does not match trusted scope")
+    if authority.actor_id != trusted_scope.actor_id:
+        raise ValueError("memory authority actor does not match trusted scope")
+    if authority.task_id != task_id or authority.run_id != run_id:
+        raise ValueError("memory authority launch does not match durable launch")
+    if (
+        authority.event_id != origin.external_event_id
+        or authority.destination.external_id != origin.external_channel_id
+    ):
+        raise ValueError("memory authority origin does not match Slack event")
+    expected_thread_prefix = (
+        f"slack:{authority.destination.team_id}:{authority.destination.external_id}:"
+    )
+    if not origin.external_thread_id.startswith(expected_thread_prefix):
+        raise ValueError("memory authority workspace does not match Slack origin")
+
+
 def _validate_memory_navigation_authority(
     *,
     authority: MemoryNavigationAuthority,
@@ -1370,6 +1534,30 @@ def _requires_memory_search(objective: str, _context_items: tuple[ContextItem, .
 
     normalized = " ".join(objective.casefold().split())
     tokens = set(search_tokens(objective))
+    has_exact_thread_context = any(
+        item.kind is ContextItemKind.CONVERSATION_TURN
+        and item.retention
+        in {
+            ContextItemRetention.THREAD_ROOT,
+            ContextItemRetention.RECENT,
+            ContextItemRetention.DECISION,
+            ContextItemRetention.PRIOR_OUTCOME,
+        }
+        for item in _context_items
+    )
+    current_thread_recall = has_exact_thread_context and bool(
+        re.search(
+            r"\b(?:this|same|current)\s+(?:thread|conversation|dm|direct[- ]message|test)\b",
+            normalized,
+        )
+    )
+    current_thread_exchange_recall = has_exact_thread_context and bool(
+        re.search(
+            r"\b(?:what|which|where)\b.{0,120}\b(?:ask|asked|tell|told|say|said|"
+            r"mention|mentioned|discuss|discussed|request|requested|marker|test|role)\b",
+            normalized,
+        )
+    )
     direct_recall = bool(
         re.search(
             r"(?:^|[.!?]\s+)(?:please\s+)?(?:recall|remember)\b"
@@ -1421,6 +1609,14 @@ def _requires_memory_search(objective: str, _context_items: tuple[ContextItem, .
     # been supplied are present-turn clarification signals, not historical recall.
     # Preserve genuinely explicit recall/search commands even when both clauses occur.
     explicit_memory_intent = direct_recall or memory_lookup or asked_to_remember
+    # The admitted thread transcript is the authoritative source for a question
+    # explicitly scoped to this conversation.  Do not replace that exact context
+    # with a cross-turn memory search (which can return an empty result and hide the
+    # request the user just made).  Explicit memory commands still win.
+    if (current_thread_recall or current_thread_exchange_recall) and not (
+        memory_lookup or stored_personal_memory
+    ):
+        return False
     if _explicitly_requests_tool_free_answer(objective) and not (
         explicit_memory_intent or stored_personal_memory
     ):
@@ -1644,6 +1840,12 @@ _LEGACY_RUNTIME_HEALTH_PROVIDERS: dict[str, frozenset[str]] = {
 }
 
 
+def _capability_embedding_text(record: CatalogTool) -> str:
+    """Match the exact text basis DiscoveryBroker uses for lexical scoring."""
+
+    return " ".join((record.id, record.spec.domain, record.short_description, *record.tags))
+
+
 def _conversation_capability_catalog(
     tools: list[Tool],
     *,
@@ -1693,6 +1895,19 @@ def _conversation_capability_catalog(
                     "release",
                     "software",
                     "version",
+                    "outlook",
+                    "forecast",
+                    "forecasts",
+                    "prediction",
+                    "predictions",
+                    "prognosis",
+                    "analysis",
+                    "opinion",
+                    "sentiment",
+                    "index",
+                    "indices",
+                    "trend",
+                    "trends",
                 }
             ),
             CapabilitySensitivity.PUBLIC,
@@ -1724,6 +1939,19 @@ def _conversation_capability_catalog(
                     "comparison",
                     "landscape",
                     "verify",
+                    "outlook",
+                    "forecast",
+                    "forecasts",
+                    "prediction",
+                    "predictions",
+                    "prognosis",
+                    "analysis",
+                    "opinion",
+                    "sentiment",
+                    "index",
+                    "indices",
+                    "trend",
+                    "trends",
                 }
             ),
             CapabilitySensitivity.PUBLIC,

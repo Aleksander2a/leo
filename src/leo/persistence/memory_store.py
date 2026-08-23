@@ -9,7 +9,14 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from leo.harness.models import ScopeKey
 from leo.harness.store_errors import ConcurrencyError, NotFoundError, StoreError
 from leo.memory.lifecycle import next_record, validate_append_revision, validate_initial_revision
-from leo.memory.models import MemoryKind, MemoryRecord, MemoryRevision, MemorySource, MemoryStatus
+from leo.memory.models import (
+    MemoryKind,
+    MemoryRecord,
+    MemoryRevision,
+    MemorySource,
+    MemoryStatus,
+    MemoryVisibility,
+)
 from leo.memory.ports import MemoryStore
 from leo.persistence.schema import (
     MemoryCapabilityHandleRow,
@@ -193,6 +200,42 @@ class PostgresMemoryStore(MemoryStore):
         except IntegrityError as exc:
             raise ConcurrencyError("memory forget conflicted with another revision") from exc
 
+    async def list_active(
+        self,
+        scope: ScopeKey,
+        *,
+        visibility: MemoryVisibility,
+        namespace_id: str,
+        kind: MemoryKind | None = None,
+        limit: int = 50,
+    ) -> tuple[tuple[str, MemoryRevision], ...]:
+        if limit < 1 or limit > 200:
+            raise ValueError("list_active limit must be between 1 and 200")
+        statement = (
+            select(MemoryRecordRow, MemoryRevisionRow)
+            .join(
+                MemoryRevisionRow,
+                (MemoryRevisionRow.record_id == MemoryRecordRow.id)
+                & (MemoryRevisionRow.number == MemoryRecordRow.current_revision)
+                & (MemoryRevisionRow.organization_id == MemoryRecordRow.organization_id)
+                & (MemoryRevisionRow.strategy_id == MemoryRecordRow.strategy_id),
+            )
+            .where(
+                MemoryRecordRow.organization_id == scope.organization_id,
+                MemoryRecordRow.strategy_id == scope.strategy_id,
+                MemoryRecordRow.visibility == visibility.value,
+                MemoryRecordRow.namespace_id == namespace_id,
+                MemoryRecordRow.status == MemoryStatus.ACTIVE.value,
+            )
+            .order_by(MemoryRecordRow.created_at.desc())
+            .limit(limit)
+        )
+        if kind is not None:
+            statement = statement.where(MemoryRecordRow.kind == kind.value)
+        async with self._sessions() as session:
+            rows = (await session.execute(statement)).all()
+        return tuple((record.id, _revision_model(revision)) for record, revision in rows)
+
 
 def _validate_sources(
     record: MemoryRecord,
@@ -271,6 +314,7 @@ def _revision_row(scope: ScopeKey, item: MemoryRevision) -> MemoryRevisionRow:
         actor_id=item.actor_id,
         reason=item.reason,
         supersedes_revision=item.supersedes_revision,
+        source_type=item.source_type,
     )
 
 
@@ -318,6 +362,7 @@ def _revision_model(row: MemoryRevisionRow) -> MemoryRevision:
         actor_id=row.actor_id,
         reason=row.reason,
         supersedes_revision=row.supersedes_revision,
+        source_type=row.source_type,
     )
 
 

@@ -2,6 +2,7 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
+import { SourceTypeBadge } from "@/components/ui/source-type-badge";
 import { StatusPill } from "@/components/ui/status-pill";
 import { formatDateTime, truncate } from "@/lib/utils";
 import type { MemoryRecordSummary } from "@/lib/types";
@@ -11,10 +12,25 @@ const columns: ColumnDef<MemoryRecordSummary, unknown>[] = [
   { accessorKey: "kind", header: "Kind" },
   {
     accessorKey: "visibility",
-    header: "Visibility",
-    cell: (info) => <span className="text-xs">{(info.getValue() as string).replaceAll("_", " ")}</span>,
+    header: "Isolation boundary",
+    cell: (info) => {
+      const record = info.row.original;
+      return (
+        <div>
+          <span className="text-xs">{record.visibility.replaceAll("_", " ")}</span>
+          <p className="text-xs text-gray-400">{record.scope_label}</p>
+        </div>
+      );
+    },
   },
-  { accessorKey: "namespace_id", header: "Namespace" },
+  {
+    accessorKey: "source_type",
+    header: "Added",
+    cell: (info) => {
+      const value = info.getValue() as string | null;
+      return value ? <SourceTypeBadge sourceType={value} /> : <span className="text-xs text-gray-400">—</span>;
+    },
+  },
   {
     accessorKey: "status",
     header: "Status",

@@ -61,8 +61,8 @@ class _ContextLoader:
 
 
 class _ProgressiveMemoryService:
-    def __init__(self, sessions: object) -> None:
-        del sessions
+    def __init__(self, sessions: object, *, embedding_gateway: object = None) -> None:
+        del sessions, embedding_gateway
 
     async def search(self, *args: object, **kwargs: object) -> ProgressiveMemorySearchResult:
         del args, kwargs
@@ -191,6 +191,76 @@ def test_context_merge_collapses_only_equivalent_authoritative_root_pair() -> No
 
     assert merged == (durable_root, prior_outcome)
     assert sum(item.retention is ContextItemRetention.THREAD_ROOT for item in merged) == 1
+
+
+def test_context_merge_normalizes_dm_root_mentions_in_both_authoritative_sources() -> None:
+    durable_root = ContextItem(
+        id="thread-message:dm-root-row",
+        kind=ContextItemKind.CONVERSATION_TURN,
+        content="User: <@U1> What is my role here?",
+        conversation_id="D1",
+        source_actor_id="U1",
+        retention=ContextItemRetention.THREAD_ROOT,
+    )
+    slack_root = ContextItem(
+        id="slack-thread:T1:D1:100.000",
+        kind=ContextItemKind.CONVERSATION_TURN,
+        content=(
+            "[Slack exact thread; team=T1; conversation=D1; message_ts=100.000; "
+            "author=app:A1; author_kind=app]\n<@U1|Leo> What is my role here? "
+            "*Sent using <@U2|ChatGPT>*"
+        ),
+        conversation_id="D1",
+        source_actor_id="app:A1",
+        retention=ContextItemRetention.THREAD_ROOT,
+    )
+
+    merged = _merge_authorized_context(
+        (durable_root, slack_root),
+        allowed_conversation_ids=frozenset({"D1"}),
+        destination_id="D1",
+        team_id="T1",
+        thread_root_ts="100.000",
+        actor_id="U1",
+        allow_forwarded_app_root_actor=True,
+    )
+
+    assert merged == (durable_root,)
+
+
+def test_context_merge_normalizes_forwarded_app_root_in_public_channel() -> None:
+    durable_root = ContextItem(
+        id="thread-message:public-root-row",
+        kind=ContextItemKind.CONVERSATION_TURN,
+        content="User: <@U1|Leo> Confirm receipt of this public test.",
+        conversation_id="C1",
+        source_actor_id="U1",
+        retention=ContextItemRetention.THREAD_ROOT,
+    )
+    slack_root = ContextItem(
+        id="slack-thread:T1:C1:100.000",
+        kind=ContextItemKind.CONVERSATION_TURN,
+        content=(
+            "[Slack exact thread; team=T1; conversation=C1; message_ts=100.000; "
+            "author=app:A1; author_kind=app]\n<@U1|Leo> Confirm receipt of this public test. "
+            "*Sent using <@U2|ChatGPT>*"
+        ),
+        conversation_id="C1",
+        source_actor_id="app:A1",
+        retention=ContextItemRetention.THREAD_ROOT,
+    )
+
+    merged = _merge_authorized_context(
+        (durable_root, slack_root),
+        allowed_conversation_ids=frozenset({"C1"}),
+        destination_id="C1",
+        team_id="T1",
+        thread_root_ts="100.000",
+        actor_id="U1",
+        allow_forwarded_app_root_actor=True,
+    )
+
+    assert merged == (durable_root,)
 
 
 @pytest.mark.parametrize(

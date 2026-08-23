@@ -59,6 +59,29 @@ class ModelGateway(Protocol):
     async def decide(self, request: ModelRequest) -> ModelTurnResult: ...
 
 
+class ModelCallTranscriptSink(Protocol):
+    """Best-effort dashboard-only durable store for the exact model request/response.
+
+    Deliberately separate from the run-event log: events are capped at 8KB and
+    field-allowlisted (leo.harness.persistence_rules) to keep replay deterministic and
+    bounded, which a full request/response transcript cannot respect. A sink failure
+    must never affect the run it's recording -- callers wrap invocations accordingly.
+    """
+
+    async def record(
+        self,
+        *,
+        run_id: str,
+        task_id: str,
+        scope: ScopeKey,
+        request_id: str,
+        iteration: int,
+        raw_request: dict[str, JsonValue],
+        raw_response: dict[str, JsonValue],
+        occurred_at: datetime,
+    ) -> None: ...
+
+
 class Tool(Protocol):
     @property
     def spec(self) -> ToolSpec: ...

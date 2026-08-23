@@ -422,7 +422,9 @@ async def test_live_shaped_short_prompt_format_failure_repairs_in_coordinator_lo
 
 @pytest.mark.asyncio
 async def test_repeated_names_format_failure_is_repaired_without_another_model_call() -> None:
-    delegate = _RepairingGateway(("Here are three friendly code names:\n1. Beacon\n2. Verity\n3. SignalPath",) * 3)
+    delegate = _RepairingGateway(
+        ("Here are three friendly code names:\n1. Beacon\n2. Verity\n3. SignalPath",) * 3
+    )
     model = ElasticDeliberationGateway(
         delegate,
         ElasticDeliberationPolicy().assess(NAMES_OBJECTIVE),

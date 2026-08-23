@@ -11,6 +11,7 @@ from sqlalchemy import and_, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from leo.capabilities.embeddings import OpenRouterEmbeddingGateway
 from leo.memory.cache import RetrievalCacheKey
 from leo.memory.models import MemoryStatus, MemoryVisibility
 from leo.memory.navigation import (
@@ -39,12 +40,20 @@ from leo.persistence.schema import (
     MemoryRevisionRow,
 )
 
+_SEARCH_POLICY_VERSION = "postgres-hybrid-fts-vector-rrf-v1"
+
 
 class PostgresProgressiveMemoryService:
     """Searches, issues capabilities, and atomically reauthorizes every open."""
 
-    def __init__(self, sessions: async_sessionmaker[AsyncSession]) -> None:
+    def __init__(
+        self,
+        sessions: async_sessionmaker[AsyncSession],
+        *,
+        embedding_gateway: OpenRouterEmbeddingGateway | None = None,
+    ) -> None:
         self._sessions = sessions
+        self._embedding_gateway = embedding_gateway
 
     async def search(
         self,
@@ -65,6 +74,10 @@ class PostgresProgressiveMemoryService:
             raise ValueError("memory handle lifetime must be positive and at most two hours")
         if max_opens < 1 or max_opens > 64:
             raise ValueError("memory handle open budget must be between 1 and 64")
+        query_embedding: tuple[float, ...] | None = None
+        if self._embedding_gateway is not None:
+            (embedded,) = await self._embedding_gateway.embed((query,))
+            query_embedding = embedded
         request = MemorySearchRequest(
             scope=authority.scope,
             query=query,
@@ -74,6 +87,7 @@ class PostgresProgressiveMemoryService:
             as_of=now,
             limit=limit,
             per_namespace_limit=per_namespace_limit,
+            query_embedding=query_embedding,
         )
         async with self._sessions() as session, session.begin():
             await _validate_current_authority(session, authority, lock=True)
@@ -81,7 +95,7 @@ class PostgresProgressiveMemoryService:
             cache_key = RetrievalCacheKey.from_request(
                 request,
                 generation=generation,
-                policy_version="postgres-fts-scope-first-v2",
+                policy_version=_SEARCH_POLICY_VERSION,
                 content_digest=content_digest,
             )
             cached = await session.scalar(

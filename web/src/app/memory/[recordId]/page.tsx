@@ -1,8 +1,10 @@
 import { Card, CardContent } from "@/components/ui/card";
+import { SourceTypeBadge } from "@/components/ui/source-type-badge";
 import { StatusPill } from "@/components/ui/status-pill";
 import { ApiError, getMemoryRecord } from "@/lib/api";
 import { formatDateTime } from "@/lib/utils";
 import { notFound } from "next/navigation";
+import type { ReactNode } from "react";
 
 export default async function MemoryRecordPage({
   params,
@@ -32,6 +34,11 @@ export default async function MemoryRecordPage({
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           {detail.record.visibility.replaceAll("_", " ")} · namespace {detail.record.namespace_id}
         </p>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          <Tag>{detail.record.kind}</Tag>
+          <Tag>{detail.record.visibility.replaceAll("_", " ")}</Tag>
+          <Tag>{detail.record.scope_label}</Tag>
+        </div>
       </div>
 
       <Card>
@@ -69,6 +76,7 @@ export default async function MemoryRecordPage({
               <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
                 <span className="font-medium text-gray-700 dark:text-gray-300">rev {revision.number}</span>
                 <StatusPill status={revision.status} />
+                <SourceTypeBadge sourceType={revision.source_type} />
                 {revision.supersedes_revision ? (
                   <span className="text-gray-400">supersedes rev {revision.supersedes_revision}</span>
                 ) : null}
@@ -96,5 +104,13 @@ function Field({ label, value }: { label: string; value: string }) {
       <p className="text-xs text-gray-400">{label}</p>
       <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{value}</p>
     </div>
+  );
+}
+
+function Tag({ children }: { children: ReactNode }) {
+  return (
+    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+      {children}
+    </span>
   );
 }

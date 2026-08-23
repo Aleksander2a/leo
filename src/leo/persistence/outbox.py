@@ -90,8 +90,16 @@ class DeliveryLeaseConflictError(RuntimeError):
     """A delivery result was recorded without the current opaque lease."""
 
 
+class _MissingSlackThreadRoot(RuntimeError):
+    """The Slack reply destination no longer exists."""
+
+
 class SlackPostClient(Protocol):
     async def chat_postMessage(self, *, channel: str, thread_ts: str, text: str) -> object: ...
+
+    async def conversations_replies(
+        self, *, channel: str, ts: str, limit: int = 1
+    ) -> object: ...
 
 
 class PostgresDeliveryOutbox:
@@ -623,6 +631,32 @@ class SlackOutboxDispatcher:
         lease, intent = claimed
         await self._outbox.mark_dispatch_started(lease)
         try:
+            await self._verify_thread_root(client, intent)
+        except _MissingSlackThreadRoot:
+            await self._outbox.reject_dispatched(
+                intent.id,
+                retry_after=None,
+                safe_error="slack_thread_root_missing",
+                dead=True,
+            )
+            return DeliveryState.DEAD
+        except Exception:
+            # A failed read-only probe has no user-visible side effect. Retry the
+            # intent, but never post without proving that Slack still has the root;
+            # Slack can otherwise accept an invalid thread_ts as a top-level post.
+            exhausted = lease.attempt >= self._max_attempts
+            await self._outbox.reject_dispatched(
+                intent.id,
+                retry_after=None if exhausted else _retry_time(now),
+                safe_error=(
+                    "slack_thread_probe_retry_exhausted"
+                    if exhausted
+                    else "slack_thread_probe_failed"
+                ),
+                dead=exhausted,
+            )
+            return DeliveryState.DEAD if exhausted else DeliveryState.RETRY
+        try:
             response = await client.chat_postMessage(
                 channel=intent.destination_channel_id,
                 thread_ts=intent.destination_thread_ts,
@@ -692,6 +726,48 @@ class SlackOutboxDispatcher:
             return DeliveryState.UNKNOWN_EFFECT
         await self._outbox.confirm_dispatched(intent.id, message_ts)
         return DeliveryState.DELIVERED
+
+    async def _verify_thread_root(
+        self,
+        client: SlackPostClient,
+        intent: DeliveryIntent,
+    ) -> None:
+        """Prove the destination root still exists before posting a reply.
+
+        Older test doubles may only model ``chat_postMessage``; live Slack clients
+        expose ``conversations_replies``. Keeping the capability optional preserves
+        compatibility for those doubles while making the real delivery path fail
+        closed when a deleted/replayed root would otherwise become a channel post.
+        """
+
+        probe = getattr(client, "conversations_replies", None)
+        if probe is None:
+            return
+        try:
+            response = await probe(
+                channel=intent.destination_channel_id,
+                ts=intent.destination_thread_ts,
+                limit=1,
+            )
+        except SlackApiError as exc:
+            payload = getattr(exc.response, "data", None)
+            error = payload.get("error") if isinstance(payload, Mapping) else None
+            if error in _MISSING_SLACK_THREAD_ERRORS:
+                raise _MissingSlackThreadRoot from exc
+            raise
+        payload = getattr(response, "data", response)
+        if not isinstance(payload, Mapping) or payload.get("ok") is not True:
+            error = payload.get("error") if isinstance(payload, Mapping) else None
+            if error in _MISSING_SLACK_THREAD_ERRORS:
+                raise _MissingSlackThreadRoot
+            raise RuntimeError("Slack thread-root probe returned an unusable response")
+        messages = payload.get("messages")
+        if not isinstance(messages, list) or not any(
+            isinstance(message, Mapping)
+            and message.get("ts") == intent.destination_thread_ts
+            for message in messages
+        ):
+            raise _MissingSlackThreadRoot
 
     async def dispatch_available(
         self,
@@ -814,6 +890,14 @@ _PERMANENT_SLACK_ERRORS = frozenset(
         "team_access_not_granted",
         "token_expired",
         "token_revoked",
+    }
+)
+
+_MISSING_SLACK_THREAD_ERRORS = frozenset(
+    {
+        "message_not_found",
+        "thread_not_found",
+        "thread_deleted",
     }
 )
 
