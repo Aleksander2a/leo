@@ -1,6 +1,6 @@
 {
   "version": "postgres-reliability-evidence-v1",
-  "alembic_head": "20260822_0026",
+  "alembic_head": "20260823_0029",
   "rollback_safe": true,
   "event_recovery": {
     "version": "durable-recovery-v1",
@@ -45,7 +45,7 @@
         "boundary": "failure_event_source",
         "outcome": "exported",
         "observed_before_digest": "4fe30eae6085a53204e181bd7cc593f0ac7e924efc46396b944468a45301a495",
-        "observed_after_digest": "b82c7e50b85fae13b2c16e4eca00078c1888afeb57789984f15837780b6a8087",
+        "observed_after_digest": "0464f3d79417244923769057d5e0deeefc0e68006de9c5b498ae3a8ad3f74cb9",
         "mutation_applied": true,
         "duplicate_committed": false,
         "terminal_success": false,
@@ -55,7 +55,7 @@
     "case_count": 4,
     "duplicate_commit_count": 0,
     "false_success_count": 0,
-    "digest": "3ed4af435dc8a6fab96e0f9524e8ac3d57bd1120f6eddd6175a4fa5ca7e1b466"
+    "digest": "620246df6622b62c7640f77526cb9876b541d778169e7fa8fa34f891935f4e89"
   },
   "plan_recovery": {
     "version": "durable-recovery-v1",
@@ -130,7 +130,7 @@
       "reproduction_command": "leo replay run-b7cba97b894b"
     },
     "sanitized_config": {
-      "alembic_head": "20260822_0026",
+      "alembic_head": "20260823_0029",
       "source": "rollback-safe-postgres"
     },
     "sanitized_events": [
@@ -180,7 +180,7 @@
       }
     ],
     "fixture_id": "durable-run-failure-v1",
-    "digest": "b5c947aa229a834421977731e46626f9cb3e61db13c6e669e582781d13d3c373"
+    "digest": "7c61491e75ceed0cb1cb14a9792791425d737d646bd0a613892472dfc7410376"
   },
-  "digest": "5849ab082409011eb4c91568d56ad7372f5c64363c2e516a45c88bd77d9db493"
+  "digest": "1dcb987dd6ddd989e7731956894cea7eb92e12ff045d186403c0fe80f7f3c6cb"
 }

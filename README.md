@@ -33,6 +33,7 @@ project.
 - [Context and memory](#context-and-memory)
 - [Conversation behavior](#conversation-behavior)
 - [Configuration](#configuration)
+- [Railway deployment and operations](#railway-deployment-and-operations)
 - [Testing and evaluations](#testing-and-evaluations)
 - [Repository navigation](#repository-navigation)
 - [Security and operating boundaries](#security-and-operating-boundaries)
@@ -508,6 +509,194 @@ offline commands from running.
 Rate/corroboration controls such as `EQUITY_QUOTE_AGREEMENT_THRESHOLD_PERCENT`,
 `EQUITY_QUOTE_MAX_CORROBORATION_SKEW_SECONDS`, `CRYPTO_AGREEMENT_THRESHOLD_BPS`, and
 `CRYPTO_MAX_CORROBORATION_SKEW_SECONDS` are also documented in `.env.example`.
+
+## Railway deployment and operations
+
+The hosted Leo deployment runs in one Railway project with three services. Slack replies are
+processed by Railway, not by the developer laptop: `leo-slack` keeps a long-lived outbound Slack
+Socket Mode connection and sends the reply after the durable run and delivery-outbox flow complete.
+The laptop is only needed for development, Git pushes, and operator access.
+
+### Hosted services
+
+| Railway service | Runtime | Purpose |
+| --- | --- | --- |
+| `leo-slack` | `python -m leo slack-live` | Persistent Slack Socket Mode listener and reply worker. |
+| `leo-dashboard-api` | `python scripts/run_dashboard_api.py` | FastAPI read-only monitoring API; runs Alembic migrations before deploy. |
+| `leo-dashboard` | Next.js from `web/` | Monitoring dashboard that calls the API over HTTPS. |
+
+The Slack service uses an outbound WebSocket and therefore does not need a public Slack callback
+URL. The dashboard and API use Railway public domains. The current production links are:
+
+- Dashboard: <https://leo-dashboard-production.up.railway.app>
+- API health: <https://leo-dashboard-api-production.up.railway.app/health>
+
+Railway domains can change if a service is renamed or its domain is regenerated; use the current
+domains shown in the Railway project when updating CORS and dashboard variables.
+
+The dashboard is read-only, but it currently has no user authentication. Treat the dashboard and
+API URLs as public monitoring surfaces. Do not put secrets in dashboard-visible data, and add an
+authentication or access-control layer before exposing sensitive operational information to
+untrusted users.
+
+### Railway service settings
+
+The Python services use the repository-root `Dockerfile` for their build environment. The Slack
+service uses the Dockerfile default command. The dashboard API overrides the start command and
+uses this pre-deploy migration command:
+
+```text
+alembic upgrade head
+```
+
+The web service is configured with `web/` as its source root and uses:
+
+```text
+npm ci
+npm run build
+npm run start -- --hostname 0.0.0.0 --port $PORT
+```
+
+Railway supplies `$PORT`; applications must bind to `0.0.0.0`, not only to `127.0.0.1`.
+
+### Railway variables
+
+Set secrets through Railway Variables. Never commit `.env`, tokens, `DATABASE_URL`, or provider
+keys. The important service-specific variables are:
+
+`leo-slack`:
+
+```text
+LEO_ENV=development
+LEO_MODEL=<OpenRouter model ID>
+LEO_ORGANIZATION_ID=demo-org
+LEO_STRATEGY_ID=technology-ls
+LEO_SLACK_TEAM_ID=<Slack workspace/team ID>
+SLACK_APP_TOKEN=xapp-...
+SLACK_BOT_TOKEN=xoxb-...
+OPENROUTER_API_KEY=...
+DATABASE_URL=postgresql://...
+FINNHUB_API_KEY=...
+```
+
+Add any other provider variables required by the capabilities you want enabled, such as
+`EXA_API_KEY`, `TAVILY_API_KEY`, `MASSIVE_API_KEY`, `ALPHA_VANTAGE_API_KEY`,
+`TICKER_LAYER_API_KEY`, `COINGECKO_API_KEY`, or `COIN_MARKET_CAP_API_KEY`. `SLACK_USER_TOKEN` is
+optional and enables exact history reads for supported public/private/shared conversations.
+
+`leo-dashboard-api`:
+
+```text
+DATABASE_URL=postgresql://...
+LEO_DASHBOARD_CORS_ORIGINS=https://leo-dashboard-production.up.railway.app
+```
+
+If the dashboard domain changes, update `LEO_DASHBOARD_CORS_ORIGINS` to the exact new origin and
+redeploy the API.
+
+`leo-dashboard`:
+
+```text
+NEXT_PUBLIC_DASHBOARD_API_URL=https://leo-dashboard-api-production.up.railway.app
+```
+
+This is a public build-time variable, not a secret. It must point to the API origin without a
+trailing path such as `/health`.
+
+### Deploying a new version
+
+The GitHub repository is `Aleksander2a/leo`, and the Railway services are connected to `main`.
+The normal release flow is:
+
+1. Create a feature branch and make the change.
+2. Open a pull request. GitHub Actions runs the Python quality job on Python 3.12 and 3.13 and
+   the dashboard lint/build job.
+3. Merge the pull request into `main` after the checks pass.
+4. Railway detects the push to `main` and builds/deploys the connected services. A push to the
+   connected repository can start deployments for all three services because they share the
+   repository.
+5. Check the deployment status and service logs in Railway, then verify the API health URL and a
+   real Slack reply.
+
+For a direct push when that is appropriate:
+
+```powershell
+git add .
+git commit -m "Describe the change"
+git push origin main
+```
+
+Changing a Railway variable also normally triggers a new deployment. To rerun the same commit,
+use Redeploy on the relevant Railway service. To undo a bad release, select a previous successful
+deployment and redeploy it, then fix the source and push a new commit. Keep database changes
+forward-only; do not use a production downgrade as a rollback strategy.
+
+GitHub Actions is the repository quality signal. Railway's Git connection starts deployment from
+the `main` push independently unless a separate Railway deployment gate has been configured, so
+confirm the GitHub checks are green before merging rather than relying on a deployment to block a
+bad commit.
+
+### Monitoring and common operations
+
+- `leo-slack` should remain running continuously. Its logs should show a successful Slack Socket
+  Mode connection. Restarting the service is safe because tasks, runs, and delivery intents are
+  durable in PostgreSQL.
+- `leo-dashboard-api` should return HTTP 200 from `/health`. A failed health check usually means a
+  missing/invalid `DATABASE_URL`, a migration failure, or a process that is not listening on the
+  Railway port.
+- `leo-dashboard` should report a successful Next.js build and start. If the page cannot load
+  data, check both `NEXT_PUBLIC_DASHBOARD_API_URL` and the API's CORS origin.
+- After changing Slack scopes, event subscriptions, or the app manifest, reinstall the Slack app
+  and then restart/redeploy `leo-slack`.
+- After adding a migration, verify the migration in CI and let the dashboard API deployment apply
+  `alembic upgrade head` before exercising new dashboard fields.
+
+### Local testing with Railway deployed
+
+Run deterministic checks from the repository root without contacting Railway or live providers:
+
+```powershell
+uv sync --locked --dev
+uv run leo smoke
+uv run leo eval
+uv run python scripts/quality.py
+```
+
+Run the dashboard locally with two terminals. First make sure `.env` points to a safe development
+database; `alembic upgrade head` changes the database named by `DATABASE_URL`.
+
+```powershell
+# Terminal 1: API
+uv run alembic upgrade head
+uv run python scripts/run_dashboard_api.py
+```
+
+```powershell
+# Terminal 2: web dashboard
+cd web
+npm ci
+npm run dev
+```
+
+Set this in `web/.env.local` for the local web process:
+
+```text
+NEXT_PUBLIC_DASHBOARD_API_URL=http://127.0.0.1:8000
+```
+
+Open <http://localhost:3000> and check <http://127.0.0.1:8000/health>.
+
+To test Slack against a local process, first stop or scale down the Railway `leo-slack` service,
+then run:
+
+```powershell
+uv run leo slack-live
+```
+
+Do not run local and Railway listeners simultaneously with the same Slack app tokens: Socket Mode
+events can be consumed by either listener and may result in missing or duplicate handling. For
+regular development, prefer the offline smoke/evaluation commands, or use a separate Slack app
+and development database for live transport tests.
 
 ## Testing and evaluations
 

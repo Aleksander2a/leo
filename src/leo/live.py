@@ -319,6 +319,29 @@ class _DirectEvidenceCompletionGateway:
         )
 
 
+_DIRECT_CANONICAL_EVIDENCE_KINDS = frozenset(
+    {
+        "market.get_crypto_snapshot",
+        "market.get_quote",
+        "market.get_earnings_surprises",
+    }
+)
+
+
+def _uses_direct_canonical_evidence(
+    requirement: EvidenceToolRequirement,
+    objective: str,
+) -> bool:
+    if requirement.observation_kind not in _DIRECT_CANONICAL_EVIDENCE_KINDS:
+        return False
+    if requirement.observation_kind != "market.get_quote":
+        return True
+    # Terse quote prompts can safely use the provider-normalized canonical answer.
+    # Conversational lookup requests still need a model turn to shape the response.
+    tokens = set(search_tokens(objective))
+    return not tokens.intersection({"could", "look", "lookup", "research", "use"})
+
+
 class _VerifiedWebResearchGateway:
     """Execute the admitted provider route before semantic completion.
 
@@ -1254,6 +1277,20 @@ async def run_live_conversation(
         )
     if required_memory_read_tool == "memory.search":
         coordinator_model = _RequiredMemorySearchGateway(coordinator_model)
+    if (
+        len(detected_evidence_requirements) == 1
+        and research_requirement is None
+        and not orchestration_required
+        and _uses_direct_canonical_evidence(
+            detected_evidence_requirements[0],
+            objective,
+        )
+    ):
+        coordinator_model = _DirectEvidenceCompletionGateway(
+            coordinator_model,
+            detected_evidence_requirements[0],
+            clock,
+        )
     coordinator_model = ElasticDeliberationGateway(coordinator_model, deliberation)
     evidence_required = (
         research_requirement is not None
