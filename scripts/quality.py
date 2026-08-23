@@ -344,7 +344,7 @@ def _uv_cache_dir() -> Path:
 
 
 def _clean_install_smoke(wheel: Path) -> None:
-    """Install all wheel dependencies into a fresh venv and smoke outside the repository."""
+    """Install locked runtime dependencies and the wheel into a fresh venv."""
 
     with tempfile.TemporaryDirectory(prefix="leo clean install ") as temporary:
         temporary_path = Path(temporary).resolve()
@@ -367,6 +367,24 @@ def _clean_install_smoke(wheel: Path) -> None:
         )
         clean_python = _venv_python(venv)
         _run(
+            "clean locked runtime sync",
+            uv,
+            "--cache-dir",
+            str(_uv_cache_dir()),
+            "sync",
+            "--locked",
+            "--offline",
+            "--no-dev",
+            "--no-install-project",
+            "--python",
+            str(clean_python),
+            env={
+                **offline_environment,
+                "UV_PROJECT_ENVIRONMENT": str(venv),
+            },
+            cwd=ROOT,
+        )
+        _run(
             "clean wheel install",
             uv,
             "--cache-dir",
@@ -374,6 +392,7 @@ def _clean_install_smoke(wheel: Path) -> None:
             "pip",
             "install",
             "--offline",
+            "--no-deps",
             "--python",
             str(clean_python),
             str(wheel),
