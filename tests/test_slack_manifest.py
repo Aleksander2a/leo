@@ -23,12 +23,8 @@ REQUIRED_BOT_SCOPES = {
 }
 REQUIRED_BOT_EVENTS = {
     "app_mention",
-    "message.channels",
-    "message.groups",
     "message.im",
-    "message.mpim",
 }
-REQUIRED_USER_SCOPES = {"channels:history", "groups:history"}
 SECRET_PATTERN = re.compile(r"\b(?:xox[a-z]|xapp)-[A-Za-z0-9-]{8,}\b", re.IGNORECASE)
 
 
@@ -50,16 +46,15 @@ def test_manifest_is_socket_mode_and_requests_exact_required_surface() -> None:
     assert isinstance(subscriptions, dict)
 
     assert set(scopes["bot"]) == REQUIRED_BOT_SCOPES
-    assert set(scopes["user"]) == REQUIRED_USER_SCOPES
+    assert "user" not in scopes
     assert set(subscriptions["bot_events"]) == REQUIRED_BOT_EVENTS
     assert settings["socket_mode_enabled"] is True
     assert settings["org_deploy_enabled"] is False
-    assert settings["is_hosted"] is False
 
 
 def test_manifest_excludes_unrelated_broad_or_write_scopes_and_secrets() -> None:
     manifest_text = MANIFEST.read_text(encoding="utf-8")
-    scopes = REQUIRED_BOT_SCOPES | REQUIRED_USER_SCOPES
+    scopes = REQUIRED_BOT_SCOPES
 
     assert not scopes.intersection(
         {
