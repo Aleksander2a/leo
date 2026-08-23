@@ -259,7 +259,10 @@ def test_ci_and_docs_use_the_single_cross_platform_quality_command() -> None:
     readme = Path("README.md").read_text(encoding="utf-8")
     web_readme = Path("web/README.md").read_text(encoding="utf-8")
 
-    assert 'python-version: ["3.12", "3.13"]' in workflow
+    # Leo supports exactly one Python version (matching the Dockerfile's runtime and
+    # mypy's configured target), so CI runs a single quality job rather than a matrix.
+    assert "uv python pin 3.12" in workflow
+    assert "matrix" not in workflow
     assert "uv run python scripts/quality.py" in workflow
     assert "uv run python scripts/quality.py" in readme
     # M6's dashboard is real now, not the earlier placeholder; it must still declare the

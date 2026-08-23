@@ -7,7 +7,7 @@ name = "leo-portfolio-agent"
 version = "0.1.0"
 description = "AI multi-strategy portfolio manager powered by a custom agent harness"
 readme = "README.md"
-requires-python = ">=3.12,<3.14"
+requires-python = ">=3.12,<3.13"
 license = { file = "LICENSE" }
 authors = [{ name = "Leo contributors" }]
 dependencies = [

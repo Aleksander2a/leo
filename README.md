@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="LICENSE">Apache-2.0</a> · Python 3.12–3.13 · Slack Socket Mode · PostgreSQL
+  <a href="LICENSE">Apache-2.0</a> · Python 3.12 · Slack Socket Mode · PostgreSQL
 </p>
 
 Leo is a conversational assistant for Slack. It turns natural-language requests into bounded
@@ -65,7 +65,7 @@ research information, not financial advice.
 
 ### Requirements
 
-- Python 3.12 or 3.13
+- Python 3.12
 - [uv](https://docs.astral.sh/uv/)
 - PostgreSQL or a compatible hosted PostgreSQL service for durable/live operation
 - Slack app credentials for Slack operation
@@ -79,8 +79,8 @@ smoke, evaluation, and unit-test paths do not require network credentials.
 From the repository root:
 
 ```powershell
-uv python install 3.13
-uv python pin 3.13
+uv python install 3.12
+uv python pin 3.12
 uv sync --locked --dev
 Copy-Item .env.example .env
 ```
@@ -609,8 +609,8 @@ The GitHub repository is `Aleksander2a/leo`, and the Railway services are connec
 The normal release flow is:
 
 1. Create a feature branch and make the change.
-2. Open a pull request. GitHub Actions runs the Python quality job on Python 3.12 and 3.13 and
-   the dashboard lint/build job.
+2. Open a pull request. GitHub Actions runs the Python quality job on Python 3.12 and the
+   dashboard lint/build job.
 3. Merge the pull request into `main` after the checks pass.
 4. Railway detects the push to `main` and builds/deploys the connected services. A push to the
    connected repository can start deployments for all three services because they share the

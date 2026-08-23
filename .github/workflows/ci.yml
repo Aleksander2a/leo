@@ -10,16 +10,13 @@ jobs:
     runs-on: ubuntu-latest
     env:
       UV_CACHE_DIR: .uv-cache
-    strategy:
-      matrix:
-        python-version: ["3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
-      - run: uv python install ${{ matrix.python-version }}
-      - run: uv python pin ${{ matrix.python-version }}
+      - run: uv python install 3.12
+      - run: uv python pin 3.12
       - run: uv sync --locked --dev
       # Prime the shared cache with the PEP 517 backend before the quality
       # gate intentionally builds the artifacts offline. Editable sync alone
