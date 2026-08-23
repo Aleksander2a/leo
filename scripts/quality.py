@@ -334,6 +334,15 @@ def _offline_environment() -> dict[str, str]:
     return environment
 
 
+def _uv_cache_dir() -> Path:
+    """Use setup-uv's cache when configured, with a repository-local fallback."""
+    configured = os.environ.get("UV_CACHE_DIR")
+    if not configured:
+        return ROOT / ".uv-cache"
+    cache_dir = Path(configured)
+    return cache_dir if cache_dir.is_absolute() else (ROOT / cache_dir).resolve()
+
+
 def _clean_install_smoke(wheel: Path) -> None:
     """Install all wheel dependencies into a fresh venv and smoke outside the repository."""
 
@@ -348,7 +357,7 @@ def _clean_install_smoke(wheel: Path) -> None:
             "clean venv create",
             uv,
             "--cache-dir",
-            str(ROOT / ".uv-cache"),
+            str(_uv_cache_dir()),
             "venv",
             str(venv),
             "--python",
@@ -361,7 +370,7 @@ def _clean_install_smoke(wheel: Path) -> None:
             "clean wheel install",
             uv,
             "--cache-dir",
-            str(ROOT / ".uv-cache"),
+            str(_uv_cache_dir()),
             "pip",
             "install",
             "--offline",
@@ -467,7 +476,7 @@ def main() -> int:
             "build",
             uv,
             "--cache-dir",
-            str(ROOT / ".uv-cache"),
+            str(_uv_cache_dir()),
             "build",
             "--offline",
             "--out-dir",
