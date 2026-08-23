@@ -278,6 +278,9 @@ async def test_durable_multi_part_delivery_materializes_all_v2_parts_before_disp
 
         async def dispatch_once(self, client: object, *, intent_id: str) -> DeliveryState:
             del client
+            # This assertion is the property this test actually guards: every part
+            # is durably materialized in the outbox *before* the first dispatch
+            # attempt begins, so a crash mid-delivery never loses a later part.
             assert outbox.parts == [(2000, "part one"), (2001, "part two")]
             self.calls.append(intent_id)
             return DeliveryState.RETRY
@@ -300,7 +303,77 @@ async def test_durable_multi_part_delivery_materializes_all_v2_parts_before_disp
         text=RenderedSlackText(version=2, chunks=("part one", "part two")),
     )
 
-    assert dispatcher.calls == ["intent-2000", "intent-2001"]
+    # Dispatch stops after the first chunk fails to reach DELIVERED this pass:
+    # the second, later chunk must never be attempted out of order. It stays a
+    # durable pending intent for a future pass to retry in sequence.
+    assert dispatcher.calls == ["intent-2000"]
+
+
+@pytest.mark.asyncio
+async def test_durable_multi_part_delivery_never_dispatches_a_later_chunk_out_of_order() -> None:
+    """An earlier chunk that does not reach DELIVERED must block later chunks.
+
+    This guards the user-visible ordering property: a transient failure (rate
+    limit) or a permanent failure on an early chunk must never let a later
+    chunk post to Slack, which would show the user the tail/end of Leo's
+    answer while the beginning never arrives.
+    """
+
+    class Outbox:
+        def __init__(self) -> None:
+            self.parts: list[tuple[int, str]] = []
+
+        async def ensure_intent(self, **kwargs: object) -> SimpleNamespace:
+            payload_version = int(kwargs["payload_version"])  # type: ignore[arg-type]
+            payload = str(kwargs["payload"])
+            self.parts.append((payload_version, payload))
+            return SimpleNamespace(id=f"intent-{payload_version}")
+
+        async def load(self, intent_id: str) -> SimpleNamespace:  # pragma: no cover - unused
+            raise AssertionError(f"load should not be called for {intent_id}: never DELIVERED")
+
+    outbox = Outbox()
+    posted: list[str] = []
+
+    class Dispatcher:
+        def __init__(self) -> None:
+            self.calls: list[str] = []
+
+        async def dispatch_once(self, client: object, *, intent_id: str) -> DeliveryState:
+            del client
+            self.calls.append(intent_id)
+            if intent_id == "intent-2000":
+                # Simulated transient failure (e.g. rate limit): nothing posted.
+                return DeliveryState.RETRY
+            # Chunk 2 would actually post to Slack if ever dispatched -- it must
+            # not be, since chunk 1 never reached DELIVERED this pass.
+            posted.append(intent_id)
+            return DeliveryState.DELIVERED
+
+    dispatcher = Dispatcher()
+    processor = SlackJobProcessor(
+        client=_RecordingClient(),  # type: ignore[arg-type]
+        runtime=_Runtime(),
+        outbox=outbox,  # type: ignore[arg-type]
+        dispatcher=dispatcher,  # type: ignore[arg-type]
+    )
+    admitted = replace(
+        _admitted("Ev-rendered-ordering"),
+        launch=SlackLaunchRef(thread_id="thread-1", task_id="task-1", run_id="run-1"),
+    )
+
+    receipt = await processor._deliver(
+        admitted,
+        kind=DeliveryKind.FINAL,
+        text=RenderedSlackText(version=2, chunks=("part one", "part two")),
+    )
+
+    # Both parts are still materialized durably up front...
+    assert outbox.parts == [(2000, "part one"), (2001, "part two")]
+    # ...but only the first chunk's dispatch is attempted this pass.
+    assert dispatcher.calls == ["intent-2000"]
+    assert posted == []
+    assert receipt is None
 
 
 @pytest.mark.asyncio

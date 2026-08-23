@@ -369,11 +369,21 @@ class SlackJobProcessor:
                     delivered = await self._outbox.load(intent.id)
                     if first_receipt is None:
                         first_receipt = delivered.receipt_message_ts
-                elif state is DeliveryState.UNKNOWN_EFFECT:
+                    continue
+                if state is DeliveryState.UNKNOWN_EFFECT:
                     LOGGER.error(
                         "Slack delivery has unknown effect",
                         extra={"event_id": admitted.job.event_id, "intent_id": intent.id},
                     )
+                # Any outcome other than DELIVERED (RETRY, DEAD, UNKNOWN_EFFECT, or
+                # None from a lease we could not claim) means this chunk did not
+                # confirm delivery to Slack this pass. Stop here rather than
+                # dispatching later chunks out of order: a later chunk must never
+                # reach the user before an earlier one. The remaining intents stay
+                # in their current outbox state (untouched) so a future durable-
+                # worker pass retries the whole remaining sequence in order once
+                # this chunk succeeds.
+                break
         except Exception:
             LOGGER.exception(
                 "durable Slack delivery failed",
