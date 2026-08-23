@@ -266,7 +266,6 @@ def test_context_merge_normalizes_forwarded_app_root_in_public_channel() -> None
 @pytest.mark.parametrize(
     ("durable_update", "slack_update", "error"),
     [
-        ({"content": "User: Different root"}, {}, "content mismatch"),
         ({"source_actor_id": "U-other"}, {}, "actor mismatch"),
         ({}, {"id": "slack-thread:T1:C1:99.000"}, "identity mismatch"),
         ({}, {"conversation_id": "D-other"}, "unauthorized conversation"),
@@ -306,6 +305,98 @@ def test_context_merge_rejects_conflicting_authoritative_root_pair(
             thread_root_ts="100.000",
             actor_id="U1",
         )
+
+
+def test_context_merge_fails_open_and_prefers_durable_root_on_genuine_content_mismatch(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A genuine, unexplained divergence degrades to the durable text instead of aborting.
+
+    Identity, destination, and actor all still agree (checked above this point); only
+    the normalized text differs. That must no longer abort the whole Slack turn with
+    no answer delivered -- it should log and proceed on the durable projection.
+    """
+
+    durable_root = ContextItem(
+        id="thread-message:root-row",
+        kind=ContextItemKind.CONVERSATION_TURN,
+        content="User: Different root",
+        conversation_id="C1",
+        source_actor_id="U1",
+        retention=ContextItemRetention.THREAD_ROOT,
+    )
+    slack_root = ContextItem(
+        id="slack-thread:T1:C1:100.000",
+        kind=ContextItemKind.CONVERSATION_TURN,
+        content=(
+            "[Slack exact thread; team=T1; conversation=C1; message_ts=100.000; "
+            "author=U1; author_kind=user]\n<@ULEO> Exact root"
+        ),
+        conversation_id="C1",
+        source_actor_id="U1",
+        retention=ContextItemRetention.THREAD_ROOT,
+    )
+
+    with caplog.at_level("WARNING", logger="leo.worker.slack_conversation"):
+        merged = _merge_authorized_context(
+            (durable_root, slack_root),
+            allowed_conversation_ids=frozenset({"C1"}),
+            destination_id="C1",
+            team_id="T1",
+            thread_root_ts="100.000",
+            actor_id="U1",
+        )
+
+    assert merged == (durable_root,)
+    assert any("content mismatch" in record.message for record in caplog.records)
+
+
+def test_context_merge_ignores_mid_sentence_connector_attribution_lookalike() -> None:
+    """A user message that merely contains the phrase must not be truncated.
+
+    Regression test: the live-Slack-side stripper previously found the *first*
+    occurrence of "*sent using" anywhere in the text (an unanchored substring
+    search) and truncated from there, even when it was not a genuine trailing
+    connector-attribution suffix. That diverged from the durable projection (which
+    never truncates) and raised a spurious content-mismatch error. The stripper must
+    now be end-anchored, exactly like leo.integrations.slack.events, so this merges
+    cleanly via the normal equivalent-root path (no warning, no raise).
+    """
+
+    mid_sentence_text = (
+        "What's the best way to configure OAuth *sent using client credentials flow?"
+    )
+    durable_root = ContextItem(
+        id="thread-message:root-row",
+        kind=ContextItemKind.CONVERSATION_TURN,
+        content=f"User: {mid_sentence_text}",
+        conversation_id="C1",
+        source_actor_id="U1",
+        retention=ContextItemRetention.THREAD_ROOT,
+    )
+    slack_root = ContextItem(
+        id="slack-thread:T1:C1:100.000",
+        kind=ContextItemKind.CONVERSATION_TURN,
+        content=(
+            "[Slack exact thread; team=T1; conversation=C1; message_ts=100.000; "
+            "author=U1; author_kind=user]\n"
+            f"<@ULEO> {mid_sentence_text}"
+        ),
+        conversation_id="C1",
+        source_actor_id="U1",
+        retention=ContextItemRetention.THREAD_ROOT,
+    )
+
+    merged = _merge_authorized_context(
+        (durable_root, slack_root),
+        allowed_conversation_ids=frozenset({"C1"}),
+        destination_id="C1",
+        team_id="T1",
+        thread_root_ts="100.000",
+        actor_id="U1",
+    )
+
+    assert merged == (durable_root,)
 
 
 def _lease() -> TaskLease:

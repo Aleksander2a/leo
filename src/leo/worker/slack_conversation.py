@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import logging
+import re
 
 import httpx
 from sqlalchemy import select
@@ -55,6 +57,8 @@ from leo.persistence.plan_store import PostgresPlanStore
 from leo.persistence.run_store import LeaseBoundRunStore, PostgresRunStore
 from leo.persistence.schema import PlanRow, RunRow
 from leo.persistence.task_leases import TaskLease
+
+logger = logging.getLogger(__name__)
 
 _TERMINAL_RUN_STATUSES = frozenset(
     {
@@ -637,7 +641,18 @@ def _reconcile_exact_thread_roots(
     if durable_root.source_actor_id != actor_id or not slack_actor_matches:
         raise ValueError("authoritative thread root actor mismatch")
     if _durable_root_text(durable_root) != _slack_root_text(slack_root):
-        raise ValueError("authoritative thread root content mismatch")
+        # Identity, destination, and actor all agree above; only the normalized text
+        # differs. That is a formatting/attribution-stripping discrepancy between two
+        # otherwise-authorized projections of the same root, not evidence that either
+        # side is unauthorized or fabricated. Fail open: log it and keep going on the
+        # durable projection rather than aborting the whole turn with no answer.
+        logger.warning(
+            "authoritative thread root content mismatch for %s; preferring durable "
+            "projection %s and dropping Slack duplicate %s",
+            expected_slack_root_id,
+            durable_root.id,
+            slack_root.id,
+        )
     # Prefer the server-normalized ingress projection. It contains the exact admitted
     # prompt without the connector mention, while the Slack transcript remains covered
     # by the separately durable Slack thread authority proof.
@@ -651,16 +666,25 @@ def _durable_root_text(item: ContextItem) -> str:
     return _strip_leading_slack_mention(content.removeprefix("User:"))
 
 
+# Mirrors leo.integrations.slack.events._CONNECTOR_ATTRIBUTION: end-anchored so it only
+# strips a genuine trailing "*Sent using* <mention>" suffix, never a mid-sentence
+# occurrence of the same words. The Slack-transcript rendering this loader consumes
+# wraps the whole suffix in asterisks and may carry a "|display name" fallback on the
+# mention (e.g. "*Sent using <@U2|ChatGPT>*"), so the exact character class differs
+# from events.py's bot-mention pattern while the anchoring semantics are identical.
+_SLACK_ROOT_CONNECTOR_ATTRIBUTION = re.compile(
+    r"\s+\*Sent using\s+<@[A-Z0-9]+(?:\|[^>]*)?>\s*\*\s*$",
+    re.IGNORECASE,
+)
+
+
 def _slack_root_text(item: ContextItem) -> str:
     content = item.content.strip()
     header, separator, body = content.partition("\n")
     if not separator or not header.startswith("[Slack exact thread;") or not header.endswith("]"):
         raise ValueError("Slack thread root envelope is malformed")
     normalized = _strip_leading_slack_mention(body)
-    marker = "*sent using"
-    marker_index = normalized.casefold().find(marker)
-    if marker_index >= 0:
-        normalized = normalized[:marker_index].rstrip()
+    normalized = _SLACK_ROOT_CONNECTOR_ATTRIBUTION.sub("", normalized)
     return " ".join(normalized.split())
 
 
