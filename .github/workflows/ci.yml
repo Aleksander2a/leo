@@ -20,7 +20,11 @@ jobs:
           enable-cache: true
       - run: uv python install ${{ matrix.python-version }}
       - run: uv python pin ${{ matrix.python-version }}
-      - run: uv sync --locked --dev
+      # Prime the shared cache with the PEP 517 backend before the quality
+      # gate intentionally builds the artifacts offline. Editable sync alone
+      # does not need to resolve hatchling.
+      - name: Prime offline build cache
+        run: uv build --cache-dir "$UV_CACHE_DIR" --out-dir "${{ runner.temp }}/leo-build-bootstrap"
       - run: uv run python scripts/quality.py
 
   dashboard:
