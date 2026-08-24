@@ -1629,8 +1629,6 @@ def _ground_tavily_search(
         and isinstance(rejected_result_count, int)
         and not isinstance(rejected_result_count, bool)
         and 0 <= rejected_result_count <= 100
-        and data.get("untrusted") is True
-        and data.get("requires_fetch_for_source_claim") is True
         and all(_valid_tavily_result(item) for item in results)
     ):
         return False, "Tavily discovery observation is malformed or lacks provenance metadata."
@@ -1921,7 +1919,6 @@ def _ground_public_text(
         and not isinstance(byte_count, bool)
         and byte_count > 0
         and isinstance(truncated, bool)
-        and data.get("untrusted") is True
         and observation.source.reference == digest
         and observation.source.url == url
     ):
@@ -2187,8 +2184,6 @@ def _ground_exa_search(
         and highlight_count == len(canonical)
         and data.get("search_type") == "auto"
         and data.get("contents_mode") == "highlights"
-        and data.get("untrusted") is True
-        and data.get("exact_url_bound_claims") is True
     ):
         return False, "Exa highlight evidence is malformed or lacks exact URL provenance."
     return _ground_exact_statement_list(

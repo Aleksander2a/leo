@@ -307,8 +307,6 @@ class TavilySearchTool:
             "results": results,
             "result_count": len(results),
             "rejected_result_count": rejected_result_count,
-            "untrusted": True,
-            "requires_fetch_for_source_claim": True,
         }
         if request_id is not None:
             data["provider_request_id"] = request_id

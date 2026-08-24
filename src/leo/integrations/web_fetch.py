@@ -124,7 +124,6 @@ class PublicTextFetchTool:
                 "truncated": artifact.truncated,
                 "peer_ip": artifact.peer_ip,
                 "dns_pin_sha256": artifact.dns_pin_sha256,
-                "untrusted": True,
                 "candidate_attempt_count": len(failed_attempts) + 1,
                 "failed_candidates": failed_attempts,
             },

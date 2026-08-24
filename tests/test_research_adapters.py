@@ -312,8 +312,11 @@ async def test_public_fetch_tool_returns_typed_untrusted_evidence() -> None:
 
     assert isinstance(outcome, ToolSuccess)
     assert outcome.data["text"] == "A bounded public source."
-    assert outcome.data["untrusted"] is True
     assert outcome.source.provider == "public-web"
+    # Trust level is a typed property of the observation (EvidenceQuality), not a
+    # hardcoded `True` copied into every payload -- which the verifier then
+    # "checked" against itself and could never fail.
+    assert "untrusted" not in outcome.data
 
 
 @pytest.mark.asyncio
@@ -611,7 +614,7 @@ async def test_recorded_web_search_returns_capped_untrusted_discovery_metadata()
 
     assert isinstance(outcome, ToolSuccess)
     assert outcome.data["result_count"] == 2
-    assert outcome.data["untrusted"] is True
+    assert "untrusted" not in outcome.data
     assert outcome.data["provider_request_id"] == "wiki-recorded-1"
     assert outcome.source.provider == "wikipedia-opensearch"
 
@@ -786,3 +789,54 @@ def test_inference_citations_cannot_self_attest_source_diversity() -> None:
     failed = {check.name for check in result.checks if not check.passed}
     assert "minimum_distinct_sources" in failed
     assert "counter_evidence_present" in failed
+
+
+@pytest.mark.asyncio
+async def test_public_search_always_identifies_itself() -> None:
+    """Wikimedia rejects User-Agent-less API calls, and this adapter sent none.
+
+    Every `web.search_public` call in production returned HTTP 403 (phabricator
+    T400119) and became a non-retryable WEB_SEARCH_REQUEST_REJECTED, which then
+    failed the whole run. Slack saw "One of the sources or tools I needed wasn't
+    available" for questions that had several other working routes.
+    """
+
+    seen: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request.headers.get("User-Agent", ""))
+        return httpx.Response(
+            200, json=["q", ["Alphabet"], ["desc"], ["https://en.wikipedia.org/wiki/Alphabet_Inc."]]
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        await PublicWebSearchTool(
+            client=client,
+            clock=FixedClock(NOW),
+            user_agent="Leo contact <ops@example.com>",
+        ).execute({"query": "Alphabet"}, _context())
+
+    assert seen == ["Leo contact <ops@example.com>"]
+
+    # A deployment that configures no contact identity still identifies itself.
+    seen.clear()
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        await PublicWebSearchTool(client=client, clock=FixedClock(NOW)).execute(
+            {"query": "Alphabet"}, _context()
+        )
+    assert seen and seen[0].strip()
+
+
+@pytest.mark.asyncio
+async def test_a_rejected_public_search_is_retryable_rather_than_run_ending() -> None:
+    """A provider refusing one call must not be terminal for the conversation."""
+
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(lambda _: httpx.Response(403))
+    ) as client:
+        outcome = await PublicWebSearchTool(client=client, clock=FixedClock(NOW)).execute(
+            {"query": "Alphabet"}, _context()
+        )
+
+    assert isinstance(outcome, ToolFailure)
+    assert outcome.code == "WEB_SEARCH_REQUEST_REJECTED"

@@ -353,10 +353,23 @@ export interface ReasoningStep {
   outcome: string;
 }
 
+/** One step the model committed to before the run was allowed to finish. */
+export interface PlannedStep {
+  key: string;
+  intent: string;
+  /** Empty for a reasoning-only step. */
+  tool: string;
+  status: "pending" | "satisfied" | "abandoned";
+  /** Why an abandoned step was dropped, or how it was resolved. */
+  note: string;
+}
+
 export interface RunReasoning {
   run_id: string;
   task_id: string;
   objective: string | null;
   steps: ReasoningStep[];
   step_count: number;
+  plan: PlannedStep[];
+  pending_step_count: number;
 }

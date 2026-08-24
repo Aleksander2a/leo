@@ -183,7 +183,6 @@ class PublicWebSearchTool:
             "query_hash": query_hash,
             "results": results,
             "result_count": len(results),
-            "untrusted": True,
         }
         request_id = _safe_request_id(response.headers.get("x-request-id"))
         if request_id is not None:

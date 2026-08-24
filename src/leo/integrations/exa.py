@@ -268,8 +268,6 @@ class ExaSearchTool:
             "result_hash": result_hash,
             "highlight_count": len(statements),
             "statements": statements,
-            "untrusted": True,
-            "exact_url_bound_claims": True,
         }
         request_id = _safe_request_id(payload.get("requestId"))
         if request_id is not None:

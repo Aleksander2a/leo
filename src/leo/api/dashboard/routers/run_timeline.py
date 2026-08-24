@@ -38,12 +38,20 @@ async def get_run_reasoning(
         raise HTTPException(status_code=404, detail="run not found")
     task = await session.get(TaskRow, run.task_id)
     steps = list(task.scratchpad or ()) if task is not None else []
+    plan = list(task.step_plan or ()) if task is not None else []
     return {
         "run_id": run_id,
         "task_id": run.task_id,
         "objective": task.objective if task is not None else None,
         "steps": steps,
         "step_count": len(steps),
+        # What the model committed to, and which parts real evidence discharged.
+        # This is the thing that decides whether a run may finish, so an operator
+        # looking at a stalled or partial answer needs to see it next to the
+        # trace: a pending step explains a loop, an abandoned one carries the
+        # reason a part of the answer went unsourced.
+        "plan": plan,
+        "pending_step_count": sum(1 for item in plan if item.get("status") == "pending"),
     }
 
 

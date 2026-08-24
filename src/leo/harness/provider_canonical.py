@@ -577,8 +577,6 @@ def _canonical_exa(observation: Observation) -> str | None:
         and data.get("highlight_count") == len(statements)
         and data.get("search_type") == "auto"
         and data.get("contents_mode") == "highlights"
-        and data.get("untrusted") is True
-        and data.get("exact_url_bound_claims") is True
         and data.get("statements") == list(statements)
     ):
         return None

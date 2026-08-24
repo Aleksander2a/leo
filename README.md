@@ -327,32 +327,78 @@ Each model request is built from a typed `RunBundle` and a fresh `ModelRequest`:
 
 1. The runtime creates an objective, task lineage, run phase, scope, and completion contract.
 2. Deliberation sets a depth envelope from ambiguity, context sufficiency, freshness/evidence
-   needs, effect risk, and remaining budget. The envelope is a floor and ceiling, not a route.
+   needs, effect risk, and remaining budget. The envelope is advisory: it is derived from patterns
+   over the prompt, so it recommends a route and nudges once, then defers to the model.
 3. Capability selection ranks the eligible catalog by hybrid retrieval — BM25 over tool metadata
    and cosine similarity over description embeddings, fused with reciprocal rank fusion — and
    presents the top candidates plus any always-available tools.
-4. The model chooses: answer, clarify, read one tool, read several in parallel, or delegate. It
-   also states a one-sentence `plan` describing what it is trying to establish.
-5. Tool calls are validated for name, arguments, effect, phase, role, and budget before execution.
-6. Integration results are recorded as normalized observations with provider, reference, freshness,
+4. On its first decision the model **breaks the request into steps** and returns them in `steps`:
+   each step has a stable key, an intent, and the tool it needs (or none, for a synthesis step).
+   It also states a one-sentence `plan` for the current decision.
+5. The model chooses: answer, clarify, read one tool, read several in parallel, or delegate.
+6. Tool calls are validated for name, arguments, effect, phase, role, and budget before execution.
+7. Integration results are recorded as normalized observations with provider, reference, freshness,
    and bounded payload metadata. Oversize payloads are truncated with a marker, never discarded.
-7. The harness appends a `ReasoningStep` — the model's plan, the action it took, and the outcome
-   **as observed by the harness** — to the task's durable scratchpad.
-8. The next model request carries the observations *and* that scratchpad, so the model can build
-   on its own prior work instead of cold-starting. Failed tool calls arrive as corrective feedback
-   naming the tool and the reason, so the model can fix arguments or switch tools.
-9. The verifier checks completion against the request, evidence requirements, context authority,
-   formatting constraints, and safety rules. Rejected work receives structured feedback for a
-   bounded corrective model turn.
-10. A verified result becomes durable terminal state and a Slack delivery intent. If the run
-    exhausts its budget while holding a substantive answer, that answer is delivered as a
-    best-effort completion rather than replaced by a failure message.
+8. Each retrieved observation discharges **one** pending step that named its tool. The harness also
+   appends a `ReasoningStep` — the model's plan, the action taken, and the outcome **as observed by
+   the harness** — to the task's durable scratchpad.
+9. The next model request carries the observations, the scratchpad, *and* the committed plan with
+   each step's state. Failed tool calls arrive as corrective feedback naming the tool and reason.
+10. The verifier checks completion against the request, evidence requirements, context authority,
+    formatting constraints, and safety rules. Rejected work receives structured feedback for a
+    bounded corrective model turn.
+11. A verified result becomes durable terminal state and a Slack delivery intent.
 
-The scratchpad is what makes this a loop rather than a sequence of independent turns. The `plan`
-is model-authored because only the model knows its intent; the `outcome` is always written by the
-harness from what actually happened, so a model cannot record its own success and read it back as
-fact on a later turn. The trace carries no authority — it cannot grant a capability, cite evidence,
-or satisfy a verifier check.
+### Finishing only when the work is done
+
+The scratchpad records what happened. The **step plan** records what the model said it would do,
+and it is what stops a run from shipping half-finished work.
+
+Leo used to answer *"…and I'm pulling those now to give you a more grounded read"* and stop. Asked
+where the grounded read was, it said *"You're right — I promised and went quiet. Here it is"* and
+again said nothing. Neither reply was catchable, because intent left no trace the harness could
+check: a turn that narrated work looked exactly like a turn that had done it.
+
+Four rules make the difference checkable:
+
+- **A run cannot finish while a step is pending.** Answering with outstanding steps returns the
+  model to the loop with those steps named, rather than delivering the answer.
+- **Only real evidence discharges a step**, and each step consumes its own observation. Two steps
+  that share a tool need two results, so an NVDA quote cannot close the GOOG step.
+- **A pending step pins the next turn's tool choice** to the tool the model itself chose. Left on
+  AUTO, a model told its plan is unfinished will often answer again anyway.
+- **Abandoning a step needs a stated reason, and is refused while the tool still works.** Otherwise
+  a model facing the gate retires all of its own steps and calls nothing.
+
+Blocking is bounded, and failure stays recoverable. A step whose tool was never advertised — or was
+withdrawn after failing — is retired automatically with that reason, so the loop cannot spin on
+something unreachable. When no turns remain, the best answer the model actually wrote is delivered
+as an explicit best-effort completion rather than a failure with no content.
+
+Live, an NVDA/GOOG comparison plans five steps, calls `market.get_quote` twice and
+`market.get_earnings_surprises` twice, loses GOOG earnings to a real provider failure
+(`FINNHUB_NO_EARNINGS`), records that as the step's abandonment reason, and answers naming exactly
+what it could not source. A greeting still completes in one turn with no plan at all.
+
+`GET /dashboard/runs/{run_id}/reasoning` returns the plan alongside the trace, and the dashboard's
+**Reasoning** tab renders both.
+
+### The harness does not write the answer
+
+Eight mechanisms used to intercept the model's turn and substitute a decision the harness had
+authored: gateways that ran a search before the model's first turn, wrote the answer from a
+provider payload, forced `memory.search`, failed the run when one provider was down, answered for
+a child agent, let the verifier compose the text it then graded, pasted scraped page text over the
+model's decision, or replaced an answer with a fixed clarifying question.
+
+They routinely seized whole runs. One live comparison spent twelve consecutive iterations having
+its decision replaced by a scraped page dump that then failed verification — the trace reads
+"no plan stated" for each, because no model authored those decisions. The user received the scrape.
+
+All of them are gone. Tools are called because the plan requires them, not because a keyword
+matched, and every sentence Leo sends is one the model wrote. What the harness still owns is real
+and narrow: scope, budgets, tool authority, terminal truth, and judging whether an answer is good
+enough — never composing it.
 
 ### Routing: retrieval proposes, the model disposes
 
@@ -450,7 +496,7 @@ Context and memory are related but separate systems:
 - **Memory** is durable information deliberately promoted from a conversation or other authorized
   source for later retrieval.
 
-### Working memory (the ReAct scratchpad)
+### Durable working state (scratchpad and step plan)
 
 `tasks.scratchpad` holds a bounded list of `{iteration, plan, action, outcome}` steps — Leo's record
 of what it tried this run and why. The most recent twelve reach each model request as
@@ -460,10 +506,17 @@ Without it, every iteration rebuilt a stateless prompt, and by iteration four th
 tell which tools it had already called, with what arguments, or what it was trying to establish.
 Multi-step work ("I have the quote, now I need earnings, then I compare") was impossible, and
 near-identical prompts produced near-identical decisions that then tripped the no-progress guard.
-`GET /dashboard/runs/{run_id}/reasoning` exposes the trace for operators, and the dashboard renders
-it as the **Reasoning** tab on a run's detail page — the first tab, because "what was Leo trying to
-do at each step" is usually the question you actually have when a run goes sideways. Runs that
-predate the scratchpad, or that answered in a single turn, render the tab empty rather than failing.
+`tasks.step_plan` holds the committed plan: an ordered list of `{key, intent, tool, status, note}`
+steps. It is durable for the same reason — a resumed run has to know what it already promised to do,
+or it would answer as though the work had never been planned — but unlike the scratchpad it is not
+advisory. Completion is gated on it (see
+[Finishing only when the work is done](#finishing-only-when-the-work-is-done)).
+
+`GET /dashboard/runs/{run_id}/reasoning` returns both for operators, and the dashboard renders them
+together as the **Reasoning** tab on a run's detail page — the first tab, because "what was Leo
+trying to do, and how far did it get" is usually the question you actually have when a run goes
+sideways. Runs that predate these columns, or that answered in one turn, render an empty tab rather
+than failing.
 
 ### Context assembly
 
