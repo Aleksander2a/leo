@@ -5,8 +5,8 @@ WebSocket traffic. There is no callback URL to expose.
 
 ## 1. Install the app
 
-Create the app from [`slack/manifest.yml`](../slack/manifest.yml). It requests three bot
-scopes and subscribes to two events:
+Create the app from [`slack/manifest.yml`](../slack/manifest.yml). It subscribes to two
+events, and the three scopes the code exercises are:
 
 | Scope | Why |
 | --- | --- |
@@ -14,12 +14,11 @@ scopes and subscribes to two events:
 | `chat:write` | Post the reply and update the progress placeholder. |
 | `im:history` | Receive `message.im` events in direct messages. |
 
-Leo needs no bulk history scopes. It answers from what it has recorded itself in
-`agent_messages` for the conversation it is speaking in, so it cannot read a channel it was
-not addressed in, and cannot read a thread it did not participate in.
-
-> If you installed an earlier version of this app, its grant is a superset of these scopes
-> and keeps working. Reinstall only if you want the narrower permissions.
+The manifest also grants read scopes for channels, private channels, and group DMs. Leo does
+not currently call any bulk-read API — it answers from what it recorded itself in
+`agent_messages` for the conversation it is speaking in — so those scopes are headroom for a
+future surface rather than something in use today. `chat:write` remains the only capability
+it has to change anything in Slack.
 
 Then:
 

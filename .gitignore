@@ -225,3 +225,6 @@ __marimo__/
 # Leo local planning and design records (intentionally not published)
 /.leo-planning/
 /leo_vision.md
+
+# Local Claude Code launch configuration for the dashboard preview.
+.claude/launch.json

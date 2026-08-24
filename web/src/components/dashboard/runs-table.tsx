@@ -1,10 +1,10 @@
 "use client";
 
-import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
 import { StatusPill } from "@/components/ui/status-pill";
-import { formatCost, formatDateTime, formatNumber, truncate } from "@/lib/utils";
 import type { RunSummary } from "@/lib/types";
+import { formatCost, formatNumber, formatRelative, formatSeconds, scopeLabel, truncate } from "@/lib/utils";
+import type { ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
 
 const columns: ColumnDef<RunSummary, unknown>[] = [
@@ -14,31 +14,42 @@ const columns: ColumnDef<RunSummary, unknown>[] = [
     cell: (info) => <StatusPill status={info.getValue() as string} />,
   },
   {
-    accessorKey: "task_objective",
-    header: "Objective",
-    cell: (info) => <span className="block max-w-md truncate">{truncate(info.getValue() as string, 90)}</span>,
+    accessorKey: "question",
+    header: "Question",
+    cell: (info) => (
+      <span className="block max-w-md truncate">{truncate(info.getValue() as string, 90)}</span>
+    ),
   },
-  { accessorKey: "phase", header: "Phase" },
-  { accessorKey: "iteration", header: "Iter" },
   {
-    accessorKey: "terminal_reason",
-    header: "Terminal reason",
-    cell: (info) => (info.getValue() as string | null) ?? "—",
+    accessorKey: "scope_key",
+    header: "Conversation",
+    cell: (info) => (
+      <span className="font-mono text-xs text-gray-500" title={info.getValue() as string}>
+        {scopeLabel(info.getValue() as string)}
+      </span>
+    ),
+  },
+  { accessorKey: "turns", header: "Turns" },
+  { accessorKey: "tool_calls", header: "Tools" },
+  {
+    accessorKey: "duration_seconds",
+    header: "Duration",
+    cell: (info) => formatSeconds(info.getValue() as number | null),
   },
   {
     accessorKey: "total_tokens",
     header: "Tokens",
-    cell: (info) => formatNumber(info.getValue() as number | null),
+    cell: (info) => formatNumber(info.getValue() as number),
   },
   {
     accessorKey: "cost",
     header: "Cost",
-    cell: (info) => formatCost(info.getValue() as number | null),
+    cell: (info) => formatCost(info.getValue() as number),
   },
   {
-    accessorKey: "created_at",
-    header: "Created",
-    cell: (info) => formatDateTime(info.getValue() as string),
+    accessorKey: "started_at",
+    header: "Started",
+    cell: (info) => formatRelative(info.getValue() as string | null),
   },
 ];
 

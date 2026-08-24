@@ -1,6 +1,6 @@
-// Types mirror the FastAPI dashboard response shapes in
-// D:\leo\src\leo\api\dashboard\routers\*.py -- keep them in sync by hand, there is no
-// generated client (the backend is intentionally small and hand-typed too).
+// Mirrors the FastAPI response shapes in src/leo/api/dashboard.py. Kept in sync
+// by hand — the backend is small and hand-typed too, so a generated client
+// would be more machinery than the surface warrants.
 
 export interface Page<T> {
   items: T[];
@@ -9,367 +9,188 @@ export interface Page<T> {
   offset: number;
 }
 
-export interface KeyCount {
-  key: string;
+export interface ActivityPoint {
+  day: string | null;
+  runs: number;
+  answered: number;
+  cost: number;
+}
+
+export interface ToolUsage {
+  name: string;
+  calls: number;
+  succeeded: number;
+  failed: number;
+  avg_ms: number | null;
+}
+
+export interface ToolErrorCount {
+  code: string;
   count: number;
 }
 
 export interface OverviewResponse {
   run_status_counts: Record<string, number>;
-  task_status_counts: Record<string, number>;
-  tool_calls: { started: number; completed: number; failed: number };
-  tool_call_success_rate: number | null;
-  total_cost: number | null;
-  total_tokens: number | null;
-  total_model_calls: number;
+  total_runs: number;
+  answered_runs: number;
+  answer_rate: number | null;
+  total_tokens: number;
+  total_cost: number;
   total_tool_calls: number;
-  memory_writes_total: number;
-  memory_pages_referenced_total: number;
-  delivery_state_counts: Record<string, number>;
-  failure_reasons: KeyCount[];
-  avg_run_latency_seconds: number | null;
+  total_model_turns: number;
+  avg_run_seconds: number | null;
+  p50_run_seconds: number | null;
+  p95_run_seconds: number | null;
+  active_memories: number;
+  conversations: number;
+  messages: number;
+  activity: ActivityPoint[];
+  tool_usage: ToolUsage[];
+  tool_errors: ToolErrorCount[];
 }
 
+/** One user request, from question to answer. */
 export interface RunSummary {
   id: string;
-  task_id: string;
+  scope_key: string;
+  conversation_id: string;
+  actor_id: string | null;
+  thread_key: string | null;
+  question: string;
   status: string;
-  phase: string;
-  iteration: number;
-  task_objective: string;
-  task_status: string;
+  model: string | null;
+  turns: number;
+  tool_calls: number;
+  total_tokens: number;
+  cost: number;
+  duration_seconds: number | null;
   started_at: string | null;
-  terminal_reason: string | null;
-  total_tokens: number | null;
-  cost: number | null;
-  created_at: string;
-}
-
-export interface RunFields {
-  id: string;
-  task_id: string;
-  organization_id: string;
-  strategy_id: string;
-  status: string;
-  phase: string;
-  iteration: number;
-  limits: Record<string, unknown>;
-  usage: Record<string, unknown>;
-  started_at: string | null;
-  deadline_at: string | null;
-  final_output: string | null;
-  terminal_reason: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface TaskFields {
-  id: string;
-  thread_id: string;
-  objective: string;
-  parent_task_id: string | null;
-  continuation_kind: string;
-  status: string;
-  final_output: string | null;
-  verifier_feedback: string[];
-  attempt_count: number;
-  last_error: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface ThreadFields {
-  id: string;
-  origin_provider: string;
-  external_thread_id: string;
-  external_channel_id: string | null;
-  conversation_id: string | null;
-  created_at: string;
-}
-
-export type CallKind =
-  | "mcp"
-  | "rest_api"
-  | "internal_memory"
-  | "internal_agent"
-  | "internal_context"
-  | "unknown";
-
-export interface ObservationSummary {
-  id: string;
-  tool_call_id: string;
-  kind: string;
-  data: Record<string, unknown>;
-  source: { provider?: string; reference?: string; url?: string | null };
-  status: string;
-  quality: string;
-  observed_at: string;
-  expires_at: string | null;
-  rejection_code: string | null;
-  call_kind: CallKind | null;
-  integration: string | null;
-}
-
-export interface ClaimSummary {
-  id: string;
-  kind: string;
-  statement: string;
-  observation_ids: string[];
-}
-
-export interface DeliverySummary {
-  id: string;
-  kind: string;
-  state: string;
-  destination_channel_id: string;
-  destination_thread_ts: string;
-  attempt_count: number;
-  receipt_message_ts: string | null;
-  last_error: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface RunDetail {
-  run: RunFields;
-  task: TaskFields | null;
-  thread: ThreadFields | null;
-  observations: ObservationSummary[];
-  claims: ClaimSummary[];
-  deliveries: DeliverySummary[];
-  event_count: number;
-}
-
-export interface EventEnvelope {
-  event_id: string;
-  run_id: string;
-  task_id: string;
-  scope: { organization_id: string; strategy_id: string };
-  sequence: number;
-  occurred_at: string;
-  kind: string;
-  schema_version: string;
-  correlation_id: string;
-  causation_id: string | null;
-  payload: Record<string, unknown>;
-}
-
-export interface ModelCallTranscript {
-  request: {
-    model?: string;
-    messages?: { role: string; content: unknown }[];
-    tools?: { type: string; function: { name: string; description: string; parameters: unknown } }[];
-    tool_choice?: unknown;
-    [key: string]: unknown;
-  };
-  response: Record<string, unknown>;
-}
-
-export interface TimelineEntry {
-  sequence: number;
-  kind: string;
-  occurred_at: string;
-  envelope: EventEnvelope | null;
-  raw_payload: Record<string, unknown>;
-  normalization_error: boolean;
-  call_kind: CallKind | null;
-  integration: string | null;
-  transcript: ModelCallTranscript | null;
-}
-
-export interface PlanRevisionSummary {
-  id: string;
-  number: number;
-  goal: string;
-  reason: string;
-  digest: string;
-  created_at: string;
-}
-
-export interface ChildRunSummary {
-  id: string;
-  status: string;
-  phase: string;
-  terminal_reason: string | null;
-}
-
-export interface DelegationEntry {
-  id: string;
-  attempt: number;
-  status: string;
-  output: string | null;
-  error: string | null;
-  child_task_id: string | null;
-  child_run: ChildRunSummary | null;
-  child_plans: PlanTreeNode[];
-  created_at: string;
   finished_at: string | null;
 }
 
-export interface PlanNodeEntry {
-  id: string;
-  node_key: string;
-  objective: string;
-  depends_on: string[];
-  status: string;
-  attempt: number;
-  max_attempts: number;
-  output: string | null;
+/**
+ * One entry in the ReAct trace. `kind: "model"` is a turn the model took —
+ * `name` is its finish reason, and `arguments.tools_offered` lists the tools it
+ * asked for. `kind: "tool"` is one call, with the arguments sent and the payload
+ * that came back.
+ */
+export interface Step {
+  seq: number;
+  kind: "model" | "tool" | string;
+  name: string;
+  ok: boolean;
+  duration_ms: number;
+  arguments: Record<string, unknown> | null;
+  result: Record<string, unknown> | null;
+  created_at: string | null;
+}
+
+export interface RunDetail extends RunSummary {
+  answer: string | null;
   error: string | null;
-  delegations: DelegationEntry[];
+  prompt_tokens: number;
+  completion_tokens: number;
+  memories_written: number;
+  conversation: ConversationSummary | null;
+  steps: Step[];
 }
 
-export interface PlanTreeNode {
-  id: string;
-  status: string;
-  current_revision: number;
-  max_revisions: number;
-  output: string | null;
+export interface FailedToolCall {
+  name: string;
   error: string | null;
-  revisions: PlanRevisionSummary[];
-  nodes: PlanNodeEntry[];
-  created_at: string;
-  updated_at: string;
+  message: string | null;
 }
 
-export interface PlanTreeResponse {
-  run_id: string;
-  plans: PlanTreeNode[];
+export interface FailureItem extends RunSummary {
+  error: string | null;
+  failed_tool_calls: FailedToolCall[];
 }
 
-export interface MemoryRecordSummary {
+export interface ConversationSummary {
   id: string;
+  scope_key: string;
+  provider: string;
   kind: string;
-  visibility: string;
-  namespace_id: string;
-  current_revision: number;
-  generation: number;
-  status: string;
-  created_at: string;
-  content_preview: string | null;
-  last_recorded_at: string | null;
-  source_type: string | null;
-  scope_label: string;
+  title: string | null;
+  team_id: string | null;
+  channel_id: string | null;
+  runs: number | null;
+  memories: number | null;
+  messages: number | null;
+  created_at: string | null;
+  last_active_at: string | null;
 }
 
-export interface MemoryRecordFields {
-  id: string;
-  kind: string;
-  visibility: string;
-  namespace_id: string;
-  current_revision: number;
-  generation: number;
-  status: string;
-  created_at: string;
-  scope_label: string;
-}
-
-export interface MemorySourceFields {
-  id: string;
-  source_kind: string;
-  reference: string;
-  visibility: string;
-  namespace_id: string;
-}
-
-export interface MemoryRevisionFields {
-  number: number;
+export interface ConversationMessage {
+  id: number;
+  role: string;
   content: string;
-  content_hash: string;
-  source_ids: string[];
-  visibility: string;
-  sensitivity: number;
-  valid_from: string;
-  valid_until: string | null;
-  recorded_at: string;
-  expires_at: string | null;
-  status: string;
-  actor_id: string;
-  reason: string;
-  supersedes_revision: number | null;
-  source_type: string;
+  author_id: string | null;
+  run_id: string | null;
+  thread_key: string | null;
+  created_at: string | null;
 }
 
-export interface MemoryRecordDetail {
-  record: MemoryRecordFields;
-  sources: MemorySourceFields[];
-  revisions: MemoryRevisionFields[];
+export interface ConversationDetail extends ConversationSummary {
+  /** The summary's `messages`/`runs`/`memories` are counts; these are the rows. */
+  recent_messages: ConversationMessage[];
+  recent_runs: RunSummary[];
+  recent_memories: MemorySummary[];
 }
 
-export interface ProviderStat {
-  provider: string;
-  display_name: string;
-  call_kind: CallKind;
-  total: number;
-  retrieved: number;
-  stale: number;
-  rejected: number;
-  success_rate: number | null;
-}
-
-export interface ToolFailureItem extends KeyCount {
-  call_kind: CallKind;
-  integration: string;
-}
-
-export interface IntegrationsResponse {
-  providers: ProviderStat[];
-  tool_failures: ToolFailureItem[];
-}
-
-export interface FailureItem {
-  run_id: string;
-  task_id: string;
-  status: string;
-  phase: string;
-  terminal_reason: string | null;
-  task_objective: string;
-  task_last_error: string | null;
-  attempt_count: number;
-  updated_at: string;
-}
-
-export interface ConversationItem {
+export interface MemorySummary {
   id: string;
-  provider: string;
-  team_id: string;
+  scope_key: string;
   kind: string;
-  bot_presence: string;
-  lifecycle: string;
-  external_provenance: string;
-  thread_count: number;
-  created_at: string;
-  updated_at: string;
+  subject: string;
+  content: string;
+  importance: number;
+  active: boolean;
+  superseded_by: string | null;
+  source_run_id: string | null;
+  author_id: string | null;
+  embedded: boolean;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
-/** One iteration of Leo's plan/act/observe trace. */
-export interface ReasoningStep {
-  iteration: number;
-  /** Model-authored intent for this turn. */
-  plan: string;
-  /** What the model actually did (a tool call, or answering). */
-  action: string;
-  /** Harness-written result, so a hallucinated success cannot enter the trace. */
-  outcome: string;
+export interface MemoryDetail extends MemorySummary {
+  /** Rows this one replaced. */
+  supersedes: MemorySummary[];
+  /** Rows that replaced this one, oldest first. */
+  superseded_chain: MemorySummary[];
+  source_run: RunSummary | null;
 }
 
-/** One step the model committed to before the run was allowed to finish. */
-export interface PlannedStep {
-  key: string;
-  intent: string;
-  /** Empty for a reasoning-only step. */
-  tool: string;
-  status: "pending" | "satisfied" | "abandoned";
-  /** Why an abandoned step was dropped, or how it was resolved. */
-  note: string;
+export interface MemoryKindCount {
+  kind: string;
+  count: number;
 }
 
-export interface RunReasoning {
-  run_id: string;
-  task_id: string;
-  objective: string | null;
-  steps: ReasoningStep[];
-  step_count: number;
-  plan: PlannedStep[];
-  pending_step_count: number;
+export interface ToolInfo {
+  name: string;
+  domain: string;
+  description: string | null;
+  indexed: boolean;
+  calls: number;
+  succeeded: number;
+  failed: number;
+  avg_ms: number | null;
+  last_used_at: string | null;
+  errors: ToolErrorCount[];
+  updated_at: string | null;
+}
+
+export interface ScopeOption {
+  scope_key: string;
+  label: string;
+  kind: string;
+}
+
+export interface HealthResponse {
+  status: string;
+  environment: string;
+  configured: Record<string, boolean>;
+  database_reachable?: boolean;
+  database_error?: string;
 }

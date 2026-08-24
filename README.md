@@ -122,7 +122,8 @@ uv run leo health
 
 Create a Slack app from [`slack/manifest.yml`](slack/manifest.yml) — it declares the scopes
 and the two events Leo listens for (`app_mention` and `message.im`). Install it to your
-workspace, then put the bot token (`xoxb-…`) and app-level token (`xapp-…`) in `.env`.
+workspace, then put the bot token (`xoxb-…`) and app-level token (`xapp-…`) in `.env`. See
+[docs/slack-local.md](docs/slack-local.md) for the full runbook.
 
 ```bash
 uv run leo slack
@@ -195,19 +196,31 @@ JSON into later prompts is how a context window fills with noise; the next turn 
 
 ## Dashboard
 
-A read-only FastAPI surface over the same tables:
+Two processes: a read-only FastAPI surface over the same six tables, and a Next.js app on
+top of it.
 
 ```bash
-uv run python scripts/run_dashboard_api.py
+uv run python scripts/run_dashboard_api.py   # http://127.0.0.1:8000
+npm --prefix web run dev                     # http://localhost:3000
 ```
 
-- `GET /health` — configuration and (with `?deep=true`) database reachability
-- `GET /dashboard/overview` — run counts, answer rate, tokens, cost, tool usage
-- `GET /dashboard/runs` and `/dashboard/runs/{id}` — runs and their full step trace
-- `GET /dashboard/conversations`, `/dashboard/memory`, `/dashboard/tools`, `/dashboard/failures`
+The pages answer the questions you actually have when a bot is live:
 
-> The Next.js app in `web/` still targets the previous runtime's API shape and has not been
-> ported to these endpoints.
+| Page | Shows |
+| --- | --- |
+| **Overview** | Answer rate, runs per day, cost, latency percentiles, and per-tool reliability. |
+| **Runs** | Every question, filterable by status and conversation, searchable across questions and answers. |
+| **Run detail** | The reason–act trace, step by step: what the model asked for, the exact arguments it sent, what each tool returned, and the answer it wrote. |
+| **Conversations** | One row per channel or DM, with its transcript, runs, and memory side by side. |
+| **Memory** | What Leo remembers, where, and its revision history. |
+| **Tools** | Every tool, its description (which is what makes it discoverable), call counts, and failure codes. |
+| **Failures** | Runs that ended without an answer — with the tool errors from inside them as context. |
+
+A failing tool call is deliberately *not* a failure: the Failures page stays empty while the
+loop is recovering normally, and per-tool error codes live on Overview and Tools instead.
+
+The API endpoints are `GET /health` plus `/dashboard/{overview,runs,runs/{id},failures,
+conversations,conversations/{scope_key},memory,memory/{id},memory-kinds,tools,scopes}`.
 
 ## Configuration
 
@@ -259,6 +272,7 @@ src/leo/
   api/            read-only dashboard API
 migrations/       one baseline migration
 tests/            the suite
+web/              the Next.js dashboard
 ```
 
 ## Operating boundaries

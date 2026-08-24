@@ -98,7 +98,13 @@ class ToolDiscovery:
             self._loaded = True
             return
         self._loaded = True
-        wanted = {spec.name: searchable_text(spec) for spec in self._registry.specs()}
+        specs = self._registry.specs()
+        # `wanted` is what gets embedded (name + domain + description, so a query
+        # can match on any of them); `descriptions` is what a human reads. Storing
+        # both keeps the index row honest without making the dashboard restate
+        # the tool's own name back at itself.
+        wanted = {spec.name: searchable_text(spec) for spec in specs}
+        descriptions = {spec.name: spec.description for spec in specs}
         prints = {name: fingerprint(text) for name, text in wanted.items()}
         cached: dict[str, list[float]] = {}
         if self._sessions is not None:
@@ -128,13 +134,13 @@ class ToolDiscovery:
             }
             cached.update(fresh)
             if fresh and self._sessions is not None:
-                await self._persist(fresh, wanted, prints)
+                await self._persist(fresh, descriptions, prints)
         self._vectors = cached
 
     async def _persist(
         self,
         fresh: dict[str, list[float]],
-        texts: dict[str, str],
+        descriptions: dict[str, str],
         prints: dict[str, str],
     ) -> None:
         try:
@@ -143,7 +149,7 @@ class ToolDiscovery:
                     stmt = insert(ToolIndex).values(
                         name=name,
                         fingerprint=prints[name],
-                        description=texts[name],
+                        description=descriptions[name],
                         embedding=vector,
                         updated_at=datetime.now(UTC),
                     )

@@ -173,3 +173,37 @@ if sys.platform == "win32":
 @pytest.fixture
 def frozen_now() -> Iterator[datetime]:
     yield datetime(2026, 8, 24, 12, 0, tzinfo=UTC)
+
+
+#: Every database-backed test builds scopes under this prefix, so the whole
+#: session's residue can be removed by one predicate. Without it the operator
+#: dashboard slowly fills with fixtures and stops being readable.
+TEST_SCOPE_PREFIX = "test:"
+
+
+@pytest.fixture(scope="session", autouse=True)
+def purge_test_scopes() -> Iterator[None]:
+    yield
+    url = database_url()
+    if url is None:
+        return
+    from sqlalchemy import text
+
+    from leo.agent.db import create_engine, run
+
+    async def purge() -> None:
+        engine = create_engine(url)
+        try:
+            async with engine.begin() as connection:
+                for statement in (
+                    "DELETE FROM agent_memories WHERE scope_key LIKE :prefix",
+                    # Messages, runs, and steps cascade from the conversation row.
+                    "DELETE FROM agent_conversations WHERE scope_key LIKE :prefix",
+                    "DELETE FROM agent_runs WHERE scope_key LIKE :prefix",
+                    "DELETE FROM agent_messages WHERE scope_key LIKE :prefix",
+                ):
+                    await connection.execute(text(statement), {"prefix": f"{TEST_SCOPE_PREFIX}%"})
+        finally:
+            await engine.dispose()
+
+    run(purge())

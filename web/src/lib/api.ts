@@ -1,16 +1,17 @@
 import type {
-  ConversationItem,
+  ConversationDetail,
+  ConversationSummary,
   FailureItem,
-  IntegrationsResponse,
-  MemoryRecordDetail,
-  MemoryRecordSummary,
+  HealthResponse,
+  MemoryDetail,
+  MemoryKindCount,
+  MemorySummary,
   OverviewResponse,
   Page,
-  PlanTreeResponse,
   RunDetail,
-  RunReasoning,
   RunSummary,
-  TimelineEntry,
+  ScopeOption,
+  ToolInfo,
 } from "@/lib/types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_DASHBOARD_API_URL ?? "http://127.0.0.1:8000";
@@ -25,8 +26,10 @@ export class ApiError extends Error {
   }
 }
 
-async function apiFetch<T>(path: string, params?: Record<string, string | number | undefined>): Promise<T> {
-  const url = new URL(`/dashboard${path}`, BASE_URL);
+type Params = Record<string, string | number | boolean | undefined>;
+
+async function apiFetch<T>(path: string, params?: Params): Promise<T> {
+  const url = new URL(path, BASE_URL);
   if (params) {
     for (const [key, value] of Object.entries(params)) {
       if (value !== undefined && value !== "") {
@@ -42,74 +45,78 @@ async function apiFetch<T>(path: string, params?: Record<string, string | number
   return (await response.json()) as T;
 }
 
-export function getOverview(): Promise<OverviewResponse> {
-  return apiFetch<OverviewResponse>("/overview");
+function dashboard<T>(path: string, params?: Params): Promise<T> {
+  return apiFetch<T>(`/dashboard${path}`, params);
 }
 
-export interface RunListFilters {
+/** Scope keys contain colons, so they must be encoded into the path. */
+const scopePath = (scopeKey: string) => encodeURIComponent(scopeKey);
+
+export function getHealth(deep = false): Promise<HealthResponse> {
+  return apiFetch<HealthResponse>("/health", { deep });
+}
+
+export function getOverview(days = 14): Promise<OverviewResponse> {
+  return dashboard<OverviewResponse>("/overview", { days });
+}
+
+export interface RunFilters {
   status?: string;
-  phase?: string;
-  task_status?: string;
+  scope_key?: string;
+  q?: string;
   limit?: number;
   offset?: number;
 }
 
-export function listRuns(filters: RunListFilters = {}): Promise<Page<RunSummary>> {
-  return apiFetch<Page<RunSummary>>("/runs", { ...filters });
+export function listRuns(filters: RunFilters = {}): Promise<Page<RunSummary>> {
+  return dashboard<Page<RunSummary>>("/runs", { ...filters });
 }
 
-export function getRunDetail(runId: string): Promise<RunDetail> {
-  return apiFetch<RunDetail>(`/runs/${encodeURIComponent(runId)}`);
+export function getRun(runId: string): Promise<RunDetail> {
+  return dashboard<RunDetail>(`/runs/${encodeURIComponent(runId)}`);
 }
 
-export function getRunTimeline(runId: string): Promise<TimelineEntry[]> {
-  return apiFetch<TimelineEntry[]>(`/runs/${encodeURIComponent(runId)}/timeline`);
-}
-
-export function getRunPlanTree(runId: string): Promise<PlanTreeResponse> {
-  return apiFetch<PlanTreeResponse>(`/runs/${encodeURIComponent(runId)}/plan-tree`);
-}
-
-export function getRunReasoning(runId: string): Promise<RunReasoning> {
-  return apiFetch<RunReasoning>(`/runs/${encodeURIComponent(runId)}/reasoning`);
-}
-
-export interface MemoryListFilters {
-  kind?: string;
-  visibility?: string;
-  namespace_id?: string;
-  status?: string;
-  limit?: number;
-  offset?: number;
-}
-
-export function listMemoryRecords(
-  filters: MemoryListFilters = {},
-): Promise<Page<MemoryRecordSummary>> {
-  return apiFetch<Page<MemoryRecordSummary>>("/memory/records", { ...filters });
-}
-
-export function getMemoryRecord(recordId: string): Promise<MemoryRecordDetail> {
-  return apiFetch<MemoryRecordDetail>(`/memory/records/${encodeURIComponent(recordId)}`);
-}
-
-export function getIntegrations(): Promise<IntegrationsResponse> {
-  return apiFetch<IntegrationsResponse>("/integrations");
-}
-
-export interface FailureListFilters {
-  terminal_reason?: string;
-  status?: string;
-  limit?: number;
-  offset?: number;
-}
-
-export function listFailures(filters: FailureListFilters = {}): Promise<Page<FailureItem>> {
-  return apiFetch<Page<FailureItem>>("/failures", { ...filters });
+export function listFailures(
+  filters: { limit?: number; offset?: number } = {},
+): Promise<Page<FailureItem>> {
+  return dashboard<Page<FailureItem>>("/failures", { ...filters });
 }
 
 export function listConversations(
-  filters: { limit?: number; offset?: number } = {},
-): Promise<Page<ConversationItem>> {
-  return apiFetch<Page<ConversationItem>>("/conversations", { ...filters });
+  filters: { kind?: string; limit?: number; offset?: number } = {},
+): Promise<Page<ConversationSummary>> {
+  return dashboard<Page<ConversationSummary>>("/conversations", { ...filters });
+}
+
+export function getConversation(scopeKey: string): Promise<ConversationDetail> {
+  return dashboard<ConversationDetail>(`/conversations/${scopePath(scopeKey)}`);
+}
+
+export interface MemoryFilters {
+  scope_key?: string;
+  kind?: string;
+  q?: string;
+  include_inactive?: boolean;
+  limit?: number;
+  offset?: number;
+}
+
+export function listMemory(filters: MemoryFilters = {}): Promise<Page<MemorySummary>> {
+  return dashboard<Page<MemorySummary>>("/memory", { ...filters });
+}
+
+export function getMemory(memoryId: string): Promise<MemoryDetail> {
+  return dashboard<MemoryDetail>(`/memory/${encodeURIComponent(memoryId)}`);
+}
+
+export function listMemoryKinds(): Promise<{ items: MemoryKindCount[] }> {
+  return dashboard<{ items: MemoryKindCount[] }>("/memory-kinds");
+}
+
+export function listTools(): Promise<{ items: ToolInfo[] }> {
+  return dashboard<{ items: ToolInfo[] }>("/tools");
+}
+
+export function listScopes(): Promise<{ items: ScopeOption[] }> {
+  return dashboard<{ items: ScopeOption[] }>("/scopes");
 }

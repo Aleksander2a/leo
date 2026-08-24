@@ -1,18 +1,23 @@
 display_information:
   name: Leo
-  description: An AI portfolio-research agent that answers in Slack
+  description: AI multi-strategy portfolio manager with a custom agent harness
 features:
   bot_user:
     display_name: Leo
     always_online: false
 oauth_config:
-  # Exactly what the code uses, and nothing else. Leo builds conversation
-  # history from what it has itself recorded, so it needs no bulk read scopes.
   scopes:
     bot:
+      - channels:history
       - app_mentions:read
+      - channels:read
       - chat:write
+      - groups:read
+      - im:read
+      - mpim:read
+      - groups:history
       - im:history
+      - mpim:history
   pkce_enabled: false
 settings:
   event_subscriptions:
@@ -20,7 +25,7 @@ settings:
       - app_mention
       - message.im
   interactivity:
-    is_enabled: false
+    is_enabled: true
   org_deploy_enabled: false
   socket_mode_enabled: true
   token_rotation_enabled: false
