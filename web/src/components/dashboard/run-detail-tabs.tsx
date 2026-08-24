@@ -8,16 +8,23 @@ import { ProvenanceBadge } from "@/components/ui/provenance-badge";
 import { StatusPill } from "@/components/ui/status-pill";
 import { Tabs } from "@/components/ui/tabs";
 import { formatDateTime } from "@/lib/utils";
-import type { PlanTreeResponse, RunDetail, TimelineEntry } from "@/lib/types";
+import type {
+  PlanTreeResponse,
+  RunDetail,
+  RunReasoning,
+  TimelineEntry,
+} from "@/lib/types";
 
 export function RunDetailTabs({
   detail,
   timeline,
   planTree,
+  reasoning,
 }: {
   detail: RunDetail;
   timeline: TimelineEntry[];
   planTree: PlanTreeResponse;
+  reasoning: RunReasoning | null;
 }) {
   const contextEntries = timeline.filter((entry) => entry.kind === "context_built");
   const toolEntries = timeline.filter((entry) => entry.kind === "tool_call" || entry.kind === "evidence_normalized");
@@ -27,6 +34,11 @@ export function RunDetailTabs({
   return (
     <Tabs
       tabs={[
+        {
+          id: "reasoning",
+          label: `Reasoning (${reasoning?.step_count ?? 0})`,
+          content: <ReasoningTab reasoning={reasoning} />,
+        },
         {
           id: "timeline",
           label: "Timeline",
@@ -64,6 +76,46 @@ export function RunDetailTabs({
         },
       ]}
     />
+  );
+}
+
+function ReasoningTab({ reasoning }: { reasoning: RunReasoning | null }) {
+  const steps = reasoning?.steps ?? [];
+  if (steps.length === 0) {
+    return (
+      <p className="text-sm text-gray-500 dark:text-gray-400">
+        No reasoning trace was recorded for this run. Runs that answer in a single turn
+        without calling a tool may finish before a step is written.
+      </p>
+    );
+  }
+  return (
+    <ol className="space-y-3">
+      {steps.map((step) => (
+        <li
+          key={step.iteration}
+          className="rounded-md border border-gray-200 p-3 dark:border-gray-800"
+        >
+          <p className="text-xs font-medium text-gray-400">Iteration {step.iteration}</p>
+          <dl className="mt-2 space-y-2 text-sm">
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-gray-400">Plan</dt>
+              <dd className="text-gray-900 dark:text-gray-100">{step.plan}</dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-gray-400">Action</dt>
+              <dd className="font-mono text-xs text-gray-700 dark:text-gray-300">{step.action}</dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-gray-400">
+                Outcome (recorded by the harness)
+              </dt>
+              <dd className="text-gray-700 dark:text-gray-300">{step.outcome}</dd>
+            </div>
+          </dl>
+        </li>
+      ))}
+    </ol>
   );
 }
 

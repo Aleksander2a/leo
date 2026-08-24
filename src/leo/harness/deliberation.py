@@ -54,6 +54,10 @@ class DeliberationMode(StrEnum):
     REPLAN_VERIFY = "replan_verify"
 
 
+# How many times a run may be bounced back to the model for choosing a route the
+# advisory envelope did not expect, before the model's own judgement is accepted.
+_MAX_ROUTE_NUDGES = 1
+
 _ALL_MODES = frozenset(DeliberationMode)
 _DEPTH_BY_MODE = {
     DeliberationMode.DIRECT: 0,
@@ -314,6 +318,7 @@ class ElasticDeliberationGateway:
         self._last_result: ModelTurnResult | None = None
         self._recommended_mode = envelope.recommended_mode
         self._recommended_depth = envelope.recommended_depth
+        self._route_nudges = 0
 
     @property
     def decision(self) -> DeliberationEnvelope:
@@ -400,10 +405,19 @@ class ElasticDeliberationGateway:
 
         proposed_mode = _semantic_mode(result, request)
         if proposed_mode not in self._envelope.allowed_modes:
-            raise ModelGatewayError(
-                "deliberation_mode_outside_envelope",
-                "The model proposed a reasoning mode outside the trusted depth envelope.",
-            )
+            # The envelope is advisory by construction (see the module docstring):
+            # it is derived from regexes over the prompt, not from knowledge of
+            # what the turn actually needs. Killing the run over it let a keyword
+            # miss veto a correct answer. Nudge once so a genuinely under-reasoned
+            # turn gets a second chance, then defer to the model's own judgement.
+            # Evidence sufficiency is still enforced downstream by the verifier,
+            # which reasons about observations rather than about wording.
+            if self._route_nudges < _MAX_ROUTE_NUDGES:
+                self._route_nudges += 1
+                raise ModelGatewayError(
+                    "deliberation_mode_outside_envelope",
+                    "The model proposed a reasoning mode outside the trusted depth envelope.",
+                )
         proposed_depth = _semantic_depth(result, request, proposed_mode)
         deferred_to_required_effect_gate = (
             self._envelope.hard_required_parent_tool is not None
@@ -413,7 +427,9 @@ class ElasticDeliberationGateway:
             proposed_depth < self._envelope.minimum_depth
             and proposed_mode is not DeliberationMode.CLARIFY
             and not deferred_to_required_effect_gate
+            and self._route_nudges < _MAX_ROUTE_NUDGES
         ):
+            self._route_nudges += 1
             raise ModelGatewayError(
                 "deliberation_depth_below_minimum",
                 "The model proposed reasoning shallower than the trusted depth envelope.",

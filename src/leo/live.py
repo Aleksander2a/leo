@@ -847,7 +847,13 @@ async def run_live_conversation(
     )
     public_fetch_tool = PublicTextFetchTool(client=client, clock=clock)
     research_tools: list[Tool] = [
-        PublicWebSearchTool(client=client, clock=clock),
+        PublicWebSearchTool(
+            client=client,
+            clock=clock,
+            # SEC_USER_AGENT is already a required "contact" identity for public
+            # data sources; reuse it so Wikimedia sees a real contact too.
+            user_agent=settings.sec_user_agent,
+        ),
         public_fetch_tool,
     ]
     tavily_tool: TavilySearchTool | None = None

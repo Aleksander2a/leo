@@ -388,6 +388,29 @@ canonical string. Malformed, unsafe, truncated, unauthorized, or provenance-inco
 still rejected. This preserves useful conversational behavior while keeping the external boundary
 bounded.
 
+An empty result is a result. A provider that returns nothing for a query produces a normal
+observation with zero rows, not an error — "nothing matched" and "the provider is broken" are
+different facts, and conflating them used to end a conversational turn that had other routes left.
+
+### Adapting when a tool fails
+
+A failing tool ends that call, not the conversation. When a tool fails unrecoverably, the harness
+withdraws it for the remainder of the run, tells the model which tool is gone and why, and gives
+the model its next turn to re-route — another provider, a different tool, or an answer that states
+plainly which part could not be sourced. Only a run with no remaining model turn terminates on a
+tool failure.
+
+This matters because the search ladder is layered: `web.research_verified` (Tavily/Exa) first, then
+the individual search providers, with Wikipedia's OpenSearch as a last-resort encyclopedia lookup.
+Treating one provider's hard failure as fatal made the whole ladder worthless — a single 403 ended
+the turn while three usable routes sat idle.
+
+The depth envelope is advisory in the same spirit. It is derived from regexes over the prompt, so it
+cannot actually know what a turn needs. If the model picks a route outside the envelope, the harness
+bounces the turn back **once** with corrective feedback, then defers to the model's judgement.
+Evidence sufficiency is still enforced downstream by the verifier, which reasons about observations
+rather than about wording.
+
 ### Budgets and stopping
 
 The parent run defaults are controlled by environment variables:
@@ -437,7 +460,10 @@ Without it, every iteration rebuilt a stateless prompt, and by iteration four th
 tell which tools it had already called, with what arguments, or what it was trying to establish.
 Multi-step work ("I have the quote, now I need earnings, then I compare") was impossible, and
 near-identical prompts produced near-identical decisions that then tripped the no-progress guard.
-`GET /dashboard/runs/{run_id}/reasoning` exposes the trace for operators.
+`GET /dashboard/runs/{run_id}/reasoning` exposes the trace for operators, and the dashboard renders
+it as the **Reasoning** tab on a run's detail page — the first tab, because "what was Leo trying to
+do at each step" is usually the question you actually have when a run goes sideways. Runs that
+predate the scratchpad, or that answered in a single turn, render the tab empty rather than failing.
 
 ### Context assembly
 

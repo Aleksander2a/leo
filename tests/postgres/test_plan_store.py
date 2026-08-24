@@ -4,15 +4,17 @@ import asyncio
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from typing import Any
+from uuid import uuid4
 
 import pytest
 import pytest_asyncio
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from leo.config import Settings
 from leo.harness.models import EventDraft, EventType, OriginRef, Run, ScopeKey, Task, Thread
 from leo.harness.plan_models import PlanNodeDefinition, PlanNodeStatus, PlanStatus
-from leo.harness.transitions import cancel_task_and_run
+from leo.harness.transitions import cancel_task_and_run, start_task_and_run
 from leo.integrations.fake import FixedClock, SequentialIdGenerator
 from leo.persistence.database import create_database_engine, create_session_factory
 from leo.persistence.plan_store import (
@@ -24,6 +26,7 @@ from leo.persistence.plan_store import (
     PlanTerminalError,
     PostgresPlanStore,
 )
+from leo.persistence.run_store import PostgresRunStore
 
 
 @dataclass(frozen=True)
@@ -32,25 +35,88 @@ class PlanHarness:
     run_store: Any
     clock: FixedClock
     sessions: async_sessionmaker[AsyncSession]
+    # Every row this harness writes is namespaced under a unique organization so
+    # committed state cannot collide with a concurrent run or with demo data.
+    organization_id: str
+
+
+class _NamespacedIds:
+    """Sequential ids with a per-harness suffix.
+
+    Ordering still matters -- delegations are replayed by (created_at, id), and
+    a FixedClock makes ties on created_at routine -- so a random id generator
+    reorders them. The constant suffix preserves the monotonic lexical order
+    while keeping committed rows unique between harnesses.
+    """
+
+    def __init__(self, suffix: str) -> None:
+        self._inner = SequentialIdGenerator()
+        self._suffix = suffix
+
+    def new(self, prefix: str) -> str:
+        return f"{self._inner.new(prefix)}-{self._suffix}"
 
 
 @pytest_asyncio.fixture
-async def plan_harness(postgres_store: Any) -> AsyncIterator[PlanHarness]:
+async def plan_harness() -> AsyncIterator[PlanHarness]:
+    """Commit plan state on a real pool, namespaced and cleaned up per test.
+
+    The single-connection rollback harness cannot serve these tests: its rows are
+    invisible to any other connection (so a separately-built plan store failed
+    with "parent task or run not found"), and several of these tests claim nodes
+    concurrently, which needs genuinely independent connections. So this harness
+    follows the documented alternative -- commit for real under a unique
+    organization id, then delete exactly what it wrote.
+    """
+
     database_url = Settings().database_url
     if database_url is None:
         pytest.skip("DATABASE_URL is not configured")
+    suffix = uuid4().hex[:12]
+    organization_id = f"org-plan-{suffix}"
     engine = create_database_engine(database_url.get_secret_value())
     sessions = create_session_factory(engine)
     clock = FixedClock()
     try:
         yield PlanHarness(
-            store=PostgresPlanStore(sessions, clock, SequentialIdGenerator()),
-            run_store=postgres_store.store,
+            store=PostgresPlanStore(sessions, clock, _NamespacedIds(suffix)),
+            run_store=PostgresRunStore(sessions, clock, _NamespacedIds(suffix)),
             clock=clock,
             sessions=sessions,
+            organization_id=organization_id,
         )
     finally:
-        await engine.dispose()
+        try:
+            await _cleanup_organization(sessions, organization_id)
+        finally:
+            await engine.dispose()
+
+
+# Children first, then parents: every statement is scoped to this harness's own
+# organization id, so a failure part-way through cannot touch unrelated rows.
+# run_events carries no organization column, so it is reached through its runs.
+_CLEANUP_SQL = (
+    "DELETE FROM delegations WHERE organization_id = :organization_id",
+    "DELETE FROM plan_nodes WHERE organization_id = :organization_id",
+    "DELETE FROM plan_revisions WHERE organization_id = :organization_id",
+    "DELETE FROM plans WHERE organization_id = :organization_id",
+    "DELETE FROM run_events WHERE run_id IN"
+    " (SELECT id FROM runs WHERE organization_id = :organization_id)",
+    "DELETE FROM observations WHERE organization_id = :organization_id",
+    "DELETE FROM runs WHERE organization_id = :organization_id",
+    "DELETE FROM tasks WHERE organization_id = :organization_id",
+    "DELETE FROM threads WHERE organization_id = :organization_id",
+)
+
+
+async def _cleanup_organization(
+    sessions: async_sessionmaker[AsyncSession],
+    organization_id: str,
+) -> None:
+    async with sessions() as session:
+        for statement in _CLEANUP_SQL:
+            await session.execute(text(statement), {"organization_id": organization_id})
+        await session.commit()
 
 
 def _node(
@@ -73,21 +139,51 @@ async def _seed_parent(
     scope: ScopeKey | None = None,
     suffix: str = "parent",
 ) -> tuple[ScopeKey, Task, Run]:
-    effective_scope = scope or ScopeKey(organization_id="org-plan", strategy_id="strategy-a")
+    effective_scope = scope or ScopeKey(
+        organization_id=harness.organization_id,
+        strategy_id="strategy-a",
+    )
+    # These rows are committed, so their identifiers must be unique per harness
+    # or two concurrent runs of this suite would collide on the primary key.
+    unique = f"{suffix}-{harness.organization_id.rsplit('-', 1)[-1]}"
     thread = Thread(
-        id=f"thread-{suffix}",
+        id=f"thread-{unique}",
         scope=effective_scope,
-        origin=OriginRef(provider="plan-test", external_thread_id=f"thread-{suffix}"),
+        origin=OriginRef(provider="plan-test", external_thread_id=f"thread-{unique}"),
     )
     task = Task(
-        id=f"task-{suffix}",
+        id=f"task-{unique}",
         thread_id=thread.id,
         scope=effective_scope,
         objective="Coordinate a durable plan",
     )
-    run = Run(id=f"run-{suffix}", task_id=task.id, scope=effective_scope)
+    run = Run(id=f"run-{unique}", task_id=task.id, scope=effective_scope)
     await harness.run_store.seed(thread, task, run)
-    return effective_scope, task, run
+    # Seeding admits a QUEUED pair. Delegated work requires *live* parent
+    # authority (ACTIVE task, RUNNING run), so drive the same started transition
+    # the coordinator does -- otherwise every plan operation fails closed with
+    # PlanTerminalError against a parent that was simply never started. Reload
+    # first: the durable versions after seeding are what the CAS commit expects.
+    seeded = await harness.run_store.load(task.id, run.id, effective_scope)
+    started_task, started_run = start_task_and_run(
+        seeded.task,
+        seeded.run,
+        started_at=harness.clock.now(),
+    )
+    committed = await harness.run_store.commit(
+        expected_task_version=seeded.task.version,
+        expected_run_version=seeded.run.version,
+        task=started_task,
+        run=started_run,
+        events=(
+            EventDraft(
+                type=EventType.TASK_STARTED,
+                iteration=0,
+                payload={"phase": started_run.phase.value},
+            ),
+        ),
+    )
+    return effective_scope, committed.task, committed.run
 
 
 async def _create(
@@ -412,12 +508,16 @@ async def test_deadlock_scope_and_parent_terminal_authority_fail_closed(
         await plan_harness.store.claim_ready_node(
             scope=scope, plan_id=snapshot.plan.id, owner="worker"
         )
+    # The impostor must be a *live* task/run pair that simply is not this plan's
+    # parent. A wholly invented id is rejected earlier, by the active-parent
+    # lookup, so it never reaches the stable-parent authority check this asserts.
+    _, other_task, other_run = await _seed_parent(plan_harness, suffix="impostor")
     with pytest.raises(PlanTerminalError, match="stable parent"):
         await plan_harness.store.finalize(
             scope=scope,
             plan_id=snapshot.plan.id,
-            parent_task_id="forged-task",
-            parent_run_id=run.id,
+            parent_task_id=other_task.id,
+            parent_run_id=other_run.id,
             status=PlanStatus.FAILED,
             result="plan could not progress",
         )

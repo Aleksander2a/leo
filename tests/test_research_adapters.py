@@ -617,7 +617,14 @@ async def test_recorded_web_search_returns_capped_untrusted_discovery_metadata()
 
 
 @pytest.mark.asyncio
-async def test_web_search_filters_adversarial_urls_and_rejects_empty_projection() -> None:
+async def test_web_search_filters_adversarial_urls_into_an_empty_projection() -> None:
+    """Adversarial results are dropped, and the empty projection is an observation.
+
+    Filtering every result is not a provider fault, so the adapter reports an
+    empty result set rather than a failure: a tool failure ends the run, which
+    turned "nothing matched" into a dead conversational turn.
+    """
+
     payload = [
         "query",
         ["Private", "Foreign"],
@@ -630,8 +637,12 @@ async def test_web_search_filters_adversarial_urls_and_rejects_empty_projection(
         tool = PublicWebSearchTool(client=client, clock=FixedClock(NOW))
         outcome = await tool.execute({"query": "query"}, _context())
 
-    assert isinstance(outcome, ToolFailure)
-    assert outcome.code == "WEB_SEARCH_NO_RESULTS"
+    assert isinstance(outcome, ToolSuccess)
+    assert outcome.data["results"] == []
+    assert outcome.data["result_count"] == 0
+    rendered = json.dumps(outcome.data)
+    assert "127.0.0.1" not in rendered
+    assert "attacker.example" not in rendered
 
 
 @pytest.mark.asyncio

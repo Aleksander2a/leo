@@ -27,12 +27,24 @@ _COMPLETED_FILING_ACTION = re.compile(
     r"\bi(?:'ve| have)?\s+(?:pulled|grabbed|fetched|retrieved|checked|looked up|"
     r"researched|verified|reviewed)\b[^.!?\r\n]{0,80}\bfilings?\b"
 )
+_RETRIEVAL_VERB = r"(?:pulled|grabbed|fetched|retrieved|checked|looked up|verified|reviewed)"
+# Nouns that only make sense as the object of a real external read. "rates",
+# "yields", and "quotes" belong here: a model asserting it pulled *those*
+# without an observation is claiming live data it never fetched.
+_RETRIEVAL_OBJECT = (
+    r"(?:current data|live data|live rates|rates|yields?|apys?|quotes?|prices?|"
+    r"sources?|filings?|news|financials?(?!\s+advice\b)|web results?|"
+    r"documentation|evidence|reports?|company data|market data)"
+)
 _COMPLETED_EXTERNAL_RESEARCH_ACTION = re.compile(
+    # Unconditional research verbs need no object.
     r"\bi(?:'ve| have)?\s+(?:researched|browsed|searched|looked up|investigated)\b|"
-    r"\bi(?:'ve| have)?\s+(?:pulled|grabbed|fetched|retrieved|checked|verified|reviewed)\b"
-    r"[^.!?\r\n]{0,80}\b(?:current data|live data|sources?|filings?|news|"
-    r"financials?(?!\s+advice\b)|"
-    r"web results?|documentation|evidence|reports?|company data|market data)\b"
+    # Verb then object: "I pulled the current data".
+    rf"\bi(?:'ve| have)?\s+{_RETRIEVAL_VERB}\b[^.!?\r\n]{{0,80}}\b{_RETRIEVAL_OBJECT}\b|"
+    # Object then verb: "the live rates I pulled", "based on sources I checked".
+    # Same claim, reversed clause order -- which previously slipped through and
+    # let an answer assert it had fetched data while calling no tool at all.
+    rf"\b{_RETRIEVAL_OBJECT}\b[^.!?\r\n]{{0,40}}\bi(?:'ve| have)?\s+{_RETRIEVAL_VERB}\b"
 )
 
 

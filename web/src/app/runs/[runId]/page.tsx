@@ -1,7 +1,13 @@
 import { RunDetailTabs } from "@/components/dashboard/run-detail-tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatusPill } from "@/components/ui/status-pill";
-import { ApiError, getRunDetail, getRunPlanTree, getRunTimeline } from "@/lib/api";
+import {
+  ApiError,
+  getRunDetail,
+  getRunPlanTree,
+  getRunReasoning,
+  getRunTimeline,
+} from "@/lib/api";
 import { formatCost, formatDateTime, formatNumber } from "@/lib/utils";
 import { notFound } from "next/navigation";
 
@@ -15,11 +21,15 @@ export default async function RunDetailPage({
   let detail;
   let timeline;
   let planTree;
+  let reasoning;
   try {
-    [detail, timeline, planTree] = await Promise.all([
+    [detail, timeline, planTree, reasoning] = await Promise.all([
       getRunDetail(runId),
       getRunTimeline(runId),
       getRunPlanTree(runId),
+      // The trace is diagnostic, not structural: an older run predating the
+      // scratchpad still renders every other tab.
+      getRunReasoning(runId).catch(() => null),
     ]);
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) {
@@ -74,7 +84,12 @@ export default async function RunDetailPage({
         </Card>
       ) : null}
 
-      <RunDetailTabs detail={detail} timeline={timeline} planTree={planTree} />
+      <RunDetailTabs
+        detail={detail}
+        timeline={timeline}
+        planTree={planTree}
+        reasoning={reasoning}
+      />
     </div>
   );
 }

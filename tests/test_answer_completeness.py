@@ -293,10 +293,29 @@ def test_completed_filing_action_requires_a_filing_observation_not_any_read() ->
     assert matched.result.status is VerifierStatus.PASS
 
 
+def test_live_preamble_only_answer_fails_both_completeness_and_sufficiency() -> None:
+    """A captured live answer that is both unsourced and contentless.
+
+    It claims "current market data I pulled" with no retrieved observation *and*
+    stops after the list introduction, so both gates must fire. It is kept out of
+    the sufficiency-only matrix below because it is not a single-defect example.
+    """
+
+    outcome = _verify(LIVE_PREAMBLE_ONLY_ANSWER, objective=RECOMMENDATION_OBJECTIVE)
+
+    completeness = next(
+        item for item in outcome.result.checks if item.name == "answer_completeness"
+    )
+    sufficiency = next(item for item in outcome.result.checks if item.name == "answer_sufficiency")
+    assert completeness.passed is False
+    assert sufficiency.passed is False
+    assert outcome.result.status is VerifierStatus.FAIL
+    assert outcome.result.retryable is True
+
+
 @pytest.mark.parametrize(
     "answer",
     [
-        LIVE_PREAMBLE_ONLY_ANSWER,
         "Here are three options to consider.",
         "Some examples include the following. This is not financial advice.",
         "There are several alternatives worth considering. It depends on your goals.",

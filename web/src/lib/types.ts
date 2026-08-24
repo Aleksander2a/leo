@@ -341,3 +341,22 @@ export interface ConversationItem {
   created_at: string;
   updated_at: string;
 }
+
+/** One iteration of Leo's plan/act/observe trace. */
+export interface ReasoningStep {
+  iteration: number;
+  /** Model-authored intent for this turn. */
+  plan: string;
+  /** What the model actually did (a tool call, or answering). */
+  action: string;
+  /** Harness-written result, so a hallucinated success cannot enter the trace. */
+  outcome: string;
+}
+
+export interface RunReasoning {
+  run_id: string;
+  task_id: string;
+  objective: string | null;
+  steps: ReasoningStep[];
+  step_count: number;
+}

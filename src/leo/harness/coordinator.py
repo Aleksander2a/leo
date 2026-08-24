@@ -77,7 +77,17 @@ _MAX_EVENT_ARGUMENTS_BYTES = 4096
 # infrastructure fault. A fresh turn with corrective feedback routinely recovers
 # from them, so they get a bounded retry instead of an instant terminal failure.
 _RETRYABLE_GATEWAY_FAILURE_CODES = frozenset(
-    {"malformed_completion", "empty_decision", "malformed_tool_arguments"}
+    {
+        "malformed_completion",
+        "empty_decision",
+        "malformed_tool_arguments",
+        # Deliberation route disagreements are corrective nudges, not terminal
+        # states: the gateway bounces the turn back at most once and then accepts
+        # the model's route, so these must cost a retry rather than the run.
+        "deliberation_depth_below_minimum",
+        "deliberation_depth_exceeded",
+        "deliberation_mode_outside_envelope",
+    }
 )
 
 
@@ -161,6 +171,7 @@ class RunCoordinator:
             raise RuntimeError("running run has no durable start time")
         started_at = bundle.run.started_at
         best_proposal: CompletionProposal | None = None
+        withdrawn_tools: set[str] = set()
 
         while bundle.run.status is RunStatus.RUNNING:
             now = self._clock.now()
@@ -196,6 +207,15 @@ class RunCoordinator:
                 bundle.run.phase,
                 trusted_scope,
             )
+            # A tool that failed unrecoverably this run stays withdrawn for the
+            # rest of it. Re-advertising it invites the model to spend its whole
+            # iteration budget re-calling something that cannot succeed, and the
+            # withdrawal is what lets a hard tool failure become an adaptation
+            # (pick another route) instead of a terminal run failure.
+            if withdrawn_tools:
+                available_specs = tuple(
+                    spec for spec in available_specs if spec.name not in withdrawn_tools
+                )
             selection = self._select_capabilities(
                 bundle=bundle,
                 trusted_scope=trusted_scope,
@@ -761,7 +781,21 @@ class RunCoordinator:
                     # first failure made recoverability depend on call order and
                     # left the model re-issuing a broken sibling call every turn.
                     batch_retryable = any(item.retryable for _name, item in all_failures)
-                    if failure is not None and (failure.retryable or batch_retryable):
+                    # A *non*-retryable failure means "this call cannot succeed",
+                    # not "this conversation is over". Withdrawing the tool and
+                    # handing the model the reason lets it re-route -- another
+                    # provider, another tool, or an answer that states the gap --
+                    # which is the whole point of an observe/adapt loop. Before
+                    # this, one 403 from a single search provider ended the turn
+                    # with a canned apology while other usable routes sat idle.
+                    for name, item in all_failures:
+                        if not item.retryable:
+                            withdrawn_tools.add(name)
+                    # Only a run with no remaining model turn is genuinely stuck.
+                    model_turn_remains = bundle.run.iteration + 1 < bundle.run.limits.max_iterations
+                    if failure is not None and (
+                        failure.retryable or batch_retryable or model_turn_remains
+                    ):
                         task, run = advance_step(
                             bundle.task,
                             bundle.run,
@@ -769,7 +803,11 @@ class RunCoordinator:
                             observation_ids=observation_ids,
                             verifier_feedback=(
                                 *bundle.task.verifier_feedback,
-                                *_tool_failure_feedback(all_failures, failure),
+                                *_tool_failure_feedback(
+                                    all_failures,
+                                    failure,
+                                    withdrawn=withdrawn_tools,
+                                ),
                             ),
                             reasoning_step=_reasoning_step(
                                 bundle.run.iteration,
@@ -1277,6 +1315,22 @@ def _gateway_failure_feedback(failure_code: str) -> str:
             "Your last tool call had arguments that were not valid JSON. Call the tool "
             "again with well-formed JSON arguments."
         )
+    if failure_code == "deliberation_depth_below_minimum":
+        return (
+            "This request looks like it needs supporting evidence before you answer. "
+            "Read one relevant source first, then answer. If you are confident the "
+            "question can be answered well without a tool, answer it directly."
+        )
+    if failure_code == "deliberation_depth_exceeded":
+        return (
+            "You are going deeper than this request needs. Use what you already have "
+            "and give the answer."
+        )
+    if failure_code == "deliberation_mode_outside_envelope":
+        return (
+            "Reconsider your approach for this request: either read a relevant source "
+            "first, or answer directly if you already have what you need."
+        )
     return (
         "Your last response could not be read as a valid completion -- it may have been "
         "cut off before finishing or was not valid JSON. Answer again, keeping the "
@@ -1358,12 +1412,16 @@ def _batch_outcome(
 def _tool_failure_feedback(
     failures: list[tuple[str, ToolFailure]],
     fallback: ToolFailure,
+    *,
+    withdrawn: set[str] | None = None,
 ) -> tuple[str, ...]:
     """Describe every failed call so the model can repair the right one.
 
     Each line names the tool and its failure code alongside the safe message,
     because "Tool 'x' timed out." gives the model no way to tell which of three
-    parallel calls it needs to change.
+    parallel calls it needs to change. Tools withdrawn for the rest of the run
+    are called out explicitly with the routes that remain, so the next turn is
+    spent choosing a different approach rather than retrying a dead one.
     """
 
     if not failures:
@@ -1376,6 +1434,14 @@ def _tool_failure_feedback(
             continue
         seen.add(key)
         lines.append(f"Tool {name!r} failed [{item.code}]: {item.safe_message}")
+    gone = sorted(withdrawn or ())
+    if gone:
+        listed = ", ".join(repr(name) for name in gone)
+        lines.append(
+            f"These tools cannot succeed in this run and are no longer available: {listed}. "
+            "Do not call them again. Use a different tool, or answer now from what you "
+            "already have and state plainly which part you could not source."
+        )
     return tuple(lines)
 
 

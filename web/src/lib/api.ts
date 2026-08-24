@@ -8,6 +8,7 @@ import type {
   Page,
   PlanTreeResponse,
   RunDetail,
+  RunReasoning,
   RunSummary,
   TimelineEntry,
 } from "@/lib/types";
@@ -67,6 +68,10 @@ export function getRunTimeline(runId: string): Promise<TimelineEntry[]> {
 
 export function getRunPlanTree(runId: string): Promise<PlanTreeResponse> {
   return apiFetch<PlanTreeResponse>(`/runs/${encodeURIComponent(runId)}/plan-tree`);
+}
+
+export function getRunReasoning(runId: string): Promise<RunReasoning> {
+  return apiFetch<RunReasoning>(`/runs/${encodeURIComponent(runId)}/reasoning`);
 }
 
 export interface MemoryListFilters {

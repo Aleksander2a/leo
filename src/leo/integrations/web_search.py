@@ -24,6 +24,9 @@ from leo.harness.models import (
 )
 from leo.harness.ports import Clock
 
+# Wikimedia's robot policy requires a descriptive User-Agent with contact info.
+DEFAULT_WEB_SEARCH_USER_AGENT = "LeoResearchAgent/1.0 (https://github.com/Aleksander2a/leo)"
+
 
 class _SearchArguments(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, str_strip_whitespace=True)
@@ -41,6 +44,7 @@ class PublicWebSearchTool:
         client: httpx.AsyncClient,
         clock: Clock,
         base_url: str = "https://en.wikipedia.org/w/api.php",
+        user_agent: str | None = None,
         max_concurrency: int = 4,
     ) -> None:
         if max_concurrency < 1:
@@ -51,6 +55,11 @@ class PublicWebSearchTool:
         self._client = client
         self._clock = clock
         self._base_url = base_url
+        # Wikimedia enforces its robot policy by rejecting User-Agent-less API
+        # requests with HTTP 403 (phabricator T400119). The adapter sent only an
+        # Accept header, so *every* public search failed with a non-retryable
+        # WEB_SEARCH_REQUEST_REJECTED -- which in turn failed the whole run.
+        self._user_agent = user_agent or DEFAULT_WEB_SEARCH_USER_AGENT
         self._semaphore = asyncio.Semaphore(max_concurrency)
         self._spec = ToolSpec(
             name="web.search_public",
@@ -94,7 +103,10 @@ class PublicWebSearchTool:
                         "format": "json",
                         "origin": "*",
                     },
-                    headers={"Accept": "application/json"},
+                    headers={
+                        "Accept": "application/json",
+                        "User-Agent": self._user_agent,
+                    },
                 )
         except httpx.TimeoutException:
             return ToolFailure(
@@ -160,11 +172,11 @@ class PublicWebSearchTool:
             )
             if len(results) == parsed.limit:
                 break
-        if not results:
-            return ToolFailure(
-                code="WEB_SEARCH_NO_RESULTS",
-                safe_message="Public search returned no valid results for the query.",
-            )
+        # An empty result set is a legitimate *answer* from the provider, not an
+        # adapter error. Returning a failure here made a normal "nothing matched"
+        # outcome indistinguishable from a broken provider, and -- because tool
+        # failures terminate the run -- silently ended the whole Slack turn. The
+        # model now observes the empty result and can rephrase or switch route.
         query_hash = hashlib.sha256(parsed.query.encode("utf-8")).hexdigest()
         data: dict[str, JsonValue] = {
             "query": parsed.query,

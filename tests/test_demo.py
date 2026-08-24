@@ -273,7 +273,13 @@ async def test_success_before_later_batch_failure_remains_persisted() -> None:
         limits=BudgetLimits(max_iterations=2, max_model_calls=2, max_tool_calls=2),
     )
 
-    assert result.run.status is RunStatus.FAILED
+    # The batch's failing sibling no longer ends the run on the spot: the tool is
+    # withdrawn and the model gets its remaining turns to route around it. This
+    # model only ever calls the same dead tool, so the run terminates on its
+    # budget instead -- what matters here is that the successful observation from
+    # the earlier call in the same batch survived.
+    assert result.run.status is not RunStatus.COMPLETED
+    assert result.run.terminal_reason == "iteration_budget_exhausted"
     assert len(result.observations) == 1
     created_ids = {
         str(event.payload["observation_id"])
@@ -299,5 +305,7 @@ async def test_independent_read_tool_batch_executes_concurrently() -> None:
     )
 
     assert probe.started == 2
-    assert result.run.status is RunStatus.FAILED
+    # See test_success_before_later_batch_failure_remains_persisted: a failing
+    # sibling withdraws its tool rather than ending the run.
+    assert result.run.status is not RunStatus.COMPLETED
     assert len(result.observations) == 1

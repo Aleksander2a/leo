@@ -12,6 +12,8 @@ import hashlib
 import io
 import json
 import os
+import shutil
+import uuid
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -224,13 +226,32 @@ def build_report() -> dict[str, object]:
     collector = _ReportCollector()
     captured_stdout = io.StringIO()
     captured_stderr = io.StringIO()
-    with contextlib.redirect_stdout(captured_stdout), contextlib.redirect_stderr(captured_stderr):
-        exit_code = int(
-            pytest.main(
-                ["-q", "--disable-warnings", "--maxfail=1", *selectors],
-                plugins=[collector],
+    # Pin the nested run's basetemp inside the repository. Inheriting the ambient
+    # temp directory made this report depend on the permissions of a directory
+    # the suite does not own: an unwritable (or foreign-owned) system temp turns
+    # every guard into a setup error, which this report then faithfully renders
+    # as "guard_failed" -- a security regression that is really a sandbox quirk.
+    # The suffix keeps concurrent runs from sharing one directory.
+    basetemp = root / f".pytest-tmp-m4-{os.getpid()}-{uuid.uuid4().hex[:8]}"
+    try:
+        with (
+            contextlib.redirect_stdout(captured_stdout),
+            contextlib.redirect_stderr(captured_stderr),
+        ):
+            exit_code = int(
+                pytest.main(
+                    [
+                        "-q",
+                        "--disable-warnings",
+                        "--maxfail=1",
+                        f"--basetemp={basetemp}",
+                        *selectors,
+                    ],
+                    plugins=[collector],
+                )
             )
-        )
+    finally:
+        shutil.rmtree(basetemp, ignore_errors=True)
 
     counters = {
         "false_success_count": 0,
