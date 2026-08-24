@@ -11,6 +11,8 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker, create_async_engine
 from sqlalchemy.ext.asyncio.session import AsyncSession
 
+from leo.packaging import find_data_directory
+
 logger = logging.getLogger(__name__)
 
 
@@ -55,12 +57,10 @@ def _migrations_root() -> Path | None:
     not carry them.
     """
 
-    here = Path(__file__).resolve()
-    candidates = (Path.cwd(), *here.parents)
-    for candidate in candidates:
-        if (candidate / "alembic.ini").is_file() and (candidate / "migrations").is_dir():
-            return candidate
-    return None
+    located = find_data_directory("migrations", anchor=Path(__file__))
+    if located is None or not (located.parent / "alembic.ini").is_file():
+        return None
+    return located.parent
 
 
 def build_alembic_head() -> str | None:

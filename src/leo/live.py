@@ -93,6 +93,7 @@ from leo.memory.tools import (
     build_explicit_memory_tools,
     parse_explicit_memory_intent,
 )
+from leo.packaging import require_data_directory
 from leo.persistence.capability_embeddings import PostgresCapabilityEmbeddingStore
 from leo.persistence.memory_embeddings import PostgresMemoryEmbeddingIndexer
 from leo.persistence.memory_navigation import PostgresProgressiveMemoryService
@@ -173,7 +174,11 @@ _NON_EQUITY_SYMBOL_TOKENS = frozenset(
     }
     | {alias.upper() for alias in _CRYPTO_ASSET_ALIASES}
 )
-_SKILL_ROOT = Path(__file__).resolve().parents[2] / "resources" / "leo-skills"
+# Resolved by layout, not by this module's position: installed into
+# site-packages the old expression pointed at the interpreter's lib
+# directory, and a glob over a missing directory returns nothing, so the
+# deployed agent ran with an empty skill catalogue and never said so.
+_SKILL_ROOT = require_data_directory("resources/leo-skills", anchor=Path(__file__))
 _EMPTY_MEMORY_SCOPE_INFERENCE = (
     "No matching authorized memory was found in this conversation scope."
 )

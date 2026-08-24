@@ -62,6 +62,7 @@ from leo.memory.maintenance import PurgePlan
 from leo.memory.models import MemoryVisibility
 from leo.memory.projection import ProjectionRequest
 from leo.memory.retrieval import AuthorizedMemoryNamespace
+from leo.packaging import require_data_directory
 from leo.persistence.database import (
     create_database_engine,
     create_session_factory,
@@ -161,7 +162,10 @@ def eval_command(
 def memory_eval() -> None:
     """Replay the frozen M3 memory benchmark and absolute safety report."""
 
-    directory = Path(__file__).resolve().parents[2] / "evals/fixtures/memory-retrieval-v1"
+    directory = require_data_directory(
+        "evals/fixtures/memory-retrieval-v1",
+        anchor=Path(__file__),
+    )
     fixture = load_frozen_retrieval_fixture(directory)
     report = _run_async(validate_committed_m3_report(fixture, directory / "m3-report.json"))
     typer.echo(report.model_dump_json(indent=2))
