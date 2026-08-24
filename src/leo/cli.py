@@ -139,6 +139,29 @@ def slack() -> None:
         run(serve(settings))
     except KeyboardInterrupt:
         typer.secho("stopped", fg=typer.colors.YELLOW)
+    except RuntimeError as exc:
+        # A misconfigured deployment is an operator problem, not a bug, and its
+        # log line is the only thing an operator sees before the container exits.
+        # A one-line cause beats a rich traceback wrapped in a Typer panel.
+        typer.secho(f"cannot start: {exc}", fg=typer.colors.RED)
+        raise typer.Exit(2) from None
+
+
+@app.command("slack-live", hidden=True)
+def slack_live() -> None:
+    """Deprecated alias for `leo slack`."""
+
+    # A host like Railway can pin a start command in its own settings, where this
+    # repo cannot see it and CI cannot check it. `slack-live` was this command's
+    # name before the CLI was reorganised, so a deployment still holding that name
+    # would exit-loop on an unknown command with an otherwise green build. Keeping
+    # the alias means it boots and logs what to change instead. Safe to delete once
+    # no deployment references it.
+    logging.getLogger(__name__).warning(
+        "`leo slack-live` is a deprecated alias; update this deployment's start "
+        "command to `python -m leo slack`."
+    )
+    slack()
 
 
 @app.command()
