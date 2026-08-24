@@ -757,6 +757,14 @@ git commit -m "Describe the change"
 git push origin main
 ```
 
+The worker verifies on startup that the database is at the Alembic revision the build
+requires, and refuses to start otherwise with both revisions in the message. Deploy applies
+migrations as a separate step from starting the process and nothing orders the two, so a build
+carrying a new migration could otherwise come up against the old schema and accept Slack traffic
+it could not serve — every run ending in a generic "a source wasn't available" reply when the real
+problem was a half-applied deploy. If the worker exits with that message, run
+`uv run alembic upgrade head` against the deployed database and redeploy.
+
 Changing a Railway variable also normally triggers a new deployment. To rerun the same commit,
 use Redeploy on the relevant Railway service. To undo a bad release, select a previous successful
 deployment and redeploy it, then fix the source and push a new commit. Keep database changes

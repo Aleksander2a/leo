@@ -62,7 +62,11 @@ from leo.memory.maintenance import PurgePlan
 from leo.memory.models import MemoryVisibility
 from leo.memory.projection import ProjectionRequest
 from leo.memory.retrieval import AuthorizedMemoryNamespace
-from leo.persistence.database import create_database_engine, create_session_factory
+from leo.persistence.database import (
+    create_database_engine,
+    create_session_factory,
+    require_schema_at_head,
+)
 from leo.persistence.derived_memory import PostgresMemoryMaintenance
 from leo.persistence.memory_projection import PostgresMemoryProjectionService
 from leo.persistence.outbox import PostgresDeliveryOutbox, SlackOutboxDispatcher
@@ -321,6 +325,8 @@ async def _run_durable_quote_command(symbol: str) -> None:
     assert settings.database_url is not None
     engine = create_database_engine(settings.database_url.get_secret_value())
     sessions = create_session_factory(engine)
+    # A stale schema is reported as a stale schema, not as a failed quote.
+    await require_schema_at_head(sessions)
     timeout = httpx.Timeout(connect=10.0, read=60.0, write=10.0, pool=10.0)
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
@@ -949,6 +955,9 @@ async def _run_slack_live_command() -> None:
     assert settings.database_url is not None
     engine = create_database_engine(settings.database_url.get_secret_value())
     sessions = create_session_factory(engine)
+    # Before accepting any Slack traffic: a half-applied deploy must fail here,
+    # loudly, rather than answering every message with a generic error.
+    await require_schema_at_head(sessions)
     timeout = httpx.Timeout(connect=10.0, read=60.0, write=10.0, pool=10.0)
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
