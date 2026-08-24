@@ -509,7 +509,7 @@ src/leo/
 
 web/                       the Next.js dashboard
 migrations/                Alembic — one baseline migration
-tests/                     142 tests
+tests/                     Tests
 docs/                      Slack runbook, Railway runbook, tool-authoring guide
 scripts/quality.py         the single quality gate
 ```
