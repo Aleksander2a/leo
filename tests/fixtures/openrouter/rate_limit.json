@@ -1,6 +1,0 @@
-{
-  "error": {
-    "code": 429,
-    "message": "fixture rate limit"
-  }
-}

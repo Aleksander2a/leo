@@ -42,14 +42,9 @@ leo = "leo.cli:app"
 [tool.hatch.build.targets.wheel]
 packages = ["src/leo"]
 
-[tool.hatch.build.targets.wheel.force-include]
-"evals/scenarios" = "leo/evals/scenarios"
-
 [tool.hatch.build.targets.sdist]
 include = [
   "/src/leo",
-  "/resources",
-  "/evals/scenarios",
   "/migrations",
   "/alembic.ini",
   "/README.md",
@@ -61,7 +56,7 @@ exclude = ["/.env*", "/tests", "/.leo-planning", "/.pytest-tmp*"]
 
 [tool.pytest.ini_options]
 addopts = "-q"
-asyncio_mode = "strict"
+asyncio_mode = "auto"
 testpaths = ["tests"]
 
 [tool.ruff]

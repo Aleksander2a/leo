@@ -2,7 +2,7 @@
 
 Leo runs as three services in one Railway project:
 
-- `leo-slack` runs `python -m leo slack-live` as a long-running Slack Socket Mode process.
+- `leo-slack` runs `python -m leo slack` as a long-running Slack Socket Mode process.
 - `leo-dashboard-api` runs the read-only FastAPI dashboard API and applies Alembic migrations
   before each deployment.
 - `leo-dashboard` runs the public Next.js monitoring dashboard.
@@ -18,8 +18,6 @@ Set these on `leo-slack`:
 ```text
 LEO_ENV=development
 LEO_MODEL=...
-LEO_ORGANIZATION_ID=demo-org
-LEO_STRATEGY_ID=technology-ls
 SLACK_BOT_TOKEN=...
 SLACK_APP_TOKEN=...
 LEO_SLACK_TEAM_ID=...

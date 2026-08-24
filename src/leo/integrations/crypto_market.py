@@ -18,18 +18,8 @@ from typing import Literal, Protocol
 import httpx
 from pydantic import JsonValue, ValidationError
 
-from leo.harness.crypto_market import (
-    CryptoAggregatePayload,
-    CryptoProviderPayload,
-    CryptoProviderSnapshot,
-    CryptoSnapshotArguments,
-    calculate_crypto_agreement,
-    canonical_crypto_aggregate_summary,
-    canonical_crypto_agreement_statement,
-    canonical_crypto_snapshot_statement,
-    crypto_provenance_digest,
-)
-from leo.harness.models import (
+from leo.agent.contracts import (
+    Clock,
     RunPhase,
     SourceRef,
     ToolEffect,
@@ -40,11 +30,21 @@ from leo.harness.models import (
     ToolSpec,
     ToolSuccess,
 )
-from leo.harness.ports import Clock
 from leo.integrations.provider_runtime import (
     ProviderCallGate,
     ProviderGateRejected,
     bounded_retry_after,
+)
+from leo.providers.crypto import (
+    CryptoAggregatePayload,
+    CryptoProviderPayload,
+    CryptoProviderSnapshot,
+    CryptoSnapshotArguments,
+    calculate_crypto_agreement,
+    canonical_crypto_aggregate_summary,
+    canonical_crypto_agreement_statement,
+    canonical_crypto_snapshot_statement,
+    crypto_provenance_digest,
 )
 
 _COINGECKO_DOC_URL = "https://docs.coingecko.com/reference/coins-markets"

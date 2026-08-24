@@ -1,78 +1,80 @@
+"""Settings: what is required, what is optional, and what must never be logged."""
+
 from __future__ import annotations
 
 import pytest
-from pydantic import SecretStr, ValidationError
+from pydantic import SecretStr
 
-from leo.config import Settings
-
-
-def test_config_reports_only_missing_names() -> None:
-    settings = Settings(_env_file=None)
-    assert settings.missing_for_deterministic_smoke() == ()
-    assert "SLACK_BOT_TOKEN" in settings.missing_for_live_slack()
-    assert "OPENROUTER_API_KEY" in settings.missing_for_live_harness()
+from leo.config import Environment, Settings, has_value, is_configured_secret
 
 
-def test_secret_values_are_redacted_from_repr() -> None:
-    tavily_endpoint = "https://mcp.tavily.example/mcp?token=never-print-tavily-endpoint"
-    coingecko_endpoint = (
-        "https://mcp.api.coingecko.com/mcp?x_cg_demo_api_key=never-print-cg-endpoint"
-    )
-    settings = Settings(
-        _env_file=None,
-        openrouter_api_key=SecretStr("never-print-me"),
-        slack_user_token=SecretStr("never-print-user-history-token"),
-        tavily_endpoint=tavily_endpoint,
-        coingecko_endpoint=coingecko_endpoint,
-    )
-    assert "never-print-me" not in repr(settings)
-    assert "never-print-user-history-token" not in repr(settings)
-    assert "never-print-tavily-endpoint" not in repr(settings)
-    assert "never-print-cg-endpoint" not in repr(settings)
-    assert "never-print-tavily-endpoint" not in settings.model_dump_json()
-    assert "never-print-cg-endpoint" not in settings.model_dump_json()
-
-
-def test_blank_values_are_still_reported_missing() -> None:
-    settings = Settings(
-        _env_file=None,
-        openrouter_api_key="   ",
-        leo_model="",
-        finnhub_api_key="",
-    )
-    assert settings.missing_for_live_providers() == (
-        "OPENROUTER_API_KEY",
+@pytest.fixture
+def isolated(monkeypatch: pytest.MonkeyPatch) -> Settings:
+    for name in (
+        "LEO_ENV",
         "LEO_MODEL",
+        "OPENROUTER_API_KEY",
+        "DATABASE_URL",
+        "SLACK_BOT_TOKEN",
+        "SLACK_APP_TOKEN",
         "FINNHUB_API_KEY",
+        "TAVILY_API_KEY",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    return Settings(_env_file=None)
+
+
+def test_defaults_are_development_and_unconfigured(isolated: Settings) -> None:
+    assert isolated.leo_env is Environment.DEVELOPMENT
+    assert isolated.leo_model is None
+    assert isolated.openrouter_api_key is None
+
+
+def test_slack_readiness_names_only_what_is_missing(isolated: Settings) -> None:
+    partial = isolated.model_copy(update={"slack_bot_token": SecretStr("bot-token")})
+    assert partial.missing_for_live_slack() == ("SLACK_APP_TOKEN",)
+
+
+def test_a_blank_secret_counts_as_missing(isolated: Settings) -> None:
+    blank = isolated.model_copy(
+        update={"slack_bot_token": SecretStr("   "), "slack_app_token": SecretStr("app-token")}
     )
+    assert blank.missing_for_live_slack() == ("SLACK_BOT_TOKEN",)
 
 
-def test_conversation_readiness_does_not_require_an_optional_tool() -> None:
-    settings = Settings(
-        _env_file=None,
-        openrouter_api_key="model-key",
-        leo_model="provider/model",
-        finnhub_api_key=None,
+def test_has_value_accepts_secrets_and_plain_strings() -> None:
+    assert has_value(SecretStr("value")) is True
+    assert has_value(SecretStr("  ")) is False
+    assert has_value("model/name") is True
+    assert has_value("") is False
+    assert has_value(None) is False
+
+
+def test_is_configured_secret_matches_has_value_for_secrets() -> None:
+    assert is_configured_secret(SecretStr("k")) is True
+    assert is_configured_secret(SecretStr(" ")) is False
+    assert is_configured_secret(None) is False
+
+
+def test_secrets_are_collected_for_log_redaction(isolated: Settings) -> None:
+    configured = isolated.model_copy(
+        update={
+            "openrouter_api_key": SecretStr("sk-secret-value"),
+            "slack_bot_token": SecretStr("bot-secret-value"),
+        }
     )
-
-    assert settings.missing_for_conversation_providers() == ()
-    assert settings.missing_for_live_providers() == ("FINNHUB_API_KEY",)
-
-
-def test_optional_user_history_token_never_gates_slack_availability() -> None:
-    settings = Settings(
-        _env_file=None,
-        slack_bot_token="bot-token",
-        slack_app_token="app-token",
-        slack_user_token=None,
-        leo_slack_team_id="T1",
-    )
-
-    assert settings.missing_for_live_slack() == ()
+    values = configured.sensitive_values_for_logging()
+    assert "sk-secret-value" in values
+    assert "bot-secret-value" in values
 
 
-def test_settings_are_immutable_after_process_configuration() -> None:
-    settings = Settings(_env_file=None)
+def test_secrets_do_not_appear_in_a_repr(isolated: Settings) -> None:
+    configured = isolated.model_copy(update={"openrouter_api_key": SecretStr("sk-do-not-log")})
+    assert "sk-do-not-log" not in repr(configured)
 
-    with pytest.raises(ValidationError, match="frozen"):
-        settings.leo_model = "forged/provider"  # type: ignore[misc]
+
+def test_budgets_are_bounded(isolated: Settings) -> None:
+    with pytest.raises(ValueError):
+        isolated.model_copy(update={"leo_max_model_turns": 0}).model_validate(
+            {"leo_max_model_turns": 0}
+        )

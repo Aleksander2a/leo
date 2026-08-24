@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
-from leo.harness.models import (
+from leo.agent.contracts import (
     RunPhase,
     ToolEffect,
     ToolExecutionContext,
@@ -21,10 +21,10 @@ from leo.harness.models import (
     ToolSpec,
     ToolSuccess,
 )
-from leo.harness.web_research import rank_tavily_result_urls
 from leo.integrations.exa import ExaSearchTool
 from leo.integrations.tavily import TavilySearchTool
 from leo.integrations.web_fetch import PublicTextFetchTool
+from leo.providers.web_research import rank_tavily_result_urls
 
 _PROVIDER_FAMILY_VERSION = "verified-web-provider-family-v1"
 

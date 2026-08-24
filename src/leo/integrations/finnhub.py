@@ -13,8 +13,8 @@ from typing import ClassVar
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
-from leo.harness.earnings import canonical_earnings_statements
-from leo.harness.models import (
+from leo.agent.contracts import (
+    Clock,
     RunPhase,
     SourceRef,
     ToolEffect,
@@ -25,14 +25,14 @@ from leo.harness.models import (
     ToolSpec,
     ToolSuccess,
 )
-from leo.harness.ports import Clock
-from leo.harness.provider_canonical import canonical_finnhub_profile_statements
-from leo.harness.provider_health import ProviderHealthSnapshot
 from leo.integrations.provider_runtime import (
     ProviderCallGate,
     ProviderGateRejected,
     bounded_retry_after,
 )
+from leo.providers.canonical import canonical_finnhub_profile_statements
+from leo.providers.earnings import canonical_earnings_statements
+from leo.providers.health import ProviderHealthSnapshot
 from leo.url_policy import is_public_https_url
 
 _MAX_RESPONSE_BYTES = 1_048_576

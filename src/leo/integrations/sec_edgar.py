@@ -11,7 +11,8 @@ from datetime import date, timedelta
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
-from leo.harness.models import (
+from leo.agent.contracts import (
+    Clock,
     RunPhase,
     SourceRef,
     ToolEffect,
@@ -22,7 +23,6 @@ from leo.harness.models import (
     ToolSpec,
     ToolSuccess,
 )
-from leo.harness.ports import Clock
 
 
 class _RecentFilingsArguments(BaseModel):
@@ -40,7 +40,7 @@ class SecEdgarRecentFilingsTool:
         *,
         client: httpx.AsyncClient,
         clock: Clock,
-        ticker_to_cik: Mapping[str, str],
+        ticker_to_cik: Mapping[str, str] | None = None,
         user_agent: str,
         base_url: str = "https://data.sec.gov/submissions",
         cache_seconds: int = 900,
@@ -55,7 +55,7 @@ class SecEdgarRecentFilingsTool:
         if cache_seconds < 1 or not 0 < max_requests_per_second <= 10:
             raise ValueError("SEC cache lifetime and request rate are invalid")
         normalized_mapping: dict[str, str] = {}
-        for raw_ticker, raw_cik in ticker_to_cik.items():
+        for raw_ticker, raw_cik in (ticker_to_cik or {}).items():
             ticker = raw_ticker.strip().upper()
             cik_value = raw_cik.strip()
             if not re.fullmatch(r"[A-Z][A-Z0-9.-]{0,7}", ticker):
@@ -76,6 +76,8 @@ class SecEdgarRecentFilingsTool:
         self._last_request_started: float | None = None
         self._cache: dict[tuple[str, int], ToolSuccess] = {}
         self._lock = asyncio.Lock()
+        self._directory: dict[str, str] | None = None
+        self._directory_lock = asyncio.Lock()
         self._spec = ToolSpec(
             name="sec.get_recent_filings",
             version="1.1.0",
@@ -97,6 +99,38 @@ class SecEdgarRecentFilingsTool:
         parsed = _RecentFilingsArguments.model_validate(arguments)
         return {"ticker": parsed.ticker, "limit": parsed.limit}
 
+    async def _resolve_ticker(self, ticker: str) -> str | None:
+        """Resolve any EDGAR-registered ticker from SEC's own published index.
+
+        A hardcoded map covered eight symbols, which made this tool useless for
+        every other public company. SEC publishes the full ticker-to-CIK index
+        itself; it is fetched once per process and cached.
+        """
+
+        async with self._directory_lock:
+            if self._directory is None:
+                try:
+                    response = await self._client.get(
+                        "https://www.sec.gov/files/company_tickers.json",
+                        headers={"User-Agent": self._user_agent, "Accept": "application/json"},
+                        timeout=20.0,
+                    )
+                    response.raise_for_status()
+                    payload = response.json()
+                except (httpx.HTTPError, ValueError):
+                    return None
+                directory: dict[str, str] = {}
+                entries = payload.values() if isinstance(payload, dict) else payload
+                for entry in entries if isinstance(entries, (list, type({}.values()))) else ():
+                    if not isinstance(entry, dict):
+                        continue
+                    symbol = str(entry.get("ticker") or "").strip().upper()
+                    cik_value = entry.get("cik_str")
+                    if symbol and isinstance(cik_value, (int, str)):
+                        directory.setdefault(symbol, str(cik_value).zfill(10))
+                self._directory = directory
+        return self._directory.get(ticker.upper())
+
     async def execute(
         self,
         arguments: dict[str, JsonValue],
@@ -104,11 +138,14 @@ class SecEdgarRecentFilingsTool:
     ) -> ToolOutcome:
         del context
         parsed = _RecentFilingsArguments.model_validate(arguments)
-        cik = self._ticker_to_cik.get(parsed.ticker)
+        cik = self._ticker_to_cik.get(parsed.ticker) or await self._resolve_ticker(parsed.ticker)
         if cik is None:
             return ToolFailure(
                 code="SEC_IDENTITY_UNMAPPED",
-                safe_message="The ticker is not in the trusted SEC identity map.",
+                safe_message=(
+                    f"SEC has no EDGAR filer registered under the ticker {parsed.ticker}. "
+                    "Check the symbol, or use a web source for this company."
+                ),
             )
         async with self._lock:
             cache_key = (parsed.ticker, parsed.limit)

@@ -1,1 +1,0 @@
-"""Slack transport adapter components."""

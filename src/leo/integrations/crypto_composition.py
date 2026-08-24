@@ -7,8 +7,8 @@ from urllib.parse import urlsplit
 import httpx
 from pydantic import SecretStr
 
+from leo.agent.contracts import Clock, Tool
 from leo.config import Settings, is_configured_secret
-from leo.harness.ports import Clock, Tool
 from leo.integrations.crypto_market import (
     CoinGeckoMarketSnapshotTool,
     CoinMarketCapMarketSnapshotTool,

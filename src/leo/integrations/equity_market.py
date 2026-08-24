@@ -16,7 +16,20 @@ from typing import Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
-from leo.harness.equity_market import (
+from leo.agent.contracts import (
+    Clock,
+    RunPhase,
+    SourceRef,
+    Tool,
+    ToolEffect,
+    ToolExecutionContext,
+    ToolFailure,
+    ToolOutcome,
+    ToolRetryPolicy,
+    ToolSpec,
+    ToolSuccess,
+)
+from leo.providers.equity import (
     EQUITY_PROFILE_PROVIDERS,
     EQUITY_QUOTE_PROVIDERS,
     EQUITY_SEARCH_PROVIDERS,
@@ -31,19 +44,7 @@ from leo.harness.equity_market import (
     valid_equity_quote_provenance,
     valid_equity_search_provenance,
 )
-from leo.harness.models import (
-    RunPhase,
-    SourceRef,
-    ToolEffect,
-    ToolExecutionContext,
-    ToolFailure,
-    ToolOutcome,
-    ToolRetryPolicy,
-    ToolSpec,
-    ToolSuccess,
-)
-from leo.harness.ports import Clock, Tool
-from leo.harness.provider_health import ProviderHealthSnapshot
+from leo.providers.health import ProviderHealthSnapshot
 
 
 class _EquityQuoteArguments(BaseModel):

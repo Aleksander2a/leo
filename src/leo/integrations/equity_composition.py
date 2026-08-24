@@ -5,16 +5,10 @@ from __future__ import annotations
 import httpx
 from pydantic import JsonValue, SecretStr
 
-from leo.config import Settings, is_configured_secret
-from leo.harness.equity_market import (
-    canonical_equity_profile_statements,
-    canonical_equity_quote_statement,
-    valid_equity_observed_at,
-    valid_equity_profile_provenance,
-    valid_equity_quote_provenance,
-)
-from leo.harness.models import (
+from leo.agent.contracts import (
+    Clock,
     RunPhase,
+    Tool,
     ToolEffect,
     ToolExecutionContext,
     ToolFailure,
@@ -22,8 +16,7 @@ from leo.harness.models import (
     ToolRetryPolicy,
     ToolSpec,
 )
-from leo.harness.ports import Clock, Tool
-from leo.harness.provider_health import ProviderHealthSnapshot
+from leo.config import Settings, is_configured_secret
 from leo.integrations.alpha_vantage import (
     AlphaVantageCompanyProfileTool,
     AlphaVantageQuoteTool,
@@ -50,6 +43,14 @@ from leo.integrations.tickerlayer import (
     TickerLayerStockSnapshotTool,
     TickerLayerSymbolSearchTool,
 )
+from leo.providers.equity import (
+    canonical_equity_profile_statements,
+    canonical_equity_quote_statement,
+    valid_equity_observed_at,
+    valid_equity_profile_provenance,
+    valid_equity_quote_provenance,
+)
+from leo.providers.health import ProviderHealthSnapshot
 
 _ALPHA_REST_URL = "https://www.alphavantage.co/query"
 _MASSIVE_REST_URL = "https://api.massive.com"

@@ -35,16 +35,13 @@ class Settings(BaseSettings):
     leo_max_model_turns: int = Field(default=12, ge=1, le=32)
     leo_max_tool_calls: int = Field(default=24, ge=0, le=64)
     leo_max_run_seconds: float = Field(default=600.0, ge=10.0, le=3600.0)
-    leo_max_output_tokens: int = Field(default=2_000, ge=256, le=16_384)
+    leo_max_output_tokens: int = Field(default=4_000, ge=256, le=16_384)
     leo_slack_worker_concurrency: int = Field(default=4, ge=1, le=32)
     leo_dashboard_cors_origins: str = ""
 
     slack_bot_token: SecretStr | None = None
     slack_app_token: SecretStr | None = None
-    slack_user_token: SecretStr | None = None
     leo_slack_team_id: str | None = None
-    leo_organization_id: str = "demo-org"
-    leo_strategy_id: str = "technology-ls"
 
     openrouter_api_key: SecretStr | None = None
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
@@ -106,41 +103,10 @@ class Settings(BaseSettings):
     sec_user_agent: str | None = None
     sec_edgar_base_url: str = "https://data.sec.gov/submissions"
 
-    def missing_for_deterministic_smoke(self) -> tuple[str, ...]:
-        """Offline smoke has no required external configuration."""
-
-        return ()
-
     def missing_for_live_slack(self) -> tuple[str, ...]:
         required: dict[str, object | None] = {
             "SLACK_BOT_TOKEN": self.slack_bot_token,
             "SLACK_APP_TOKEN": self.slack_app_token,
-            "LEO_SLACK_TEAM_ID": self.leo_slack_team_id,
-        }
-        return tuple(name for name, value in required.items() if _is_missing(value))
-
-    def missing_for_live_harness(self) -> tuple[str, ...]:
-        required: dict[str, object | None] = {
-            "OPENROUTER_API_KEY": self.openrouter_api_key,
-            "LEO_MODEL": self.leo_model,
-            "DATABASE_URL": self.database_url,
-        }
-        return tuple(name for name, value in required.items() if _is_missing(value))
-
-    def missing_for_live_providers(self) -> tuple[str, ...]:
-        required: dict[str, object | None] = {
-            "OPENROUTER_API_KEY": self.openrouter_api_key,
-            "LEO_MODEL": self.leo_model,
-            "FINNHUB_API_KEY": self.finnhub_api_key,
-        }
-        return tuple(name for name, value in required.items() if _is_missing(value))
-
-    def missing_for_conversation_providers(self) -> tuple[str, ...]:
-        """Conversational availability must not depend on one optional capability."""
-
-        required: dict[str, object | None] = {
-            "OPENROUTER_API_KEY": self.openrouter_api_key,
-            "LEO_MODEL": self.leo_model,
         }
         return tuple(name for name, value in required.items() if _is_missing(value))
 
@@ -171,3 +137,13 @@ def is_configured_secret(value: SecretStr | None) -> bool:
     """Return whether an optional secret contains a non-whitespace value."""
 
     return value is not None and bool(value.get_secret_value().strip())
+
+
+def has_value(value: SecretStr | str | None) -> bool:
+    """Whether an optional setting -- secret or plain -- actually carries a value."""
+
+    if value is None:
+        return False
+    if isinstance(value, SecretStr):
+        return bool(value.get_secret_value().strip())
+    return bool(str(value).strip())
