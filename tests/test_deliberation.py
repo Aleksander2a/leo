@@ -25,7 +25,6 @@ from leo.harness.models import (
     ModelTurnResult,
     ModelUsage,
     Observation,
-    RunStatus,
     ScopeKey,
     SourceRef,
     ToolArgumentConstraint,
@@ -37,7 +36,6 @@ from leo.harness.models import (
     ToolSpec,
 )
 from leo.harness.ports import ModelGatewayError
-from leo.live import _EMPTY_MEMORY_SCOPE_INFERENCE, _RequiredMemorySearchGateway
 
 NOW = datetime(2026, 8, 22, 12, 0, tzinfo=UTC)
 PARENT_TOOLS = frozenset({"agent.delegate_research", "agent.execute_research_plan"})
@@ -456,7 +454,17 @@ async def test_context_only_completion_drops_invalid_context_item_citations() ->
 
 
 @pytest.mark.asyncio
-async def test_gateway_recovers_from_repeated_exa_paraphrase_with_exact_statement() -> None:
+async def test_a_stuck_loop_fails_with_the_models_answer_not_a_harness_written_one() -> None:
+    """The harness must not paste source text over the model's decision.
+
+    This previously returned the Exa statement verbatim as Leo's answer. In
+    production that path seized twelve consecutive turns of a live run and
+    delivered a scraped page dump -- headings, volume figures, cross-listings --
+    to Slack as the final reply. A stuck loop is now surfaced as the failure it
+    is, carrying the model's own last answer as the fallback the coordinator
+    delivers.
+    """
+
     statement = (
         "Example issuer reported resilient revenue growth while noting execution risk. "
         "Source: https://example.test/research"
@@ -496,16 +504,22 @@ async def test_gateway_recovers_from_repeated_exa_paraphrase_with_exact_statemen
     await gateway.decide(
         _request(1, observations=(observation,), feedback=("Use exact source evidence.",))
     )
-    await gateway.decide(
+    result = await gateway.decide(
         _request(2, observations=(observation,), feedback=("Still use exact source evidence.",))
     )
-    result = await gateway.decide(
-        _request(3, observations=(observation,), feedback=("Exact evidence is still required.",))
-    )
+
+    # A fourth turn with no new evidence is a genuinely stuck loop. It is reported
+    # as a failure carrying the model's own last answer, never repaired by pasting
+    # the source text over the model's decision.
+    with pytest.raises(ModelGatewayError) as stuck:
+        await gateway.decide(
+            _request(3, observations=(observation,), feedback=("Exact evidence required.",))
+        )
+    assert stuck.value.code == "deliberation_no_progress"
+    assert stuck.value.fallback_answer == "A third paraphrase."
 
     assert isinstance(result.decision, CompletionProposal)
-    assert result.decision.answer == statement
-    assert result.model == "deterministic-exa-canonical-v1"
+    assert result.decision.answer == "A third paraphrase."
 
 
 @pytest.mark.asyncio
@@ -614,14 +628,23 @@ async def test_gateway_enforces_minimum_depth_for_fresh_evidence_request() -> No
 
 
 @pytest.mark.asyncio
-async def test_known_ambiguity_has_deterministic_clarification_fallback_on_outage() -> None:
+async def test_a_provider_outage_surfaces_instead_of_being_masked_as_a_question() -> None:
+    """An outage is an outage, not a clarifying question.
+
+    This used to manufacture "What specific information should I use to complete
+    that request?" whenever the provider failed on an ambiguous-looking turn. The
+    user was asked to supply something that would not have helped -- the model was
+    never reached -- and a real outage was hidden behind what looked like Leo
+    being curious. The error now propagates to the coordinator, which owns the
+    bounded retry and the best-effort delivery path.
+    """
+
     envelope = ElasticDeliberationPolicy().assess("Compare these")
 
-    result = await ElasticDeliberationGateway(_UnavailableGateway(), envelope).decide(_request(0))
+    with pytest.raises(ModelGatewayError) as outage:
+        await ElasticDeliberationGateway(_UnavailableGateway(), envelope).decide(_request(0))
 
-    assert isinstance(result.decision, CompletionProposal)
-    assert result.decision.answer.count("?") == 1
-    assert result.provider == "leo-harness"
+    assert outage.value.code == "provider_unavailable"
 
 
 @pytest.mark.asyncio
@@ -642,24 +665,48 @@ async def test_known_ambiguity_accepts_multiple_genuine_clarifying_questions() -
 
 
 @pytest.mark.asyncio
-async def test_substantive_answer_is_repaired_inside_required_clarification_envelope() -> None:
-    envelope = ElasticDeliberationPolicy().assess("Compare these")
-    delegate = _RecordingGateway(
-        [CompletionProposal(answer="Option A is cheaper. Does that help?")]
-    )
+async def test_an_off_envelope_answer_is_nudged_once_then_the_model_decides() -> None:
+    """The envelope argues its case once; it does not overwrite the answer.
 
-    result = await ElasticDeliberationGateway(delegate, envelope).decide(_request(0))
+    "Compare these" has no resolvable subject, so the envelope asks for
+    clarification -- and this answer is not one. The gateway used to replace it
+    outright with "Which specific target, options, or missing details should I
+    use?", discarding whatever the model had written.
+
+    Now the turn is bounced back once with corrective feedback. If the model
+    stands by its route on the retry, the model wins: it can see the thread and
+    the request, and the envelope is only a regex over the prompt.
+    """
+
+    envelope = ElasticDeliberationPolicy().assess("Compare these")
+    answer = "Option A is cheaper. Does that help?"
+    delegate = _RecordingGateway([CompletionProposal(answer=answer)] * 2)
+    gateway = ElasticDeliberationGateway(delegate, envelope)
+
+    with pytest.raises(ModelGatewayError) as nudge:
+        await gateway.decide(_request(0))
+    assert nudge.value.code == "deliberation_mode_outside_envelope"
+
+    result = await gateway.decide(_request(1))
 
     assert isinstance(result.decision, CompletionProposal)
-    assert (
-        result.decision.answer == "Which specific target, options, or missing details should I use?"
-    )
+    assert result.decision.answer == answer
     assert result.provider == "fixture"
     assert result.model == "recording"
 
 
 @pytest.mark.asyncio
-async def test_live_future_quote_promise_becomes_concrete_preferences_clarification() -> None:
+async def test_a_future_work_promise_becomes_a_real_research_call() -> None:
+    """A promise is converted into the work it promised, not into a question.
+
+    This used to replace the model's answer with a fixed "Which market or asset
+    class, risk tolerance, and time horizon should I focus on?" -- a question the
+    harness invented, thrown over whatever the model had actually written. The
+    deferral recovery still fires, but every branch it has now issues a *tool
+    call*: if the model says it is about to research something, the harness makes
+    that research happen instead of stalling the conversation.
+    """
+
     objective = "What are some interesting investing opportunities currently?"
     envelope = ElasticDeliberationPolicy().assess(
         objective,
@@ -695,19 +742,13 @@ async def test_live_future_quote_promise_becomes_concrete_preferences_clarificat
 
     result = await ElasticDeliberationGateway(delegate, envelope).decide(request)
 
-    assert isinstance(result.decision, CompletionProposal)
-    assert result.decision.answer == (
-        "Which market or asset class, risk tolerance, and time horizon should I focus on?"
-    )
-    assert result.decision.answer.count("?") == 1
-    assert result.provider == "fixture"
-    assert result.model == "recording"
+    assert isinstance(result.decision, ToolRequests)
+    assert [call.name for call in result.decision.calls] == ["web.research_verified"]
+    assert result.finish_reason == "tool_calls"
 
 
 @pytest.mark.asyncio
-async def test_live_off_envelope_tool_is_repaired_before_execution_and_attempt_is_accounted() -> (
-    None
-):
+async def test_an_off_envelope_tool_is_nudged_and_the_attempt_is_accounted() -> None:
     objective = "What are some interesting investing opportunities right now?"
     delegate = _MeteredOffEnvelopeGateway()
     envelope = ElasticDeliberationPolicy().assess(
@@ -727,13 +768,18 @@ async def test_live_off_envelope_tool_is_repaired_before_execution_and_attempt_i
         ),
     )
 
-    assert delegate.calls == 1
-    assert result.run.status is RunStatus.COMPLETED
-    assert result.run.final_output == (
+    # The model proposes a tool the envelope did not expect. It is nudged once
+    # with corrective feedback and charged for the attempt -- it is not replaced
+    # by a harness-written question, which is what this used to assert ("Which
+    # market or asset class, risk tolerance, and time horizon should I focus
+    # on?"). That sentence was never the model's, and answering it would not have
+    # helped: the model had a usable route the whole time.
+    assert delegate.calls == 2
+    assert result.run.usage.model_calls == 2
+    assert result.run.usage.tool_calls == 0
+    assert result.run.final_output != (
         "Which market or asset class, risk tolerance, and time horizon should I focus on?"
     )
-    assert result.run.usage.model_calls == 1
-    assert result.run.usage.tool_calls == 0
     assert result.run.usage.prompt_tokens == 12
     assert result.run.usage.completion_tokens == 4
     assert result.run.usage.total_tokens == 16
@@ -959,10 +1005,17 @@ def test_memory_recovery_query_pins_root_and_latest_material_answer_over_failed_
 
 
 @pytest.mark.asyncio
-async def test_required_memory_search_completes_empty_scope_without_model_retry() -> None:
-    delegate = _RecordingGateway(
-        [CompletionProposal(answer="Let me check current DM memory again.")]
-    )
+async def test_an_empty_memory_result_is_answered_by_the_model_not_the_harness() -> None:
+    """A gateway used to short-circuit this and write the reply itself.
+
+    _RequiredMemorySearchGateway intercepted an empty memory.search and returned
+    a fixed sentence without consulting the model at all. That is the harness
+    authoring the user's answer: it cannot explain *why* nothing matched, adapt
+    the phrasing to the question, or decide that another route is worth trying.
+    The gateway is gone, so an empty result is simply an observation the model
+    reasons about like any other.
+    """
+
     empty_search = Observation(
         id="obs-empty-memory",
         scope=ScopeKey(organization_id="org", strategy_id="strategy"),
@@ -974,15 +1027,17 @@ async def test_required_memory_search_completes_empty_scope_without_model_retry(
         observed_at=NOW,
         raw_hash="a" * 64,
     )
-
-    result = await _RequiredMemorySearchGateway(delegate).decide(
-        _request(1, observations=(empty_search,))
+    delegate = _RecordingGateway(
+        [CompletionProposal(answer="I have nothing recorded for this channel yet.")]
     )
+    request = _request(1, observations=(empty_search,))
+
+    result = await delegate.decide(request)
 
     assert isinstance(result.decision, CompletionProposal)
-    assert result.decision.answer == _EMPTY_MEMORY_SCOPE_INFERENCE
-    assert result.decision.claims[0].observation_ids == (empty_search.id,)
-    assert delegate.requests == []
+    assert result.decision.answer == "I have nothing recorded for this channel yet."
+    # The model was actually asked, rather than bypassed.
+    assert delegate.requests == [request]
 
 
 def test_envelope_audit_identity_is_content_free_stable_and_inspectable() -> None:

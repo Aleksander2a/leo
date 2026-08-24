@@ -17,7 +17,6 @@ from enum import StrEnum
 from pydantic import JsonValue
 
 from leo.harness.models import (
-    CandidateClaim,
     ClaimKind,
     CompletionContract,
     CompletionProposal,
@@ -27,7 +26,6 @@ from leo.harness.models import (
     EvidenceQuality,
     ModelRequest,
     ModelTurnResult,
-    ModelUsage,
     NonEmptyStr,
     Observation,
     ObservationStatus,
@@ -38,7 +36,6 @@ from leo.harness.models import (
 )
 from leo.harness.ports import ModelGateway, ModelGatewayError
 from leo.harness.terminal_quality import contains_future_action_promise
-from leo.harness.verifier import repair_repeated_format_completion
 from leo.harness.web_research import rank_tavily_result_urls
 
 
@@ -84,6 +81,8 @@ class DeliberationSignals(ContractModel):
     state_mutation_required: bool
     context_available: bool
     contextual_followup: bool
+    # The request names something it cannot resolve; research cannot help.
+    unresolved_reference: bool
     open_ended_current_event: bool
     ambiguous: bool
     action_risk: bool
@@ -210,14 +209,44 @@ class ElasticDeliberationPolicy:
             and not signals.memory_recall_required
             and not signals.state_mutation_required
         ):
+            # Advisory, not binding. This branch used to pin the envelope to
+            # CLARIFY only *and* disable every tool, on the strength of a regex
+            # over the prompt. "What are some interesting investing opportunities
+            # currently?" tripped it, so Leo was forbidden from researching the
+            # one thing it was asked about and could only ask a question back.
+            #
+            # Asking for missing detail is often right, so it stays the
+            # recommendation -- but the model can see the request and the thread,
+            # and the regex cannot. If it judges that it can research or answer,
+            # it may.
+            if signals.unresolved_reference:
+                # The subject itself is unknown ("Compare these", "what does that
+                # mean?"). No tool resolves that, so clarifying stays binding.
+                return _envelope(
+                    recommended=DeliberationMode.CLARIFY,
+                    minimum_depth=0,
+                    maximum_depth=0,
+                    allowed_modes=frozenset({DeliberationMode.CLARIFY}),
+                    signals=signals,
+                    hard_disable_tools=True,
+                    hard_require_clarification=True,
+                    reason_code="unresolved_reference",
+                    reason="the request refers to something it does not name",
+                )
             return _envelope(
                 recommended=DeliberationMode.CLARIFY,
                 minimum_depth=0,
-                maximum_depth=0,
-                allowed_modes=frozenset({DeliberationMode.CLARIFY}),
+                maximum_depth=_DEPTH_BY_MODE[DeliberationMode.MULTI_SOURCE],
+                allowed_modes=frozenset(
+                    {
+                        DeliberationMode.CLARIFY,
+                        DeliberationMode.DIRECT,
+                        DeliberationMode.CONTEXT_MEMORY,
+                        DeliberationMode.SINGLE_TOOL,
+                        DeliberationMode.MULTI_SOURCE,
+                    }
+                ),
                 signals=signals,
-                hard_disable_tools=True,
-                hard_require_clarification=True,
                 reason_code="missing_antecedent_or_arguments",
                 reason="the outcome lacks a required antecedent or argument",
             )
@@ -341,36 +370,16 @@ class ElasticDeliberationGateway:
             self._no_progress_turns += 1
             self._escalate_recommendation()
             if self._no_progress_turns > self._max_no_progress_turns:
-                canonical_exa = _canonical_exa_deferral_completion(request)
-                if canonical_exa is not None and self._last_result is not None:
-                    return self._last_result.model_copy(
-                        update={
-                            "decision": canonical_exa,
-                            "provider": "leo-harness",
-                            "model": "deterministic-exa-canonical-v1",
-                            "request_id": f"deterministic-exa-canonical-{request.iteration}",
-                            "finish_reason": "stop",
-                            "usage": ModelUsage(),
-                        }
-                    )
-                if self._last_result is not None and isinstance(
-                    self._last_result.decision, CompletionProposal
-                ):
-                    repaired = repair_repeated_format_completion(
-                        self._last_result.decision,
-                        request.objective,
-                    )
-                    if repaired is not None:
-                        return self._last_result.model_copy(
-                            update={
-                                "decision": repaired,
-                                "provider": "leo-harness",
-                                "model": "deterministic-format-repair-v1",
-                                "request_id": f"deterministic-format-repair-{request.iteration}",
-                                "finish_reason": "stop",
-                                "usage": ModelUsage(),
-                            }
-                        )
+                # The harness used to author an answer here -- pasting a raw Exa
+                # page dump over the model's decision, or synthesizing names from
+                # a fixed list to satisfy a format check. Both produced replies no
+                # model wrote: one shipped scraped page markup to Slack as the
+                # final answer, the other invented content outright.
+                #
+                # A stuck loop is a real failure and is now reported as one. The
+                # run still delivers the best answer the *model* actually wrote,
+                # through the coordinator's best-effort path, so nothing useful
+                # is lost -- only the fabricated substitutes are.
                 raise ModelGatewayError(
                     "deliberation_no_progress",
                     "The bounded reasoning loop made no evidence progress.",
@@ -384,22 +393,18 @@ class ElasticDeliberationGateway:
                 )
             }
         )
-        try:
-            result = await self._delegate.decide(guided_request)
-        except ModelGatewayError:
-            if not self._envelope.hard_require_clarification:
-                raise
-            result = ModelTurnResult(
-                decision=CompletionProposal(
-                    answer="What specific information should I use to complete that request?"
-                ),
-                provider="leo-harness",
-                model="deterministic-clarification-fallback-v1",
-                finish_reason="stop",
-                usage=ModelUsage(),
-            )
+        # A provider failure is a provider failure. Manufacturing a clarifying
+        # question here hid real outages behind a question the user could not
+        # usefully answer, and the coordinator already has a bounded retry path.
+        result = await self._delegate.decide(guided_request)
 
-        result = _recover_required_clarification(result, request, self._envelope)
+        # _recover_required_clarification used to run here, replacing the model's
+        # answer with "Which specific target, options, or missing details should
+        # I use?" whenever an ambiguity regex fired. It fired on anything under
+        # four words, so "CoinGecko BTC price" -- a perfectly clear request --
+        # had its real answer thrown away and replaced by a canned question. If a
+        # turn genuinely needs clarification, the model asks for it in its own
+        # words, and can ask something far more specific than a fixed sentence.
         result = _recover_non_terminal_deferral(result, request, self._envelope)
         result = _drop_unsourced_optional_claims(result, request)
 
@@ -450,34 +455,10 @@ class ElasticDeliberationGateway:
         )
         bounded_retry = repeated and self._allows_one_retryable_read(result, request)
         if repeated and not bounded_retry:
-            canonical_exa = _canonical_exa_deferral_completion(request)
-            if canonical_exa is not None:
-                return result.model_copy(
-                    update={
-                        "decision": canonical_exa,
-                        "provider": "leo-harness",
-                        "model": "deterministic-exa-canonical-v1",
-                        "request_id": f"deterministic-exa-canonical-{request.iteration}",
-                        "finish_reason": "stop",
-                        "usage": ModelUsage(),
-                    }
-                )
-            repaired = (
-                repair_repeated_format_completion(result.decision, request.objective)
-                if isinstance(result.decision, CompletionProposal)
-                else None
-            )
-            if repaired is not None:
-                return result.model_copy(
-                    update={
-                        "decision": repaired,
-                        "provider": "leo-harness",
-                        "model": "deterministic-format-repair-v1",
-                        "request_id": f"deterministic-format-repair-{request.iteration}",
-                        "finish_reason": "stop",
-                        "usage": ModelUsage(),
-                    }
-                )
+            # Same removal as the no-progress branch above: the harness does not
+            # get to write the user's answer. A repeated decision is surfaced as
+            # the failure it is, and the best model-authored answer still ships
+            # through the coordinator's best-effort path.
             raise ModelGatewayError(
                 "deliberation_repeated_decision",
                 "The model repeated a decision without adding evidence.",
@@ -894,9 +875,26 @@ def _signals(
     independent_evidence_count = max(len(evidence_tool_names), len(evidence_domains))
     clause_count = max(1, len(clauses))
     requested_outputs = len(set(output_markers))
+    # A reference the request cannot resolve on its own -- "Compare these" with
+    # no antecedent, "what does that mean?" with no thread. No amount of research
+    # answers these, because the *subject* is unknown, so clarifying is the only
+    # correct move and the envelope binds it.
+    #
+    # This is deliberately narrower than `ambiguous`, which also covers merely
+    # open-ended or terse requests ("interesting investing opportunities?"). Those
+    # have a knowable subject; treating them the same way is what stopped Leo from
+    # researching the very thing it was asked about.
+    unresolved_reference = bool(
+        (unresolved_antecedent or contextual_followup)
+        and context_item_count == 0
+        and not evidence_tool_names
+        and not _looks_like_self_contained_question(normalized)
+        and not capability_discovery_requested
+    )
     ambiguous = bool(
         unspecified
         or open_ended_investment_input_missing
+        or unresolved_reference
         or (
             (
                 (
@@ -939,6 +937,7 @@ def _signals(
         state_mutation_required=state_mutation_required,
         context_available=context_item_count > 0,
         contextual_followup=contextual_followup,
+        unresolved_reference=unresolved_reference,
         open_ended_current_event=open_ended_current_event,
         ambiguous=ambiguous,
         action_risk=action_risk,
@@ -1026,38 +1025,6 @@ def _is_genuine_clarification(decision: CompletionProposal) -> bool:
     return question_count >= 1
 
 
-def _recover_required_clarification(
-    result: ModelTurnResult,
-    request: ModelRequest,
-    envelope: DeliberationEnvelope,
-) -> ModelTurnResult:
-    """Enforce a trusted clarification-only envelope before mode validation.
-
-    The semantic provider still gets one accounted attempt, but neither an off-mode
-    completion nor a proposed tool receives execution authority. Explicit hard effects
-    are never replaced by this recovery path.
-    """
-
-    if (
-        not envelope.hard_require_clarification
-        or envelope.hard_required_parent_tool is not None
-        or (
-            isinstance(result.decision, CompletionProposal)
-            and _is_genuine_clarification(result.decision)
-        )
-    ):
-        return result
-    answer = _missing_research_input_question(request, envelope) or (
-        "Which specific target, options, or missing details should I use?"
-    )
-    return result.model_copy(
-        update={
-            "decision": CompletionProposal(answer=answer),
-            "finish_reason": "stop",
-        }
-    )
-
-
 def _recover_non_terminal_deferral(
     result: ModelTurnResult,
     request: ModelRequest,
@@ -1088,20 +1055,16 @@ def _recover_non_terminal_deferral(
         and required_name not in advertised
     ):
         return result
-    missing_input_question = _missing_research_input_question(request, envelope)
-    canonical_exa = _canonical_exa_deferral_completion(request)
     selected_url = selected_tavily_result_url(request)
     sealed_required_read = _sealed_required_read(request)
+    # Every branch below turns a deferral into *work*: a tool call the model
+    # should have made. None of them writes an answer. A branch that did -- a
+    # canned "Which market or asset class, risk tolerance, and time horizon
+    # should I focus on?" -- was removed with the rest of the harness-authored
+    # replies: it fired on any open-ended investment question and threw away
+    # whatever the model had actually said.
     repaired_decision: ToolRequests | CompletionProposal
-    if missing_input_question is not None:
-        repaired_decision = CompletionProposal(answer=missing_input_question)
-        finish_reason = "stop"
-        model = "elastic-input-clarification-v1"
-    elif canonical_exa is not None:
-        repaired_decision = canonical_exa
-        finish_reason = "stop"
-        model = "elastic-exa-canonical-v1"
-    elif sealed_required_read is not None:
+    if sealed_required_read is not None:
         repaired_decision = sealed_required_read
         finish_reason = "tool_calls"
         model = "elastic-required-read-v1"
@@ -1229,23 +1192,6 @@ def _next_untried_search(
     return None
 
 
-def _missing_research_input_question(
-    request: ModelRequest,
-    envelope: DeliberationEnvelope,
-) -> str | None:
-    """Ask once for decision-relevant investment preferences before broad research."""
-
-    if (
-        request.observations
-        or request.tool_choice.mode is ToolChoiceMode.REQUIRED
-        or envelope.signals.entity_count > 0
-        or envelope.signals.context_available
-        or not _open_ended_investment_input_missing(request.objective)
-    ):
-        return None
-    return "Which market or asset class, risk tolerance, and time horizon should I focus on?"
-
-
 def _sealed_required_read(request: ModelRequest) -> ToolRequests | None:
     """Materialize only a trusted REQUIRED read whose full required input is sealed."""
 
@@ -1281,41 +1227,6 @@ def _sealed_required_read(request: ModelRequest) -> ToolRequests | None:
             ),
         )
     )
-
-
-def _canonical_exa_deferral_completion(request: ModelRequest) -> CompletionProposal | None:
-    """Finish from an already admitted exact Exa highlight instead of promising work."""
-
-    for observation in reversed(request.observations):
-        if observation.kind not in {"web.search_exa", "web.research_verified"}:
-            continue
-        if (
-            observation.status is not ObservationStatus.RETRIEVED
-            or observation.quality is EvidenceQuality.DISCOVERY_ONLY
-            or observation.data.get("exact_url_bound_claims") is not True
-            or observation.data.get("selected_provider") not in {None, "exa"}
-        ):
-            continue
-        statements = observation.data.get("statements")
-        if not isinstance(statements, list):
-            continue
-        statement = next(
-            (item for item in statements if isinstance(item, str) and item.strip()),
-            None,
-        )
-        if statement is None:
-            continue
-        return CompletionProposal(
-            answer=statement,
-            claims=(
-                CandidateClaim(
-                    kind=ClaimKind.SOURCE_CLAIM,
-                    statement=statement,
-                    observation_ids=(observation.id,),
-                ),
-            ),
-        )
-    return None
 
 
 _SUBSTANTIVE_CONTENT = re.compile(

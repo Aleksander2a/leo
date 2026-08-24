@@ -15,6 +15,8 @@ the anti-fabrication guards elsewhere in this suite stay untouched.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from leo.harness.deliberation import (
@@ -22,9 +24,10 @@ from leo.harness.deliberation import (
     _is_non_terminal_deferral,
     answer_is_substantive,
 )
+from leo.harness.terminal_quality import contains_future_action_promise
+from leo.harness.verifier import presents_unretrieved_data
 from leo.live import (
     _is_self_contained_conversational_turn,
-    _primary_source_search_query,
     _requires_external_evidence,
     _research_is_available,
 )
@@ -92,16 +95,22 @@ def test_ordinary_questions_never_route_into_a_dead_end(objective: str) -> None:
     assert envelope.maximum_depth >= 1
 
 
-def test_search_queries_are_the_users_question() -> None:
-    """Discovery is not steered away from the subject by a fixed suffix.
+def test_no_harness_authored_search_query_path_remains() -> None:
+    """The model writes its own query; the harness no longer writes one for it.
 
-    Every query used to carry " official documentation primary source", which
-    turned a finance question into a developer-docs lookup that returned nothing
-    usable -- and the empty result then read as "no reliable source exists".
+    Queries used to be built by the harness from the raw objective (once with a
+    fixed " official documentation primary source" suffix, which turned a finance
+    question into a developer-docs lookup). Both the suffix and the whole
+    harness-authored query path are gone: the model composes the query as part of
+    the tool call it chose, which is the only way it can refine one after a poor
+    result.
     """
 
-    objective = "what's the year end forecast for GOOG?"
-    assert _primary_source_search_query(objective) == objective
+    source = (Path(__file__).resolve().parents[1] / "src" / "leo" / "live.py").read_text(
+        encoding="utf-8"
+    )
+    assert "_primary_source_search_query" not in source
+    assert "official documentation primary source" not in source
 
 
 def test_confident_market_signal_still_forces_a_read() -> None:
@@ -152,3 +161,68 @@ class TestHedgedAnswersSurvive:
         )
         assert answer_is_substantive(promise) is True
         assert _is_non_terminal_deferral(promise) is True
+
+
+def test_present_progressive_promises_are_caught_like_future_tense() -> None:
+    """A promise in flight is still a promise the run cannot keep.
+
+    Leo shipped "...and I'm pulling those now to give you a more grounded read"
+    to Slack as a *final* answer, twice in a row. Nothing was in flight: the turn
+    was ending, so the user was told to wait for a follow-up that could not come.
+    Only "I'll pull" and "let me check" were recognized before.
+    """
+
+    promises = (
+        "I'm pulling those now to give you a more grounded read.",
+        "I am gathering the earnings data.",
+        "I'm looking that up.",
+        "I'm looking it up now.",
+        "I'm checking the recent filings.",
+        "I'm currently researching that.",
+        "I'm about to query the provider.",
+    )
+    for answer in promises:
+        assert contains_future_action_promise(answer) is True, answer
+
+
+def test_capability_and_past_tense_statements_are_not_promises() -> None:
+    """The guard must not punish describing what Leo can do, or already did."""
+
+    allowed = (
+        "I can pull those figures if you want me to.",
+        "I pulled the filings already, and they show a 12% rise.",
+        "I'm looking forward to helping with the next one.",
+        "Looking at the data, GOOG margins are stable.",
+        "Analysts are checking the numbers this quarter.",
+    )
+    for answer in allowed:
+        assert contains_future_action_promise(answer) is False, answer
+
+
+def test_presenting_live_data_requires_a_retrieved_observation() -> None:
+    """Framing beats phrasing: claim retrieved data, hold a retrieved observation.
+
+    Chasing each new promissory phrasing with its own regex is a losing game.
+    This is the structural rule underneath them: an answer that presents itself
+    as showing live or current data is false when the run retrieved nothing.
+    """
+
+    claiming = (
+        "I don't have a target, but here's what the current data shows.",
+        "Here it is, built from live data rather than a made-up number.",
+        "Based on the latest figures, GOOG looks strong.",
+    )
+    for answer in claiming:
+        assert presents_unretrieved_data(answer, ()) is True, answer
+
+
+def test_honest_general_knowledge_answers_are_not_blocked() -> None:
+    """The structural rule must not push Leo away from honest sourcing."""
+
+    honest = (
+        "Analyst consensus is around $215, from general knowledge as of my cutoff.",
+        "I could not pull live figures in this run, so these are approximate ranges.",
+        "GOOG year-end consensus: ~$215 mean target, range $190-$250.",
+    )
+    for answer in honest:
+        assert presents_unretrieved_data(answer, ()) is False, answer

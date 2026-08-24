@@ -13,10 +13,21 @@ _PROTECTED_TEXT = re.compile(
 _MARKDOWN_QUOTE_LINE = re.compile(r"(?m)^\s*>[^\r\n]*(?:\r?\n|$)")
 _FUTURE_ACTION = re.compile(
     r"\b(?:"
-    r"i(?:'ll| will)|let me|i (?:need|have) to|i(?:'m| am) going to"
+    r"i(?:'ll| will)|let me|i (?:need|have) to|i(?:'m| am) going to|"
+    r"i(?:'m| am) about to"
     r")\s+(?:(?:just|first|now|quickly|briefly|next)\s+){0,3}"
     r"(?:pull|grab|check|search|look up|research|verify|browse|investigate|gather|"
-    r"fetch|retrieve)\b"
+    r"fetch|retrieve|run|query)\b"
+    # Present progressive is the same broken promise in a different tense.
+    # "I'm pulling those now" reads as work in flight, but the turn is about to
+    # end -- nothing is in flight, and the user is left waiting for a follow-up
+    # that never arrives. This shape reached Slack twice in a row before it was
+    # caught here, so it is treated exactly like "I'll pull those".
+    r"|\bi(?:'m| am)\s+(?:(?:just|now|currently|quickly|briefly)\s+){0,3}"
+    r"(?:pulling|grabbing|checking|searching|researching|verifying|"
+    r"browsing|investigating|gathering|fetching|retrieving|running|querying"
+    # "look up" separates around its object: "looking that up", "looking it up".
+    r"|looking(?:\s+\w+){0,3}\s+up)\b"
 )
 _THEN_I_CAN = re.compile(r"\bthen\s+i\s+can\s+[a-z][a-z'-]*\b")
 _COMPLETED_MARKET_DATA_ACTION = re.compile(

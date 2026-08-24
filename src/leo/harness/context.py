@@ -25,6 +25,7 @@ from leo.harness.models import (
     EvidenceToolRequirement,
     ModelRequest,
     Observation,
+    PlanStepStatus,
     RunBundle,
     RunPhase,
     ToolChoiceMode,
@@ -131,6 +132,7 @@ class DefaultContextAssembler:
             # steps rather than the oldest: what Leo just tried matters more than
             # how it opened.
             scratchpad=bundle.task.scratchpad[-12:],
+            step_plan=bundle.task.step_plan,
         )
 
     def _budget_for(self, bundle: RunBundle) -> ContextBudget:
@@ -481,9 +483,45 @@ class DefaultContextAssembler:
                 required_tool_name=required_tool.name,
                 required_arguments=requirement.required_arguments,
             )
+        planned = self._next_planned_tool(bundle, tools_by_name)
+        if planned is not None:
+            # The model committed to this step itself. Left on AUTO, a model that
+            # has been told its plan is unfinished will often answer again anyway
+            # -- narrating the work as if it were in flight -- and burn the run's
+            # budget without ever calling anything. Pinning the choice to the tool
+            # it already chose is not the harness picking a route; it is the
+            # harness holding the model to its own.
+            return ToolChoicePolicy(
+                mode=ToolChoiceMode.REQUIRED,
+                required_tool_name=planned,
+            )
         return ToolChoicePolicy(
             mode=ToolChoiceMode.AUTO if tools else ToolChoiceMode.NONE,
         )
+
+    @staticmethod
+    def _next_planned_tool(
+        bundle: RunBundle,
+        tools_by_name: dict[str, ToolSpec],
+    ) -> str | None:
+        """The first pending tool-backed step whose tool is advertised and read-only."""
+
+        for step in bundle.task.step_plan:
+            if step.status is not PlanStepStatus.PENDING or not step.needs_evidence:
+                continue
+            # Tool names reach the model underscored; compare in that spelling.
+            wanted = step.tool.strip().replace(".", "_").casefold()
+            for name, spec in tools_by_name.items():
+                if name.replace(".", "_").casefold() != wanted:
+                    continue
+                if spec.effect is not ToolEffect.READ:
+                    break
+                # Deliberately not skipped when an observation of this kind
+                # already exists. Two steps can share a tool -- "NVDA price" and
+                # "GOOG price" are both market.get_quote -- and the step being
+                # pending already means its own evidence is missing.
+                return name
+        return None
 
     def _observation_satisfies(
         self,

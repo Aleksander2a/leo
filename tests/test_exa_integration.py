@@ -782,6 +782,41 @@ async def test_live_catalog_discovers_and_executes_exa_then_verifies_exact_highl
         advertised = {item["function"]["name"] for item in payload["tools"]}
         assert "web_search_exa" in advertised
         assert "web_research_verified" not in advertised
+        if not observations:
+            # The model issues the search. A gateway used to run it before the
+            # model's first turn, so this handler only ever saw the result.
+            return httpx.Response(
+                200,
+                json={
+                    "id": "exa-search-turn",
+                    "model": "fixture/model",
+                    "choices": [
+                        {
+                            "finish_reason": "tool_calls",
+                            "message": {
+                                "content": None,
+                                "tool_calls": [
+                                    {
+                                        "id": "call-exa",
+                                        "type": "function",
+                                        "function": {
+                                            "name": "web_search_exa",
+                                            "arguments": json.dumps(
+                                                {
+                                                    "query": (
+                                                        "Search the web for an official "
+                                                        "Python 3.14 noteworthy change"
+                                                    )
+                                                }
+                                            ),
+                                        },
+                                    }
+                                ],
+                            },
+                        }
+                    ],
+                },
+            )
         exa_observation = next(item for item in observations if item["kind"] == "web.search_exa")
         assert exa_observation["quality"] == "untrusted_retrieval"
         return httpx.Response(
@@ -835,7 +870,9 @@ async def test_live_catalog_discovers_and_executes_exa_then_verifies_exact_highl
     ).snapshot()
     assert result.run.status is RunStatus.COMPLETED
     assert result.run.final_output == STATEMENT
-    assert model_calls == 1
+    # Two turns: the model runs the search, then answers from the highlight. A
+    # gateway used to run the search before the model's first turn.
+    assert model_calls == 2
     assert exa_calls == 1
     assert result.run.usage.tool_calls == 1
     assert len(result.claims) == 1
@@ -895,12 +932,79 @@ async def test_live_natural_version_prompt_preserves_tavily_then_fetch_with_exa_
         payload = json.loads(request.content)
         user_payload = json.loads(payload["messages"][1]["content"])
         observations = user_payload["observations"]
-        assert [item["kind"] for item in observations] == [
+        advertised = {item["function"]["name"] for item in payload["tools"]}
+        kinds = [item["kind"] for item in observations]
+        if kinds == []:
+            # The model runs the search. A gateway used to build this whole
+            # search->fetch chain before the model's first turn, so this handler
+            # was only ever reached once, already holding both observations.
+            assert "web_search_tavily" in advertised
+            return httpx.Response(
+                200,
+                json={
+                    "id": "official-tavily-search",
+                    "model": "fixture/model",
+                    "choices": [
+                        {
+                            "finish_reason": "tool_calls",
+                            "message": {
+                                "content": None,
+                                "tool_calls": [
+                                    {
+                                        "id": "call-tavily",
+                                        "type": "function",
+                                        "function": {
+                                            "name": "web_search_tavily",
+                                            "arguments": json.dumps(
+                                                {
+                                                    "query": (
+                                                        "What's one noteworthy change in "
+                                                        "Python 3.14?"
+                                                    ),
+                                                    "max_results": 5,
+                                                    "search_depth": "advanced",
+                                                    "topic": "general",
+                                                }
+                                            ),
+                                        },
+                                    }
+                                ],
+                            },
+                        }
+                    ],
+                },
+            )
+        if kinds == ["web.search_tavily"]:
+            assert "web_fetch_public_text" in advertised
+            return httpx.Response(
+                200,
+                json={
+                    "id": "official-tavily-fetch",
+                    "model": "fixture/model",
+                    "choices": [
+                        {
+                            "finish_reason": "tool_calls",
+                            "message": {
+                                "content": None,
+                                "tool_calls": [
+                                    {
+                                        "id": "call-fetch",
+                                        "type": "function",
+                                        "function": {
+                                            "name": "web_fetch_public_text",
+                                            "arguments": json.dumps({"url": RESULT_URL}),
+                                        },
+                                    }
+                                ],
+                            },
+                        }
+                    ],
+                },
+            )
+        assert kinds == [
             "web.search_tavily",
             "web.fetch_public_text",
         ]
-        advertised = {item["function"]["name"] for item in payload["tools"]}
-        assert {"web_search_tavily", "web_fetch_public_text"}.issubset(advertised)
         fetch_observation = observations[-1]
         return httpx.Response(
             200,
@@ -952,7 +1056,8 @@ async def test_live_natural_version_prompt_preserves_tavily_then_fetch_with_exa_
         "web.fetch_public_text",
     )
     assert result.run.usage.tool_calls == 2
-    assert model_calls == 1
+    # Three turns: search, fetch, answer.
+    assert model_calls == 3
     assert tavily_calls == 1
     assert fetch_calls == 1
     assert exa_calls == 0

@@ -112,6 +112,39 @@ class ReasoningStep(ContractModel):
         )
 
 
+class PlanStepStatus(StrEnum):
+    PENDING = "pending"
+    SATISFIED = "satisfied"
+    ABANDONED = "abandoned"
+
+
+class PlannedStep(ContractModel):
+    """One step the model committed to before this run is allowed to finish.
+
+    The scratchpad records what already happened; this records what the model
+    said it was going to do. Without it the harness had no way to tell a finished
+    answer from an abandoned one: a turn that narrated "I'm pulling the earnings
+    data now" and then stopped looked exactly like a completed turn, because
+    intent left no trace the coordinator could check.
+
+    A step naming a tool is discharged only by a real retrieved observation from
+    that tool -- never by the model asserting it is done. A step may be abandoned,
+    but only explicitly and with a reason, which is surfaced to the user rather
+    than silently dropped.
+    """
+
+    key: NonEmptyStr = Field(max_length=64)
+    intent: NonEmptyStr = Field(max_length=300)
+    # Empty means a reasoning/synthesis step with no external read.
+    tool: str = Field(default="", max_length=128)
+    status: PlanStepStatus = PlanStepStatus.PENDING
+    note: str = Field(default="", max_length=300)
+
+    @property
+    def needs_evidence(self) -> bool:
+        return bool(self.tool.strip())
+
+
 class Task(ContractModel):
     id: NonEmptyStr
     thread_id: NonEmptyStr
@@ -131,8 +164,17 @@ class Task(ContractModel):
     # ("I have the quote, now I need earnings, then I compare") is impossible
     # when the intermediate reasoning is discarded every turn.
     scratchpad: tuple[ReasoningStep, ...] = Field(default=(), max_length=32)
+    # The model's committed step plan for this run. Completion is gated on it:
+    # a run cannot finish while a step is still pending, so a turn that plans to
+    # read three sources actually reads them instead of narrating the intent and
+    # stopping. The model owns the contents and may revise them mid-run.
+    step_plan: tuple[PlannedStep, ...] = Field(default=(), max_length=12)
     final_output: str | None = None
     version: int = Field(default=0, ge=0)
+
+    @property
+    def pending_steps(self) -> tuple[PlannedStep, ...]:
+        return tuple(item for item in self.step_plan if item.status is PlanStepStatus.PENDING)
 
     @model_validator(mode="after")
     def completion_has_output(self) -> Task:
@@ -304,6 +346,9 @@ class ToolRequests(ContractModel):
     # What the model is trying to establish with these calls. Recorded into the
     # scratchpad so the next iteration inherits the intent, not just the result.
     plan: str = Field(default="", max_length=600)
+    # Steps proposed or revised alongside these calls, so a plan can be laid out
+    # on the same turn that starts executing it.
+    steps: tuple[PlanStepDraft, ...] = Field(default=(), max_length=12)
 
 
 class ClaimKind(StrEnum):
@@ -325,6 +370,18 @@ class CandidateClaim(ContractModel):
         return self
 
 
+class PlanStepDraft(ContractModel):
+    """A step the model proposes, or a revision to one it already committed to."""
+
+    key: NonEmptyStr = Field(max_length=64)
+    intent: NonEmptyStr = Field(max_length=300)
+    tool: str = Field(default="", max_length=128)
+    # Set to abandon a step the model no longer intends to do. The reason is
+    # required so an abandoned step is an explicit, explainable decision rather
+    # than silent attrition, and so the answer can tell the user what is missing.
+    abandon_reason: str = Field(default="", max_length=300)
+
+
 class CompletionProposal(ContractModel):
     kind: Literal["completion"] = "completion"
     answer: NonEmptyStr
@@ -332,6 +389,7 @@ class CompletionProposal(ContractModel):
     affected_assumption: NonEmptyStr | None = None
     uncertainty: NonEmptyStr | None = None
     plan: str = Field(default="", max_length=600)
+    steps: tuple[PlanStepDraft, ...] = Field(default=(), max_length=12)
 
 
 ModelDecision = Annotated[ToolRequests | CompletionProposal, Field(discriminator="kind")]
@@ -515,6 +573,9 @@ class EventType(StrEnum):
     VERIFICATION_STARTED = "verification_started"
     VERIFICATION_FAILED = "verification_failed"
     VERIFICATION_PASSED = "verification_passed"
+    # The model answered while steps it committed to still had no evidence, so
+    # the run continued instead of shipping a half-finished answer.
+    PLAN_STEP_OUTSTANDING = "plan_step_outstanding"
     RUN_COMPLETED = "run_completed"
     RUN_REQUIRES_ACTION = "run_requires_action"
     RUN_RESUMED = "run_resumed"
@@ -784,6 +845,10 @@ class ModelRequest(ContractModel):
     context_items: tuple[ContextItem, ...] = Field(default=(), max_length=128)
     # Prior iterations' plan/action/result trace. Advisory working memory only.
     scratchpad: tuple[ReasoningStep, ...] = Field(default=(), max_length=32)
+    # The committed step plan and each step's current state. Unlike the
+    # scratchpad this is not advisory: the run cannot complete while a step is
+    # pending, so the model sees exactly what it still owes.
+    step_plan: tuple[PlannedStep, ...] = Field(default=(), max_length=12)
 
     @model_validator(mode="after")
     def required_tool_is_advertised_safe_tool(self) -> ModelRequest:

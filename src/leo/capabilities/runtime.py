@@ -187,8 +187,16 @@ class CapabilityRuntime:
             )
         )[: self._max_selected_tools]
         selected_names = list(recalled_ids)
+        url_available = _a_url_is_available(bundle)
         for tool in available_tools:
             if tool.name in self._always_available_tool_names and tool.effect is ToolEffect.READ:
+                # "Always available" means ranking may not drop it, not that it
+                # outranks eligibility. A URL-consuming tool with no URL to pass
+                # is still unusable, and advertising it is an invitation to
+                # invent one -- so the same gate that hides it from ranking also
+                # applies here.
+                if not url_available and _requires_a_url_argument(tool):
+                    continue
                 if tool.name not in selected_names:
                     selected_names.append(tool.name)
             elif (

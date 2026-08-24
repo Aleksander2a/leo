@@ -26,6 +26,7 @@ from leo.harness.models import (
     ModelTurnResult,
     ModelUsage,
     Observation,
+    PlanStepStatus,
     ReasoningStep,
     Run,
     RunBundle,
@@ -59,6 +60,13 @@ from leo.harness.ports import (
     ModelGatewayError,
     RunStore,
 )
+from leo.harness.step_plan import (
+    abandon_unreachable_steps,
+    discharge_satisfied_steps,
+    merge_step_drafts,
+    outstanding_work_feedback,
+)
+from leo.harness.terminal_quality import contains_future_action_promise
 from leo.harness.tools import ToolRegistry
 from leo.harness.transitions import (
     advance_step,
@@ -67,6 +75,7 @@ from leo.harness.transitions import (
     start_task_and_run,
     time_out_task_and_run,
 )
+from leo.harness.verifier import presents_unretrieved_data
 
 logger = logging.getLogger(__name__)
 
@@ -365,10 +374,19 @@ class RunCoordinator:
                     reserved_cost=reservation_cost,
                     reconcile_reservation=True,
                 )
-                if fallback_answer is not None:
+                if fallback_answer is not None and _is_deliverable_answer(
+                    fallback_answer,
+                    bundle.observations,
+                ):
                     # The gateway gave up trying to get a *better* completion but
                     # attached an earlier, self-contained answer. Deliver it instead
-                    # of a terminal failure with no content at all.
+                    # of a terminal failure with no content at all -- unless it is
+                    # one of the shapes that is worse than silence. This path skips
+                    # the verifier, so it has to apply the same floor itself: a
+                    # promise of work the run can no longer do ("I'll pull GOOG's
+                    # filing to complete the comparison") reached Slack through
+                    # exactly this gap, telling the user to wait for a turn that
+                    # had already ended.
                     bundle = await self._store.complete_verified(
                         expected_task_version=bundle.task.version,
                         expected_run_version=bundle.run.version,
@@ -392,6 +410,22 @@ class RunCoordinator:
                     )
                     bundle = await self._commit(bundle, task, run, events=tuple(common_events))
                     continue
+                if fallback_answer is None and best_proposal is not None:
+                    # The gateway gave up, but the coordinator has been holding the
+                    # best answer the model produced. Failing the run here threw
+                    # that away: a stuck loop that had already read six sources
+                    # returned nothing at all.
+                    bundle = await self._store.complete_verified(
+                        expected_task_version=bundle.task.version,
+                        expected_run_version=bundle.run.version,
+                        task_id=bundle.task.id,
+                        run_id=bundle.run.id,
+                        scope=bundle.run.scope,
+                        usage=usage,
+                        completion=_best_effort_completion(best_proposal.answer, failure_code),
+                        preceding_events=tuple(common_events),
+                    )
+                    break
                 task, run = fail_task_and_run(
                     bundle.task,
                     bundle.run,
@@ -792,7 +826,7 @@ class RunCoordinator:
                         if not item.retryable:
                             withdrawn_tools.add(name)
                     # Only a run with no remaining model turn is genuinely stuck.
-                    model_turn_remains = bundle.run.iteration + 1 < bundle.run.limits.max_iterations
+                    model_turn_remains = _model_turn_remains(bundle)
                     if failure is not None and (
                         failure.retryable or batch_retryable or model_turn_remains
                     ):
@@ -854,6 +888,17 @@ class RunCoordinator:
                     bundle.run,
                     usage=usage,
                     observation_ids=observation_ids,
+                    # Fold in whatever the model planned on this turn, then let
+                    # the observations it just produced discharge the steps they
+                    # satisfy. Evidence closes a step; the model's say-so cannot.
+                    step_plan=discharge_satisfied_steps(
+                        merge_step_drafts(
+                            bundle.task.step_plan,
+                            decision.steps,
+                            available_tools=frozenset(spec.name for spec in specs),
+                        ),
+                        (*bundle.observations, *new_observations),
+                    ),
                     reasoning_step=_reasoning_step(
                         bundle.run.iteration,
                         decision,
@@ -876,10 +921,81 @@ class RunCoordinator:
             # later runs out of budget or turns, delivering this beats a canned
             # "I reached this request's processing limit" that discards work the
             # user already paid for.
-            if answer_is_substantive(decision.answer):
-                best_proposal = decision
-            elif best_proposal is None:
-                best_proposal = decision
+            #
+            # A promissory draft is never a fallback candidate. "I'm pulling those
+            # now" is worse than the canned message: it tells the user to wait for
+            # a follow-up that cannot arrive, because the run is over. The same
+            # applies to a draft that frames itself as showing retrieved data the
+            # run never retrieved.
+            if _is_deliverable_fallback(decision, bundle.observations):
+                if answer_is_substantive(decision.answer):
+                    best_proposal = decision
+                elif best_proposal is None:
+                    best_proposal = decision
+
+            # The model may finish planning and answering on the same turn, so
+            # fold in any steps it declared here before deciding whether the plan
+            # is discharged.
+            advertised_tool_names = frozenset(spec.name for spec in specs)
+            committed_plan = abandon_unreachable_steps(
+                discharge_satisfied_steps(
+                    merge_step_drafts(
+                        bundle.task.step_plan,
+                        decision.steps,
+                        available_tools=advertised_tool_names,
+                    ),
+                    bundle.observations,
+                ),
+                # Only a step the model can still act on may hold the run open.
+                advertised_tool_names,
+            )
+            pending = tuple(
+                item for item in committed_plan if item.status is PlanStepStatus.PENDING
+            )
+            if pending and _model_turn_remains(bundle):
+                # The run is not finished: the model committed to work it has not
+                # done. This is the structural version of "don't stop halfway" --
+                # it holds regardless of how the answer is phrased, because it is
+                # checked against real observations rather than against wording.
+                task, run = advance_step(
+                    bundle.task,
+                    bundle.run,
+                    usage=usage,
+                    step_plan=committed_plan,
+                    verifier_feedback=(
+                        *bundle.task.verifier_feedback,
+                        outstanding_work_feedback(pending),
+                    ),
+                    reasoning_step=_reasoning_step(
+                        bundle.run.iteration,
+                        decision,
+                        outcome=(
+                            "Rejected: answered while "
+                            f"{len(pending)} committed step(s) had no evidence."
+                        ),
+                    ),
+                )
+                bundle = await self._commit(
+                    bundle,
+                    task,
+                    run,
+                    events=(
+                        *common_events,
+                        EventDraft(
+                            type=EventType.PLAN_STEP_OUTSTANDING,
+                            iteration=bundle.run.iteration,
+                            payload={
+                                "pending": [item.key for item in pending],
+                                "pending_count": len(pending),
+                            },
+                        ),
+                    ),
+                )
+                continue
+            if committed_plan != bundle.task.step_plan:
+                bundle = bundle.model_copy(
+                    update={"task": bundle.task.model_copy(update={"step_plan": committed_plan})}
+                )
 
             common_events.append(
                 EventDraft(
@@ -1306,6 +1422,52 @@ def _completion_contract_error_feedback(code: str, request: ModelRequest) -> str
         )
     return (
         "Your last completion violated the harness completion contract. Reconsider and try again."
+    )
+
+
+def _model_turn_remains(bundle: RunBundle) -> bool:
+    """Whether the run still has an iteration left to act on feedback."""
+
+    return bundle.run.iteration + 1 < bundle.run.limits.max_iterations
+
+
+def _is_deliverable_answer(answer: str, observations: tuple[Observation, ...]) -> bool:
+    """The floor every unverified delivery path must clear, whatever its source."""
+
+    return not contains_future_action_promise(answer) and not presents_unretrieved_data(
+        answer, observations
+    )
+
+
+def _is_deliverable_fallback(
+    proposal: CompletionProposal,
+    observations: tuple[Observation, ...],
+) -> bool:
+    """Whether an unverified draft is safe to deliver if the run runs out of road.
+
+    The best-effort path exists so a budget-exhausted or stuck run still returns
+    the work the user paid for. It must never launder the shapes that are
+    actively worse than saying nothing:
+
+    * a promise of work that can no longer happen;
+    * a claim to be presenting data the run never retrieved;
+    * a citation pointing at an observation that does not exist.
+
+    That last one is the reason a draft carrying claims can be delivered at all.
+    Claims were previously disqualifying outright, on the grounds that an
+    unverified evidentiary assertion could be fabricated -- but a run that had
+    read six real sources then delivered *nothing*, which is its own failure. The
+    check is exact and cheap: every cited id must belong to an observation this
+    run actually holds. Fabricated citations are excluded; genuine work is not.
+    """
+
+    if not _is_deliverable_answer(proposal.answer, observations):
+        return False
+    known = {observation.id for observation in observations}
+    return all(
+        observation_id in known
+        for claim in proposal.claims
+        for observation_id in claim.observation_ids
     )
 
 

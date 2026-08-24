@@ -32,45 +32,32 @@ from leo.harness.deliberation import (
     ElasticDeliberationGateway,
     ElasticDeliberationPolicy,
     apply_deliberation_guidance,
-    memory_recovery_query,
-    ranked_tavily_result_urls,
 )
 from leo.harness.models import (
     BudgetLimits,
-    CandidateClaim,
     CardinalityBounds,
-    ClaimKind,
     CompletionContract,
-    CompletionProposal,
     ContextItem,
     ContextItemKind,
     ContextItemRetention,
     CoordinatorResult,
-    EvidenceQuality,
     EvidenceToolRequirement,
-    ModelRequest,
-    ModelTurnResult,
-    ModelUsage,
     Observation,
-    ObservationStatus,
     OriginRef,
     Run,
     ScopeKey,
     Task,
     Thread,
     ToolArgumentConstraint,
-    ToolRequest,
-    ToolRequests,
     TrustedScope,
 )
-from leo.harness.ports import Clock, ModelGateway, ModelGatewayError, RunStore, Tool
+from leo.harness.ports import ModelGateway, RunStore, Tool
 from leo.harness.provider_health import ProviderHealthProjection
 from leo.harness.research import ResearchRequirement
 from leo.harness.storage import InMemoryRunStore
 from leo.harness.subagents import (
     SubagentPlanTool,
     SubagentResearchTool,
-    canonical_evidence_completion,
 )
 from leo.harness.tools import ToolRegistry
 from leo.harness.verifier import DeterministicCompletionVerifier
@@ -198,6 +185,14 @@ _WEB_SEARCH_LADDER = frozenset(
         "web.search_exa",
         "web.search_tavily",
         "web.search_public",
+        # Discovery without retrieval is a dead end. Search tools return URLs and
+        # snippets that are explicitly *not* citable evidence, so a model that
+        # can search but cannot open a result has no way to finish the job: it
+        # either cites discovery metadata (which the verifier rejects) or gives
+        # up. The fetch tool used to be reachable only because a deterministic
+        # repair called it directly, bypassing advertisement entirely -- so when
+        # that repair was removed, the chain broke. It belongs on the ladder.
+        "web.fetch_public_text",
     }
 )
 _PARENT_ORCHESTRATION_TOOL_NAMES = frozenset(
@@ -297,38 +292,6 @@ _EXPLICIT_PROVIDER_INTENTS = {
 }
 
 
-class _DirectEvidenceCompletionGateway:
-    """Render a selected single provider route only after trusted evidence exists."""
-
-    def __init__(
-        self,
-        delegate: ModelGateway,
-        requirement: EvidenceToolRequirement,
-        clock: Clock,
-    ) -> None:
-        self._delegate = delegate
-        self._requirement = requirement
-        self._clock = clock
-
-    async def decide(self, request: ModelRequest) -> ModelTurnResult:
-        canonical = canonical_evidence_completion(
-            request.observations,
-            (self._requirement,),
-            now=self._clock.now(),
-            include_sec_document_url=True,
-        )
-        if canonical is None:
-            return await self._delegate.decide(request)
-        return ModelTurnResult(
-            decision=canonical,
-            provider="leo-harness",
-            model="canonical-direct-evidence-v1",
-            request_id=f"canonical-direct-{request.iteration}",
-            finish_reason="stop",
-            usage=ModelUsage(),
-        )
-
-
 _DIRECT_CANONICAL_EVIDENCE_KINDS = frozenset(
     {
         "market.get_crypto_snapshot",
@@ -336,251 +299,6 @@ _DIRECT_CANONICAL_EVIDENCE_KINDS = frozenset(
         "market.get_earnings_surprises",
     }
 )
-
-
-def _uses_direct_canonical_evidence(
-    requirement: EvidenceToolRequirement,
-    objective: str,
-) -> bool:
-    if requirement.observation_kind not in _DIRECT_CANONICAL_EVIDENCE_KINDS:
-        return False
-    if requirement.observation_kind != "market.get_quote":
-        return True
-    # Terse quote prompts can safely use the provider-normalized canonical answer.
-    # Conversational lookup requests still need a model turn to shape the response.
-    tokens = set(search_tokens(objective))
-    return not tokens.intersection({"could", "look", "lookup", "research", "use"})
-
-
-class _VerifiedWebResearchGateway:
-    """Execute the admitted provider route before semantic completion.
-
-    Natural version/current-knowledge questions have a trusted external-evidence
-    obligation.  Once that route is selected, speculative model completions cannot
-    spend verifier turns inventing observation IDs or citing discovery snippets.
-    The first semantic provider call happens only after either one structurally
-    complete Exa highlight result or a selected Tavily page fetch has normalized.
-    """
-
-    def __init__(
-        self,
-        delegate: ModelGateway,
-        route: _VerifiedWebProviderRoute,
-        *,
-        search_query: str | None = None,
-    ) -> None:
-        self._delegate = delegate
-        self._route = route
-        normalized_query = " ".join((search_query or "").split())[:256].rstrip()
-        self._search_query = normalized_query or None
-
-    def _query(self, objective: str) -> str:
-        return self._search_query or _primary_source_search_query(objective)
-
-    async def decide(self, request: ModelRequest) -> ModelTurnResult:
-        advertised = frozenset(tool.name for tool in request.tools)
-        if self._route.direct_highlight_evidence:
-            evidence_observations = tuple(
-                item
-                for item in request.observations
-                if item.kind == self._route.search_tool
-                and item.status is ObservationStatus.RETRIEVED
-                and item.quality is not EvidenceQuality.DISCOVERY_ONLY
-                and _verified_direct_observation(item, self._route)
-            )
-            if evidence_observations:
-                return await self._delegate.decide(request)
-            if self._route.search_tool not in advertised:
-                raise ModelGatewayError(
-                    "verified_web_search_unavailable",
-                    "The required verified-web search tool is unavailable.",
-                )
-            return ModelTurnResult(
-                decision=ToolRequests(
-                    calls=(
-                        ToolRequest(
-                            id=f"verified-direct-search-{request.iteration}",
-                            name=self._route.search_tool,
-                            arguments={"query": self._query(request.objective)},
-                        ),
-                    )
-                ),
-                provider="leo-harness",
-                model="verified-direct-search-v1",
-                request_id=f"verified-direct-search-{request.iteration}",
-                finish_reason="tool_calls",
-                usage=ModelUsage(),
-            )
-
-        search_observations = tuple(
-            item
-            for item in request.observations
-            if item.kind == "web.search_tavily"
-            and item.status is ObservationStatus.RETRIEVED
-            and item.quality is EvidenceQuality.DISCOVERY_ONLY
-        )
-        all_fetch_observations = tuple(
-            item for item in request.observations if item.kind == "web.fetch_public_text"
-        )
-        fetch_observations = tuple(
-            item
-            for item in all_fetch_observations
-            if item.status is ObservationStatus.RETRIEVED
-            and item.quality is not EvidenceQuality.DISCOVERY_ONLY
-            and item.data.get("truncated") is False
-            and isinstance(item.data.get("text"), str)
-            and bool(str(item.data.get("text")).strip())
-        )
-        if not search_observations:
-            if self._route.search_tool not in advertised:
-                raise ModelGatewayError(
-                    "verified_web_search_unavailable",
-                    "The required verified-web discovery tool is unavailable.",
-                )
-            query = self._query(request.objective)
-            return ModelTurnResult(
-                decision=ToolRequests(
-                    calls=(
-                        ToolRequest(
-                            id=f"verified-web-search-{request.iteration}",
-                            name=self._route.search_tool,
-                            arguments={
-                                "query": query,
-                                "max_results": 5,
-                                "search_depth": "advanced",
-                                "topic": "general",
-                            },
-                        ),
-                    )
-                ),
-                provider="leo-harness",
-                model="verified-web-search-v1",
-                request_id=f"verified-web-search-{request.iteration}",
-                finish_reason="tool_calls",
-                usage=ModelUsage(),
-            )
-        if not fetch_observations:
-            if "web.fetch_public_text" not in advertised:
-                raise ModelGatewayError(
-                    "verified_web_fetch_unavailable",
-                    "The required verified-web fetch tool is unavailable.",
-                )
-            attempted_urls = {
-                value
-                for observation in all_fetch_observations
-                for value in (
-                    observation.data.get("requested_url"),
-                    observation.data.get("url"),
-                    observation.source.url,
-                )
-                if isinstance(value, str)
-            }
-            remaining_urls = tuple(
-                url for url in ranked_tavily_result_urls(request) if url not in attempted_urls
-            )
-            selected_url = next(iter(remaining_urls), None)
-            if selected_url is None:
-                raise ModelGatewayError(
-                    "verified_web_complete_source_unavailable",
-                    "The bounded web results did not yield complete source text to verify.",
-                )
-            return ModelTurnResult(
-                decision=ToolRequests(
-                    calls=(
-                        ToolRequest(
-                            id=f"verified-web-fetch-{request.iteration}",
-                            name="web.fetch_public_text",
-                            arguments={
-                                "url": selected_url,
-                                "fallback_urls": list(remaining_urls[1:5]),
-                            },
-                        ),
-                    )
-                ),
-                provider="leo-harness",
-                model="verified-web-fetch-v1",
-                request_id=f"verified-web-fetch-{request.iteration}",
-                finish_reason="tool_calls",
-                usage=ModelUsage(),
-            )
-        return await self._delegate.decide(request)
-
-
-class _ProviderUnavailableGateway:
-    """Complete conversationally when an explicitly named provider is not admitted."""
-
-    def __init__(self, intent: _ExplicitProviderIntent) -> None:
-        self._intent = intent
-
-    async def decide(self, request: ModelRequest) -> ModelTurnResult:
-        del request
-        answer = (
-            "Would you like me to use a provider-neutral source instead, since "
-            f"{self._intent.display_name}'s direct route is unavailable or locally rate-limited?"
-        )
-        return ModelTurnResult(
-            decision=CompletionProposal(answer=answer),
-            provider="leo-harness",
-            model="explicit-provider-unavailable-v1",
-            finish_reason="stop",
-            usage=ModelUsage(),
-        )
-
-
-class _RequiredMemorySearchGateway:
-    """Dispatch an authorized recall read before asking the semantic provider."""
-
-    def __init__(self, delegate: ModelGateway) -> None:
-        self._delegate = delegate
-
-    async def decide(self, request: ModelRequest) -> ModelTurnResult:
-        searches = tuple(
-            item
-            for item in request.observations
-            if item.kind == "memory.search" and item.status is ObservationStatus.RETRIEVED
-        )
-        if not searches:
-            if "memory.search" not in {tool.name for tool in request.tools}:
-                raise ModelGatewayError(
-                    "required_memory_search_unavailable",
-                    "The required authorized memory search tool is unavailable.",
-                )
-            return ModelTurnResult(
-                decision=ToolRequests(
-                    calls=(
-                        ToolRequest(
-                            id=f"required-memory-search-{request.iteration}",
-                            name="memory.search",
-                            arguments={"query": memory_recovery_query(request), "limit": 8},
-                        ),
-                    )
-                ),
-                provider="leo-harness",
-                model="required-memory-search-v1",
-                request_id=f"required-memory-search-{request.iteration}",
-                finish_reason="tool_calls",
-                usage=ModelUsage(),
-            )
-        latest = searches[-1]
-        if latest.data.get("selected_count") == 0 and latest.data.get("items") == []:
-            return ModelTurnResult(
-                decision=CompletionProposal(
-                    answer=_EMPTY_MEMORY_SCOPE_INFERENCE,
-                    claims=(
-                        CandidateClaim(
-                            kind=ClaimKind.INFERENCE,
-                            statement=_EMPTY_MEMORY_SCOPE_INFERENCE,
-                            observation_ids=(latest.id,),
-                        ),
-                    ),
-                ),
-                provider="leo-harness",
-                model="canonical-empty-memory-search-v1",
-                request_id=f"canonical-empty-memory-{request.iteration}",
-                finish_reason="stop",
-                usage=ModelUsage(),
-            )
-        return await self._delegate.decide(request)
 
 
 async def run_live_quote(
@@ -1297,38 +1015,32 @@ async def run_live_conversation(
         and not orchestration_required
         else ()
     )
-    coordinator_model: ModelGateway = (
-        _ProviderUnavailableGateway(explicit_provider_intent)
-        if explicit_provider_unavailable and explicit_provider_intent is not None
-        else model
-    )
-    # Always give the next model turn the normalized provider observation.  The
-    # verifier accepts trusted integration payloads as model context, so the model
-    # can consolidate the result into the requested conversational format instead
-    # of being replaced by provider-specific canonical prose.
-    if verified_web_route is not None:
-        coordinator_model = _VerifiedWebResearchGateway(
-            coordinator_model,
-            verified_web_route,
-            search_query=(objective if category_screening_research_required else None),
-        )
-    if required_memory_read_tool == "memory.search":
-        coordinator_model = _RequiredMemorySearchGateway(coordinator_model)
-    if (
-        len(detected_evidence_requirements) == 1
-        and research_requirement is None
-        and not orchestration_required
-        and _uses_direct_canonical_evidence(
-            detected_evidence_requirements[0],
-            objective,
-        )
-    ):
-        coordinator_model = _DirectEvidenceCompletionGateway(
-            coordinator_model,
-            detected_evidence_requirements[0],
-            clock,
-        )
-    coordinator_model = ElasticDeliberationGateway(coordinator_model, deliberation)
+    # The model decides; the harness does not decide for it.
+    #
+    # Four gateways used to sit here, each intercepting the model's turn and
+    # substituting a decision the harness had authored:
+    #
+    #   _VerifiedWebResearchGateway       forced a search on turn 0 using the raw
+    #                                     objective text as the query
+    #   _DirectEvidenceCompletionGateway  wrote the answer itself from a provider
+    #                                     payload, in provider-shaped prose
+    #   _RequiredMemorySearchGateway      forced memory.search
+    #   _ProviderUnavailableGateway       failed the run when one named provider
+    #                                     was down, rather than letting the model
+    #                                     re-route to another
+    #
+    # Together they routinely seized every turn of a run. A live two-ticker
+    # comparison spent twelve consecutive iterations having its decision replaced
+    # by a scraped page dump that then failed verification, the model's own
+    # reasoning discarded each time -- the trace reads "no plan stated" precisely
+    # because no model authored those decisions. The user got the raw scrape.
+    #
+    # What replaces them is the loop itself: the model plans its steps, and the
+    # committed plan holds the run open until those steps have real observations
+    # behind them. Tools get called because the plan requires them, not because a
+    # keyword matched. ElasticDeliberationGateway stays for the one job that is
+    # genuinely the harness's: noticing a loop that has stopped making progress.
+    coordinator_model: ModelGateway = ElasticDeliberationGateway(model, deliberation)
     # `external_evidence_required` makes research *available* and raises the
     # deliberation floor; it deliberately does NOT make the verifier demand a
     # source claim. Those were previously the same flag, so widening research
@@ -1351,22 +1063,20 @@ async def run_live_conversation(
     completion_guidance = apply_deliberation_guidance(completion_guidance, deliberation)
     completion_contract = CompletionContract(
         source_claim_count=CardinalityBounds(
-            # Exact trusted maxima prevent harmless extra-claim retry storms. A
-            # deficient proposal may still reach the deterministic correction loop.
             minimum=1 if forced_evidence_requirements else 0,
-            maximum=(
-                2
-                if research_requirement is not None
-                else (
-                    8
-                    if orchestration_required or len(detected_evidence_requirements) > 1
-                    else (
-                        1
-                        if evidence_required
-                        else (0 if memory_bound_turn or direct_tool_free_turn else 8)
-                    )
-                )
-            ),
+            # A ceiling of one or two was set from prompt-shaped route detection
+            # before the model had planned anything, and it capped how much
+            # evidence an answer was allowed to cite. A run that read six sources
+            # for a two-ticker comparison then could not cite them: the model
+            # reported that "the completion contract restricts output to exactly
+            # two source claims" and dropped the rest of its own work.
+            #
+            # Citing more of what was actually retrieved is never the failure mode
+            # worth guarding against -- citing things that were *not* retrieved
+            # is, and the verifier checks every claim against a real observation
+            # regardless of how many there are. Only a no-tools turn still caps at
+            # zero, because there is nothing legitimate to cite.
+            maximum=0 if (memory_bound_turn or direct_tool_free_turn) else 8,
         ),
         source_observation_id_count=CardinalityBounds(minimum=1, maximum=8),
         inference_count=CardinalityBounds(
@@ -2317,19 +2027,6 @@ def _is_plain_single_evidence_lookup(
     )
 
 
-def _primary_source_search_query(objective: str) -> str:
-    """Search for what the user actually asked.
-
-    This previously appended " official documentation primary source" to every
-    query, so "what's the year end forecast for GOOG?" was sent to Tavily/Exa as
-    a developer-docs lookup and returned nothing usable. Search providers already
-    rank authoritative sources; steering them with a fixed suffix mostly steered
-    them away from the subject. The user's own wording is the better query.
-    """
-
-    return " ".join(objective.split()).strip()[:400]
-
-
 def _requires_verified_web_chain(objective: str) -> bool:
     """Return whether a natural objective specifically needs web discovery + fetch.
 
@@ -2608,30 +2305,6 @@ def _prefer_tavily_official_software_route(objective: str) -> bool:
             }
         )
     )
-
-
-def _verified_direct_observation(
-    observation: Observation,
-    route: _VerifiedWebProviderRoute,
-) -> bool:
-    if route.search_tool == "web.search_exa":
-        return observation.data.get("exact_url_bound_claims") is True
-    if route.search_tool != "web.research_verified":
-        return False
-    selected_provider = observation.data.get("selected_provider")
-    if selected_provider == "exa":
-        return (
-            observation.source.provider == "exa"
-            and observation.data.get("exact_url_bound_claims") is True
-        )
-    if selected_provider == "tavily_public_fetch":
-        return (
-            observation.source.provider == "public-web"
-            and observation.data.get("truncated") is False
-            and isinstance(observation.data.get("text"), str)
-            and bool(str(observation.data.get("text")).strip())
-        )
-    return False
 
 
 _THREAD_ROOT_ROUTING_MAX_CHARS = 2_048

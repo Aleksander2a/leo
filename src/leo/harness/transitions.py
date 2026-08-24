@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 
 from leo.harness.models import (
     BudgetUsage,
+    PlannedStep,
     ReasoningStep,
     Run,
     RunStatus,
@@ -166,9 +167,12 @@ def advance_step(
     observation_ids: tuple[str, ...] | None = None,
     verifier_feedback: tuple[str, ...] | None = None,
     reasoning_step: ReasoningStep | None = None,
+    step_plan: tuple[PlannedStep, ...] | None = None,
 ) -> tuple[Task, Run]:
     _require_active(task, run)
     task_update: dict[str, object] = {"version": task.version + 1}
+    if step_plan is not None:
+        task_update["step_plan"] = step_plan
     if observation_ids is not None:
         task_update["observation_ids"] = observation_ids
     if verifier_feedback is not None:

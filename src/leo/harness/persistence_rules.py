@@ -109,6 +109,9 @@ _EVENT_PAYLOAD_FIELDS: dict[EventType, frozenset[str]] = {
     EventType.VERIFICATION_PASSED: frozenset(
         {"claim_count", "check_count", "checks", "projection"}
     ),
+    # Step keys and a count only: the model-authored intent text stays in the
+    # durable task row rather than being copied into the capped event payload.
+    EventType.PLAN_STEP_OUTSTANDING: frozenset({"pending", "pending_count"}),
     EventType.RUN_COMPLETED: frozenset({"reason"}),
     EventType.RUN_REQUIRES_ACTION: frozenset({"reason"}),
     EventType.RUN_RESUMED: frozenset(),
@@ -612,7 +615,12 @@ def validate_verified_completion(
     ):
         raise StoreError("run cost usage cannot decrease")
     if (
-        current_run.iteration + 1 > current_run.limits.max_iterations
+        # Delivering an answer does not consume another iteration, so a run
+        # sitting on its last permitted one may still commit it. Requiring room
+        # for an iteration that never happens made the budget-exhaustion
+        # best-effort path unreachable: a run holding a good answer raised
+        # StoreError instead of delivering it.
+        current_run.iteration > current_run.limits.max_iterations
         or usage.model_calls > current_run.limits.max_model_calls
         or usage.tool_calls > current_run.limits.max_tool_calls
     ):

@@ -58,8 +58,6 @@ from leo.harness.models import (
 )
 from leo.harness.ports import Clock, IdGenerator
 from leo.harness.provider_canonical import (
-    canonical_claims_present,
-    canonical_evidence_completion,
     canonical_finnhub_profile_statements,
 )
 from leo.harness.research import (
@@ -275,34 +273,18 @@ class DeterministicCompletionVerifier:
         self._relax_integration_grounding = relax_integration_grounding
 
     def verify(self, proposal: CompletionProposal, bundle: RunBundle) -> VerificationOutcome:
+        """Judge the model's answer. Never write one in its place.
+
+        This used to substitute ``canonical_evidence_completion`` -- provider-
+        shaped prose assembled by the harness -- whenever the proposal lacked the
+        expected claims. The verifier's job is to decide whether an answer is
+        good enough, and a verifier that authors answers cannot do that job: it
+        was grading its own output, and the user received machine-assembled
+        provider text instead of a reply the model wrote. A deficient proposal is
+        now rejected with actionable feedback so the *model* fixes it.
+        """
+
         observations = {item.id: item for item in bundle.observations}
-        contract = self._completion_contract
-        canonical = (
-            canonical_evidence_completion(
-                tuple(observations.values()),
-                self._evidence_requirements,
-                now=self._clock.now(),
-                include_sec_document_url=True,
-            )
-            if self._research_requirement is None
-            and (
-                contract is None
-                or (not contract.require_affected_assumption and not contract.require_uncertainty)
-            )
-            else None
-        )
-        if canonical is not None and (
-            (
-                not self._relax_integration_grounding
-                and not canonical_claims_present(proposal, canonical)
-            )
-            or (self._relax_integration_grounding and not proposal.claims)
-        ):
-            # Keep the deterministic recovery for a provider read followed by an
-            # empty/refusal proposal.  Once the model has supplied claims, let it
-            # synthesize from the trusted adapter payload instead of replacing its
-            # answer with provider-specific canonical prose.
-            proposal = canonical
         checks: list[VerifierCheck] = [
             _answer_completeness_check(proposal.answer, tuple(observations.values())),
             _answer_sufficiency_check(proposal, bundle.task.objective),
@@ -743,6 +725,18 @@ def _answer_completeness_check(
             ),
         )
 
+    if presents_unretrieved_data(answer, observations):
+        return VerifierCheck(
+            name="answer_completeness",
+            passed=False,
+            detail=(
+                "This answer presents itself as showing current or live data, but this run "
+                "retrieved nothing. Call an eligible read tool now and answer from the result, "
+                "or drop the framing and say plainly that the figures are from general "
+                "knowledge and may be out of date."
+            ),
+        )
+
     completed_action = completed_research_action_claim(answer)
     if completed_action is not None and not _completed_action_is_observed(
         completed_action,
@@ -792,6 +786,40 @@ def _answer_completeness_check(
         passed=True,
         detail="The proposed answer has a complete terminal shape.",
     )
+
+
+_PRESENTS_LIVE_DATA = re.compile(
+    r"\bhere(?:'s| is| are)\s+what\s+the\s+(?:current|live|latest|recent)\s+"
+    r"(?:data|numbers?|figures?|prices?|quotes?|rates?)\b"
+    r"|\bbased\s+on\s+(?:the\s+)?(?:current|live|latest)\s+"
+    r"(?:data|numbers?|figures?|market data)\b"
+    r"|\bbuilt\s+from\s+(?:the\s+)?live\s+data\b"
+    r"|\baccording\s+to\s+the\s+(?:live|current|latest)\s+(?:data|feed|numbers?)\b"
+)
+
+
+def presents_unretrieved_data(answer: str, observations: tuple[Observation, ...]) -> bool:
+    """Reject "here's what the current data shows" when nothing was retrieved.
+
+    Phrasing guards are a losing game one regex at a time -- each new way of
+    promising or implying live data slips through until someone adds it. This is
+    the structural version of the same rule: whatever the wording, an answer that
+    frames itself as *presenting retrieved data* is false if the run holds no
+    retrieved observation at all. General-knowledge answers are unaffected as long
+    as they do not claim to be showing live data, which is exactly the honesty the
+    framing is meant to convey.
+    """
+
+    if _PRESENTS_LIVE_DATA.search(_normalized_answer_prose(answer)) is None:
+        return False
+    return not any(
+        observation.status is ObservationStatus.RETRIEVED for observation in observations
+    )
+
+
+def _normalized_answer_prose(answer: str) -> str:
+    normalized = answer.casefold().replace("\u2019", "'").replace("\u2018", "'")
+    return " ".join(normalized.split())
 
 
 def _completed_action_is_observed(
@@ -988,75 +1016,6 @@ def _requested_answer_format(objective: str) -> _RequestedAnswerFormat:
         ),
         names_only_one_per_line=name_layout,
         maximum_words=maximum_words,
-    )
-
-
-def repair_repeated_format_completion(
-    proposal: CompletionProposal,
-    objective: str,
-) -> CompletionProposal | None:
-    """Repair a repeated, evidence-free names-only answer without adding facts.
-
-    Some providers keep returning a useful list with markdown numbering or a short
-    heading even after the verifier asks for plain names.  That is a formatting
-    failure, not a reasoning failure, so normalize only this narrow shape after the
-    deliberation guard observes a repeated decision.  Claims and other structured
-    fields deliberately disable the repair: those answers still need model-owned
-    semantic verification.
-    """
-
-    requested = _requested_answer_format(objective)
-    if (
-        not requested.names_only_one_per_line
-        or requested.name_line_count is None
-        or proposal.claims
-        or proposal.affected_assumption is not None
-        or proposal.uncertainty is not None
-    ):
-        return None
-
-    lines = [line.strip() for line in proposal.answer.splitlines() if line.strip()]
-    if len(lines) == 1:
-        numbered = re.split(r"\s+(?=\d+[.)]\s+)", lines[0])
-        comma_separated = re.split(r"\s*(?:,|\band\b|&)\s*", lines[0], flags=re.IGNORECASE)
-        if len(numbered) == requested.name_line_count:
-            lines = numbered
-        elif len(comma_separated) == requested.name_line_count:
-            lines = comma_separated
-
-    names: list[str] = []
-    malformed = False
-    for line in lines:
-        if not names and _looks_like_names_heading(line):
-            continue
-        normalized = re.sub(r"^\s*(?:[-*+•]\s+|\d+[.)]\s+)", "", line).strip()
-        normalized = normalized.strip("`\"'\u201c\u201d\u2018\u2019")
-        if not _is_plain_name_line(normalized):
-            malformed = True
-            break
-        names.append(normalized)
-
-    if malformed or len(names) != requested.name_line_count:
-        # The harness must never invent the content it is asked to verify. This
-        # previously substituted a hardcoded list ("Signal Harbor", "Trust
-        # Compass", ...) and presented it as Leo's answer -- a fabrication path
-        # inside the very component that exists to prevent fabrication. A shape
-        # mismatch is not licence to author the payload: return the model's real
-        # answer unchanged and let the ordinary verifier feedback loop ask for
-        # the requested format.
-        return None
-    return proposal.model_copy(update={"answer": "\n".join(names)})
-
-
-def _looks_like_names_heading(line: str) -> bool:
-    normalized = " ".join(line.casefold().split()).rstrip(":-—")
-    return bool(
-        re.fullmatch(
-            r"(?:here(?: are|'re)|these are|the following|some)\s+"
-            r"(?:(?:one|two|three|four|five|six|seven|eight|nine|ten|\d+)\s+)?"
-            r"(?:friendly\s+)?(?:code\s+)?names?",
-            normalized,
-        )
     )
 
 

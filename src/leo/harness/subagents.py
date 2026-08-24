@@ -30,9 +30,6 @@ from leo.harness.models import (
     EventDraft,
     EventType,
     EvidenceToolRequirement,
-    ModelRequest,
-    ModelTurnResult,
-    ModelUsage,
     OriginRef,
     Run,
     RunBundle,
@@ -221,43 +218,6 @@ ChildReadyHook = Callable[[Task, Run], Awaitable[None]]
 ChildRequirementSelector = Callable[[str], tuple[EvidenceToolRequirement, ...]]
 
 
-class _EvidenceBoundChildGateway:
-    """Finish constrained provider reads canonically inside the child harness.
-
-    The delegated model still chooses and reasons through the tool route. Once every
-    trusted evidence requirement has a fresh, eligible observation, a second provider
-    call cannot add authority: the harness emits the one canonical proposal that the
-    ordinary deterministic verifier and durable completion path must still accept.
-    """
-
-    def __init__(
-        self,
-        delegate: ModelGateway,
-        requirements: tuple[EvidenceToolRequirement, ...],
-        clock: Clock,
-    ) -> None:
-        self._delegate = delegate
-        self._requirements = requirements
-        self._clock = clock
-
-    async def decide(self, request: ModelRequest) -> ModelTurnResult:
-        canonical = canonical_evidence_completion(
-            request.observations,
-            self._requirements,
-            now=self._clock.now(),
-        )
-        if canonical is None:
-            return await self._delegate.decide(request)
-        return ModelTurnResult(
-            decision=canonical,
-            provider="leo-child-harness",
-            model="canonical-evidence-bound-v1",
-            request_id=f"canonical-child-{request.iteration}",
-            finish_reason="stop",
-            usage=ModelUsage(),
-        )
-
-
 class SubagentResearchTool:
     """Expose one read-only child harness as a parent tool.
 
@@ -429,11 +389,14 @@ class SubagentResearchTool:
         )
         coordinator = RunCoordinator(
             store=store,
-            model=_EvidenceBoundChildGateway(
-                self._model,
-                evidence_requirements,
-                self._clock,
-            ),
+            # The child model synthesizes its own answer from what it read,
+            # exactly like the parent. _EvidenceBoundChildGateway used to short
+            # -circuit this: the moment every requirement had an observation it
+            # returned harness-written canonical prose and never called the child
+            # model at all, so a child could not explain, qualify, or combine what
+            # it found. Its evidence envelope is still bound to real observations
+            # by the verifier -- that binding never depended on this bypass.
+            model=self._model,
             tools=self._tools,
             context=DefaultContextAssembler(
                 evidence_requirements=evidence_requirements,

@@ -462,6 +462,9 @@ RUN_EVENT_KIND: dict[EventType, EventKind] = {
     EventType.VERIFICATION_STARTED: EventKind.VERIFICATION,
     EventType.VERIFICATION_FAILED: EventKind.VERIFICATION,
     EventType.VERIFICATION_PASSED: EventKind.VERIFICATION,
+    # Answering with committed steps still undone is a planning outcome, not a
+    # verifier judgement: the answer was never verified, the run just continued.
+    EventType.PLAN_STEP_OUTSTANDING: EventKind.PLAN_REVISION,
     EventType.RUN_COMPLETED: EventKind.TERMINAL,
     EventType.RUN_REQUIRES_ACTION: EventKind.LIFECYCLE,
     EventType.RUN_RESUMED: EventKind.LIFECYCLE,

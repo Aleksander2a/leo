@@ -1201,7 +1201,7 @@ def test_live_crypto_routing_and_catalog_use_provider_owned_descriptors() -> Non
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("objective", ["Bitcoin price?", "What's BTC trading at now?"])
-async def test_live_short_crypto_prompt_runs_corroboration_and_canonical_completion(
+async def test_live_short_crypto_prompt_corroborates_then_answers_from_the_snapshot(
     objective: str,
 ) -> None:
     model_calls = 0
@@ -1231,6 +1231,39 @@ async def test_live_short_crypto_prompt_runs_corroboration_and_canonical_complet
         model_calls += 1
         request_payload = json.loads(request.content)
         user_payload = json.loads(request_payload["messages"][1]["content"])
+        observations = user_payload["observations"]
+        if observations:
+            # The model writes the answer from the corroborated snapshot. The
+            # harness used to emit the snapshot's summary itself and never call
+            # the model a second time.
+            summary = observations[-1]["data"]["summary"]
+            return httpx.Response(
+                200,
+                json={
+                    "id": "crypto-answer",
+                    "model": "fixture/model",
+                    "choices": [
+                        {
+                            "finish_reason": "stop",
+                            "message": {
+                                "content": json.dumps(
+                                    {
+                                        "answer": summary,
+                                        "source_claims": [
+                                            {
+                                                "statement": summary,
+                                                "observation_ids": [observations[-1]["id"]],
+                                            }
+                                        ],
+                                        "inferences": [],
+                                    }
+                                ),
+                                "tool_calls": [],
+                            },
+                        }
+                    ],
+                },
+            )
         tool_choices.append(request_payload["tool_choice"])
         required_argument_policies.append(
             user_payload.get("tool_choice_policy", {}).get("required_arguments")
@@ -1283,7 +1316,8 @@ async def test_live_short_crypto_prompt_runs_corroboration_and_canonical_complet
         )
 
     assert result.run.status is RunStatus.COMPLETED
-    assert model_calls == 1
+    # Two turns: fetch the corroborated snapshot, then answer from it.
+    assert model_calls == 2
     assert tool_choices == [
         {
             "type": "function",

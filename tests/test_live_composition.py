@@ -1450,9 +1450,13 @@ async def test_live_current_quote_pins_tool_and_stops_repeated_fabricated_citati
         assert user_payload["tool_choice_policy"]["required_arguments"] == [
             {"name": "symbol", "value": "NVDA"}
         ]
+        # One source claim is required; the ceiling is generous. A maximum of one
+        # capped how much of its own evidence an answer could cite, which broke
+        # multi-source work -- the verifier checks every claim against a real
+        # observation, so extra citations are not the risk worth guarding.
         assert user_payload["completion_contract"]["source_claim_count"] == {
             "minimum": 1,
-            "maximum": 1,
+            "maximum": 8,
         }
         statement = "NVDA is quoted at a fabricated value."
         return httpx.Response(
@@ -1822,11 +1826,40 @@ async def test_live_exact_thread_dividend_screen_forces_verified_research_withou
         payload = json.loads(request.content)
         user_payload = json.loads(payload["messages"][1]["content"])
         assert user_payload["objective"] == followup
+        advertised = {item["function"]["name"] for item in payload["tools"]}
+        assert "web_search_exa" in advertised
+        if not user_payload["observations"]:
+            # The tool choice is REQUIRED, so the route is still pinned -- but the
+            # model issues the call. A gateway used to run the search before the
+            # model's first turn, so this handler only saw the result.
+            return httpx.Response(
+                200,
+                json={
+                    "id": "dividend-screen-search",
+                    "model": "test/model",
+                    "choices": [
+                        {
+                            "finish_reason": "tool_calls",
+                            "message": {
+                                "content": None,
+                                "tool_calls": [
+                                    {
+                                        "id": "call-exa",
+                                        "type": "function",
+                                        "function": {
+                                            "name": "web_search_exa",
+                                            "arguments": json.dumps({"query": followup}),
+                                        },
+                                    }
+                                ],
+                            },
+                        }
+                    ],
+                },
+            )
         observation = next(
             item for item in user_payload["observations"] if item["kind"] == "web.search_exa"
         )
-        advertised = {item["function"]["name"] for item in payload["tools"]}
-        assert "web_search_exa" in advertised
         return httpx.Response(
             200,
             json={
@@ -1878,7 +1911,8 @@ async def test_live_exact_thread_dividend_screen_forces_verified_research_withou
     assert result.run.status is RunStatus.COMPLETED
     assert result.run.final_output == statement
     assert exa_calls == 1
-    assert model_calls == 1
+    # Two turns: the model issues the pinned search, then answers from it.
+    assert model_calls == 2
     assert result.run.usage.tool_calls == 1
     assert tuple(item.kind for item in result.observations) == ("web.search_exa",)
     context_event = next(event for event in result.events if event.type is EventType.CONTEXT_BUILT)
@@ -1981,9 +2015,13 @@ async def test_live_latest_sec_lookup_pins_one_tool_without_thesis_hijack() -> N
         assert user_payload["tool_choice_policy"]["required_arguments"] == [
             {"name": "ticker", "value": "NVDA"}
         ]
+        # One source claim is required; the ceiling is generous. A maximum of one
+        # capped how much of its own evidence an answer could cite, which broke
+        # multi-source work -- the verifier checks every claim against a real
+        # observation, so extra citations are not the risk worth guarding.
         assert user_payload["completion_contract"]["source_claim_count"] == {
             "minimum": 1,
-            "maximum": 1,
+            "maximum": 8,
         }
         assert all(
             not item["id"].startswith("skill:thesis_challenge:")
@@ -2894,9 +2932,56 @@ async def test_blank_optional_provider_keys_register_nothing_and_never_make_prov
 
 
 @pytest.mark.asyncio
-async def test_unavailable_named_provider_replies_without_substituting_healthy_peer() -> None:
+async def test_a_named_provider_that_is_down_never_substitutes_a_healthy_peer() -> None:
+    """The unavailable provider's tool is simply not offered; the model explains.
+
+    A gateway used to intercept this turn and return a fixed sentence without
+    calling the model at all. That made the harness the author of the reply, and
+    it could not adapt: it could not offer the healthy peer as an alternative,
+    ask what the user actually needed, or answer the surrounding question.
+
+    What must never happen is silent substitution -- answering a CoinGecko
+    question with CoinMarketCap numbers as though they were CoinGecko's. That is
+    still guaranteed here, because the unconfigured provider has no tool to call.
+    """
+
+    model_calls = 0
+    hosts: list[str] = []
+
     def handler(request: httpx.Request) -> httpx.Response:
-        raise AssertionError(f"unavailable named-provider turn made request to {request.url.host}")
+        nonlocal model_calls
+        hosts.append(request.url.host)
+        assert request.url.host == "openrouter.test", (
+            f"no provider call may be made for an unconfigured route: {request.url.host}"
+        )
+        model_calls += 1
+        payload = json.loads(request.content)
+        advertised = {item["function"]["name"] for item in payload["tools"]}
+        # The unconfigured provider is not on the table at all.
+        assert "market_get_crypto_snapshot_coingecko" not in advertised
+        answer = (
+            "I can't reach CoinGecko directly in this workspace, so I don't have a "
+            "CoinGecko-sourced BTC price to give you. I can pull the price from "
+            "CoinMarketCap instead if that works for you."
+        )
+        return httpx.Response(
+            200,
+            json={
+                "id": "unavailable-provider-turn",
+                "model": "fixture/model",
+                "choices": [
+                    {
+                        "finish_reason": "stop",
+                        "message": {
+                            "content": json.dumps(
+                                {"answer": answer, "source_claims": [], "inferences": []}
+                            ),
+                            "tool_calls": [],
+                        },
+                    }
+                ],
+            },
+        )
 
     settings = Settings(
         _env_file=None,
@@ -2922,10 +3007,14 @@ async def test_unavailable_named_provider_replies_without_substituting_healthy_p
         )
 
     assert result.run.status is RunStatus.COMPLETED
-    assert "CoinGecko's direct route is unavailable" in (result.run.final_output or "")
+    # One turn. The request is terse but its subject is perfectly clear, so the
+    # envelope no longer pins it to clarify-only, and the model answers directly.
+    assert model_calls == 1
     assert result.run.usage.tool_calls == 0
     assert result.observations == ()
-    assert registry.registered_providers == ("coinmarketcap",)
+    # No CoinGecko figure was invented, and no peer's number was passed off as one.
+    assert "CoinGecko" in (result.run.final_output or "")
+    assert set(hosts) == {"openrouter.test"}
 
 
 @pytest.mark.asyncio

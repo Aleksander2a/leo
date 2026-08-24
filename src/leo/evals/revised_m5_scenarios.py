@@ -127,12 +127,6 @@ class _DecisionGateway:
         )
 
 
-class _UnavailableGateway:
-    async def decide(self, request: ModelRequest) -> ModelTurnResult:
-        del request
-        raise ModelGatewayError("provider_unavailable", "The provider is unavailable.")
-
-
 def _parse_clock(scenario: Scenario) -> datetime:
     try:
         parsed = datetime.fromisoformat(scenario.fixed_clock.replace("Z", "+00:00"))
@@ -304,9 +298,16 @@ async def _elastic_deliberation(scenario: Scenario) -> RevisedM5Observed:
         _request(direct_objective)
     )
 
+    # An unresolvable reference: the model asks for the missing subject. This
+    # used to exercise a removed outage fallback, where the harness manufactured
+    # the question itself when the provider failed -- which measured the harness
+    # writing a sentence, not Leo clarifying well.
     clarify_objective = "Compare these"
     clarify_envelope = policy.assess(clarify_objective)
-    clarify = await ElasticDeliberationGateway(_UnavailableGateway(), clarify_envelope).decide(
+    clarify_delegate = _DecisionGateway(
+        (CompletionProposal(answer="Which two things would you like me to compare?"),)
+    )
+    clarify = await ElasticDeliberationGateway(clarify_delegate, clarify_envelope).decide(
         _request(clarify_objective)
     )
 
@@ -470,7 +471,7 @@ async def _elastic_deliberation(scenario: Scenario) -> RevisedM5Observed:
     clarify_ok = (
         isinstance(clarify.decision, CompletionProposal)
         and clarify.decision.answer.count("?") == 1
-        and clarify.provider == "leo-harness"
+        and clarify.provider == "offline-semantic-delegate"
     )
     single_tool_ok = isinstance(single_tool.decision, ToolRequests) and tuple(
         item.name for item in single_tool.decision.calls

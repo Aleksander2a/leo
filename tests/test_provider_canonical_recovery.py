@@ -105,7 +105,7 @@ def _requirement(kind: str, tool: str, name: str, value: str) -> EvidenceToolReq
     )
 
 
-def test_short_provider_prompt_recovers_from_model_refusal_after_valid_profile_read() -> None:
+def test_a_refusal_is_rejected_rather_than_replaced_with_harness_prose() -> None:
     data: dict[str, object] = {
         "provider": "alpha-vantage",
         "symbol": "MSFT",
@@ -136,13 +136,17 @@ def test_short_provider_prompt_recovers_from_model_refusal_after_valid_profile_r
         _bundle(observation, objective="MSFT profile"),
     )
 
-    assert outcome.result.status is VerifierStatus.PASS
-    assert outcome.completion is not None
-    assert outcome.completion.answer == statements[0]
-    assert outcome.completion.claims[0].observation_ids == (observation.id,)
+    # The verifier used to *replace* this refusal with harness-written canonical
+    # prose and pass it. That made the verifier the author of the answer, so it
+    # was grading its own output, and the user got machine-assembled provider
+    # text. A refusal that ignores good retrieved evidence is now rejected, and
+    # the ordinary feedback loop asks the model to actually use it.
+    assert outcome.result.status is VerifierStatus.FAIL
+    assert outcome.result.retryable is True
+    assert outcome.completion is None
 
 
-def test_multi_step_provider_read_recovers_quote_and_earnings_without_another_model_turn() -> None:
+def test_a_promise_with_both_reads_already_done_is_rejected() -> None:
     timestamp = int(NOW.timestamp())
     quote_data: dict[str, object] = {
         "provider": "finnhub",
@@ -197,13 +201,13 @@ def test_multi_step_provider_read_recovers_quote_and_earnings_without_another_mo
         _bundle(quote, earnings, objective="Give me NVDA's quote and latest earnings surprise"),
     )
 
-    assert outcome.result.status is VerifierStatus.PASS
-    assert outcome.completion is not None
-    assert outcome.completion.answer == f"{quote_statement} {earnings_statements[0]}"
-    assert tuple(claim.observation_ids for claim in outcome.completion.claims) == (
-        (quote.id,),
-        (earnings.id,),
-    )
+    # Both reads already succeeded, so promising to do them "next" is wrong on
+    # its face. The harness used to quietly paste the two canonical sentences
+    # together and call that the answer; it now rejects the promise and sends the
+    # model back to write a real reply from evidence it already has.
+    assert outcome.result.status is VerifierStatus.FAIL
+    assert outcome.result.retryable is True
+    assert outcome.completion is None
 
 
 def test_valid_conversational_synthesis_is_preserved_when_canonical_claim_is_present() -> None:

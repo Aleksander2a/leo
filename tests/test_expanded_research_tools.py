@@ -959,6 +959,38 @@ async def test_live_natural_quote_request_executes_one_constrained_tool_then_sto
             )
         model_calls += 1
         payload = json.loads(request.content)
+        observations = json.loads(payload["messages"][-1]["content"])["observations"]
+        if observations:
+            # Second turn: the model writes the answer from the observation. The
+            # harness used to author this itself and never call the model again.
+            statement = "NVDA is quoted at 181.25."
+            return httpx.Response(
+                200,
+                json={
+                    "id": "quote-2",
+                    "model": "fixture/model",
+                    "choices": [
+                        {
+                            "finish_reason": "stop",
+                            "message": {
+                                "content": json.dumps(
+                                    {
+                                        "answer": statement,
+                                        "source_claims": [
+                                            {
+                                                "statement": statement,
+                                                "observation_ids": [observations[-1]["id"]],
+                                            }
+                                        ],
+                                        "inferences": [],
+                                    }
+                                ),
+                                "tool_calls": [],
+                            },
+                        }
+                    ],
+                },
+            )
         assert payload["tool_choice"] == {
             "type": "function",
             "function": {"name": "market_get_quote"},
@@ -1007,11 +1039,14 @@ async def test_live_natural_quote_request_executes_one_constrained_tool_then_sto
 
     assert result.run.status is RunStatus.COMPLETED
     assert result.run.final_output == "NVDA is quoted at 181.25."
-    # The coordinator accounts for the harness-owned canonical completion as a
-    # second model boundary; only one external provider call was made.
+    # Two model turns: one to call the constrained tool, one to write the answer
+    # from its result. This asserted a single model call back when the harness
+    # authored the answer. What the test is really about is provider restraint --
+    # exactly one quote fetch, no matter how the answer gets written.
     assert result.run.usage.model_calls == 2
     assert result.run.usage.tool_calls == 1
-    assert model_calls == finnhub_calls == 1
+    assert model_calls == 2
+    assert finnhub_calls == 1
 
 
 @pytest.mark.asyncio
@@ -1062,6 +1097,36 @@ async def test_live_unknown_equity_symbol_prefers_provider_neutral_quote_with_al
         assert request.url.host == "openrouter.test"
         model_calls += 1
         payload = json.loads(request.content)
+        observations = json.loads(payload["messages"][-1]["content"])["observations"]
+        if observations:
+            statement = "PLTR is quoted at 25."
+            return httpx.Response(
+                200,
+                json={
+                    "id": "pltr-quote-answer",
+                    "model": "fixture/model",
+                    "choices": [
+                        {
+                            "finish_reason": "stop",
+                            "message": {
+                                "content": json.dumps(
+                                    {
+                                        "answer": statement,
+                                        "source_claims": [
+                                            {
+                                                "statement": statement,
+                                                "observation_ids": [observations[-1]["id"]],
+                                            }
+                                        ],
+                                        "inferences": [],
+                                    }
+                                ),
+                                "tool_calls": [],
+                            },
+                        }
+                    ],
+                },
+            )
         advertised = {item["function"]["name"] for item in payload["tools"]}
         assert "market_get_quote" in advertised
         assert payload["tool_choice"] == {
@@ -1119,7 +1184,8 @@ async def test_live_unknown_equity_symbol_prefers_provider_neutral_quote_with_al
     assert result.run.status is RunStatus.COMPLETED
     assert result.run.final_output == "PLTR is quoted at 25."
     assert provider_hosts == ["finnhub", "massive"]
-    assert model_calls == 1
+    # One turn to call the tool, one to write the answer from its result.
+    assert model_calls == 2
 
 
 @pytest.mark.asyncio
@@ -1253,6 +1319,38 @@ async def test_live_natural_earnings_question_uses_exact_bounded_summary_in_two_
         assert request.url.host == "openrouter.test"
         model_calls += 1
         payload = json.loads(request.content)
+        observations = json.loads(payload["messages"][-1]["content"])["observations"]
+        if observations:
+            # The model writes the summary from the retrieved surprises. The
+            # harness used to emit this canonical sentence itself, so the model
+            # was never asked a second time.
+            return httpx.Response(
+                200,
+                json={
+                    "id": "earnings-live-shaped-2",
+                    "model": "fixture/model",
+                    "choices": [
+                        {
+                            "finish_reason": "stop",
+                            "message": {
+                                "content": json.dumps(
+                                    {
+                                        "answer": summary,
+                                        "source_claims": [
+                                            {
+                                                "statement": summary,
+                                                "observation_ids": [observations[-1]["id"]],
+                                            }
+                                        ],
+                                        "inferences": [],
+                                    }
+                                ),
+                                "tool_calls": [],
+                            },
+                        }
+                    ],
+                },
+            )
         assert payload["tool_choice"] == {
             "type": "function",
             "function": {"name": "market_get_earnings_surprises"},
@@ -1303,7 +1401,10 @@ async def test_live_natural_earnings_question_uses_exact_bounded_summary_in_two_
     assert result.run.final_output == summary
     assert result.run.usage.model_calls == 2
     assert result.run.usage.tool_calls == 1
-    assert model_calls == finnhub_calls == 1
+    # Two model turns -- fetch the surprises, then summarize them -- and exactly
+    # one provider call, which is the restraint this test is really about.
+    assert model_calls == 2
+    assert finnhub_calls == 1
     assert len(result.claims) == 1
     assert result.claims[0].statement == summary
     assert not any(event.type is EventType.VERIFICATION_FAILED for event in result.events)
@@ -1500,12 +1601,74 @@ async def test_live_natural_web_question_uses_tavily_then_fetches_verified_sourc
         kinds = [item["kind"] for item in observations]
         advertised = {item["function"]["name"] for item in payload["tools"]}
 
-        assert model_calls == 1
+        if kinds == []:
+            # The model opens the chain. The harness used to assemble the whole
+            # search->fetch sequence itself, so this handler was reached exactly
+            # once, already holding both observations.
+            assert "web_search_tavily" in advertised
+            return httpx.Response(
+                200,
+                json={
+                    "id": f"natural-web-{model_calls}",
+                    "model": "fixture/model",
+                    "choices": [
+                        {
+                            "finish_reason": "tool_calls",
+                            "message": {
+                                "content": None,
+                                "tool_calls": [
+                                    {
+                                        "id": "call-tavily",
+                                        "type": "function",
+                                        "function": {
+                                            "name": "web_search_tavily",
+                                            "arguments": json.dumps(
+                                                {
+                                                    "query": objective,
+                                                    "max_results": 5,
+                                                    "search_depth": "advanced",
+                                                    "topic": "general",
+                                                }
+                                            ),
+                                        },
+                                    }
+                                ],
+                            },
+                        }
+                    ],
+                },
+            )
+        if kinds == ["web.search_tavily"]:
+            assert "web_fetch_public_text" in advertised
+            return httpx.Response(
+                200,
+                json={
+                    "id": f"natural-web-{model_calls}",
+                    "model": "fixture/model",
+                    "choices": [
+                        {
+                            "finish_reason": "tool_calls",
+                            "message": {
+                                "content": None,
+                                "tool_calls": [
+                                    {
+                                        "id": "call-fetch",
+                                        "type": "function",
+                                        "function": {
+                                            "name": "web_fetch_public_text",
+                                            "arguments": json.dumps({"url": result_url}),
+                                        },
+                                    }
+                                ],
+                            },
+                        }
+                    ],
+                },
+            )
         assert kinds == [
             "web.search_tavily",
             "web.fetch_public_text",
         ]
-        assert {"web_search_tavily", "web_fetch_public_text"}.issubset(advertised)
         fetch_id = next(
             item["id"]
             for item in observations
@@ -1553,21 +1716,24 @@ async def test_live_natural_web_question_uses_tavily_then_fetches_verified_sourc
     )
     assert len(result.claims) == 1
     assert result.observations[1].data["truncated"] is False
-    assert result.observations[1].data["candidate_attempt_count"] == 2
-    assert result.observations[1].data["failed_candidates"] == [
-        {"url": empty_url, "code": "fetch_empty_content"}
-    ]
+    # One attempt, because the model chose the URL it wanted from the discovery
+    # results. The harness previously walked the ranked candidate list itself,
+    # which is why this once expected a failed first attempt on `empty_url`.
+    assert result.observations[1].data["candidate_attempt_count"] == 1
+    assert result.observations[1].data["failed_candidates"] == []
     assert result.claims[0].observation_ids == (result.observations[1].id,)
     assert result.run.usage.model_calls == 3
     assert result.run.usage.tool_calls == 2
     assert not result.task.verifier_feedback
-    assert model_calls == 1
+    # Three real model turns -- search, fetch, answer. This asserted one turn back
+    # when the harness assembled the chain and only consulted the model at the end.
+    assert model_calls == 3
     assert tavily_calls == 1
-    assert fetch_calls == 2
+    assert fetch_calls == 1
 
 
 @pytest.mark.asyncio
-async def test_live_version_question_repairs_future_work_into_tavily_fetch_chain(
+async def test_live_version_question_runs_a_model_driven_tavily_fetch_chain(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
@@ -1653,55 +1819,95 @@ async def test_live_version_question_repairs_future_work_into_tavily_fetch_chain
         payload = json.loads(request.content)
         user_payload = json.loads(payload["messages"][1]["content"])
         advertised = {item["function"]["name"] for item in payload["tools"]}
-        assert {"web_search_tavily", "web_fetch_public_text"}.issubset(advertised)
         kinds = [item["kind"] for item in user_payload["observations"]]
         if kinds == []:
-            # This is the exact provider-shaped live failure: a fabricated
-            # observation reference.  The trusted route must not invoke the
-            # semantic provider until the evidence chain is complete.
-            content = json.dumps(
-                {
-                    "answer": statement,
-                    "source_claims": [
-                        {
-                            "statement": statement,
-                            "observation_ids": ["obs-python314-copy-replace"],
-                        }
-                    ],
-                    "inferences": [],
-                }
-            )
-        elif kinds == ["web.search_tavily"]:
-            # A second live-shaped bad decision cites discovery and promises a
-            # future fetch.  This branch must likewise be unreachable.
-            discovery_id = user_payload["observations"][0]["id"]
-            content = json.dumps(
-                {
-                    "answer": "I'll open the selected result before answering.",
-                    "source_claims": [
-                        {
-                            "statement": "Python 3.14 includes several language changes.",
-                            "observation_ids": [discovery_id],
-                        }
-                    ],
-                    "inferences": [],
-                }
-            )
+            # Search is offered first; fetch is not, because there is no URL to
+            # fetch yet -- offering it would be an invitation to invent one.
+            assert "web_search_tavily" in advertised
         else:
-            assert model_calls == 1
-            assert kinds == ["web.search_tavily", "web.fetch_public_text"]
-            fetch_id = next(
-                item["id"]
-                for item in user_payload["observations"]
-                if item["kind"] == "web.fetch_public_text"
+            # Once discovery has produced URLs, the model must be able to open
+            # one. Without this the chain dead-ends: search results are explicitly
+            # not citable evidence, so a model that cannot fetch has to either
+            # cite discovery metadata or give up.
+            assert "web_fetch_public_text" in advertised
+        if kinds == []:
+            # The model opens the chain itself. The harness previously built this
+            # entire search->fetch sequence on its own, after silently discarding
+            # a bad model decision -- so this handler never had to issue a tool
+            # call at all, and the model was consulted exactly once.
+            return httpx.Response(
+                200,
+                json={
+                    "id": f"python-314-{model_calls}",
+                    "model": "fixture/model",
+                    "choices": [
+                        {
+                            "finish_reason": "tool_calls",
+                            "message": {
+                                "content": None,
+                                "tool_calls": [
+                                    {
+                                        "id": "call-tavily",
+                                        "type": "function",
+                                        "function": {
+                                            "name": "web_search_tavily",
+                                            "arguments": json.dumps(
+                                                {
+                                                    "query": objective,
+                                                    "max_results": 5,
+                                                    "search_depth": "advanced",
+                                                    "topic": "general",
+                                                }
+                                            ),
+                                        },
+                                    }
+                                ],
+                            },
+                        }
+                    ],
+                },
             )
-            content = json.dumps(
-                {
-                    "answer": statement,
-                    "source_claims": [{"statement": statement, "observation_ids": [fetch_id]}],
-                    "inferences": [],
-                }
+        if kinds == ["web.search_tavily"]:
+            # Discovery is not evidence: the model opens the selected result
+            # rather than citing the search listing.
+            return httpx.Response(
+                200,
+                json={
+                    "id": f"python-314-{model_calls}",
+                    "model": "fixture/model",
+                    "choices": [
+                        {
+                            "finish_reason": "tool_calls",
+                            "message": {
+                                "content": None,
+                                "tool_calls": [
+                                    {
+                                        "id": "call-fetch",
+                                        "type": "function",
+                                        "function": {
+                                            "name": "web_fetch_public_text",
+                                            "arguments": json.dumps({"url": result_url}),
+                                        },
+                                    }
+                                ],
+                            },
+                        }
+                    ],
+                },
             )
+        assert kinds == ["web.search_tavily", "web.fetch_public_text"]
+        fetch_id = next(
+            item["id"]
+            for item in user_payload["observations"]
+            if item["kind"] == "web.fetch_public_text"
+        )
+        content = json.dumps(
+            {
+                "answer": statement,
+                "source_claims": [{"statement": statement, "observation_ids": [fetch_id]}],
+                "inferences": [],
+            }
+        )
         return httpx.Response(
             200,
             json={
@@ -1736,7 +1942,9 @@ async def test_live_version_question_repairs_future_work_into_tavily_fetch_chain
     )
     assert result.run.usage.model_calls == 3
     assert result.run.usage.tool_calls == 2
-    assert model_calls == 1
+    # Three real model turns -- search, fetch, answer. This asserted a single
+    # turn when the harness assembled the whole chain from one discarded decision.
+    assert model_calls == 3
     assert tavily_calls == fetch_calls == 1
     assert fetched_hosts == ["docs.python.org"]
     assert not any(event.type is EventType.VERIFICATION_FAILED for event in result.events)

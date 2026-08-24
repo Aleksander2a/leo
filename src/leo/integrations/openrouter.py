@@ -19,12 +19,14 @@ from leo.harness.models import (
     ModelTurnResult,
     ModelUsage,
     Observation,
+    PlanStepDraft,
     ToolChoiceMode,
     ToolChoicePolicy,
     ToolRequest,
     ToolRequests,
 )
 from leo.harness.ports import ModelGatewayError
+from leo.harness.step_plan import render_step_plan
 
 
 class OpenRouterError(ModelGatewayError):
@@ -57,6 +59,20 @@ _SYSTEM_PROMPT_PREFIX = (
     "you already tried this run and what came back; read it first and build on it rather "
     "than repeating a call. Always set `plan` to one sentence describing what you are "
     "trying to establish with this decision -- it becomes the next turn's memory. "
+    "On your FIRST decision, break the request into the steps it actually needs and put "
+    "them in `steps`: each step gets a short stable `key`, an `intent`, and the `tool` it "
+    "needs (omit `tool` for a pure reasoning or synthesis step). Plan the whole job, not "
+    "just the next move. A simple question may legitimately need one step or none. "
+    "committed_plan shows each step and whether it is done. THE RUN CANNOT FINISH WHILE A "
+    "STEP IS PENDING: a step naming a tool is only discharged by that tool actually "
+    "returning data, so answering while steps are outstanding sends you back around the "
+    "loop instead of replying to the user. Never narrate work as in-progress ('I am "
+    "pulling that now') -- either call the tool on this turn, or, if the step is genuinely "
+    "impossible or no longer needed, resubmit it in `steps` with an `abandon_reason` and "
+    "say plainly in your answer what you could not get. You may add steps as you learn. "
+    "Write each step's `tool` exactly as the tool is named in your tool list, and only "
+    "abandon a step when it genuinely cannot be done -- never because you intend to use "
+    "the same tool under a different name. "
     "If a tool failed, previous_steps and verifier_feedback say why: correct the "
     "arguments or choose a different tool rather than reissuing the same call. "
     "If you cannot fully answer, give the most useful partial answer you can with an "
@@ -122,6 +138,17 @@ class _InferencePayload(BaseModel):
     observation_ids: tuple[ProviderObservationId, ...]
 
 
+class _PlanStepPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    key: str = Field(min_length=1, max_length=64)
+    intent: str = Field(min_length=1, max_length=300)
+    # Name of the tool this step needs, or "" for a reasoning-only step.
+    tool: str = Field(default="", max_length=128)
+    # Non-empty abandons the step; the reason is shown to the user.
+    abandon_reason: str = Field(default="", max_length=300)
+
+
 class _CompletionPayload(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -132,6 +159,21 @@ class _CompletionPayload(BaseModel):
     uncertainty: str | None = Field(default=None, min_length=1)
     # One sentence of intent, carried into the next turn's working memory.
     plan: str = Field(default="", max_length=600)
+    # The step plan for this run: what the model commits to doing before it may
+    # finish. Steps naming a tool are only discharged by that tool's real result.
+    steps: tuple[_PlanStepPayload, ...] = Field(default=(), max_length=12)
+
+
+def _plan_step_drafts(payload: tuple[_PlanStepPayload, ...]) -> tuple[PlanStepDraft, ...]:
+    return tuple(
+        PlanStepDraft(
+            key=item.key,
+            intent=item.intent,
+            tool=item.tool,
+            abandon_reason=item.abandon_reason,
+        )
+        for item in payload
+    )
 
 
 class OpenRouterGateway:
@@ -269,6 +311,7 @@ class OpenRouterGateway:
                 affected_assumption=payload.affected_assumption,
                 uncertainty=payload.uncertainty,
                 plan=payload.plan,
+                steps=_plan_step_drafts(payload.steps),
             ),
             provider="openrouter",
             model=completion.model,
@@ -320,6 +363,7 @@ class OpenRouterGateway:
             # inputs produced near-identical outputs that tripped the
             # no-progress guard.
             "previous_steps": [step.render() for step in request.scratchpad],
+            "committed_plan": list(render_step_plan(request.step_plan)),
         }
         return {
             "model": self._model,
@@ -412,9 +456,29 @@ def _completion_schema(
     required = schema.get("required")
     if not isinstance(required, list):
         raise RuntimeError("completion schema has no required property list")
-    for field_name in ("affected_assumption", "uncertainty", "plan"):
+    for field_name in ("affected_assumption", "uncertainty", "plan", "steps"):
         if field_name not in required:
             required.append(field_name)
+    step_definition = schema.get("$defs", {}).get("_PlanStepPayload")
+    if isinstance(step_definition, dict):
+        step_required = step_definition.get("required")
+        step_properties = step_definition.get("properties")
+        # Strict JSON-schema mode requires every property to be listed as
+        # required; pydantic omits the ones carrying defaults.
+        if isinstance(step_required, list) and isinstance(step_properties, dict):
+            for field_name in ("tool", "abandon_reason"):
+                if field_name not in step_required:
+                    step_required.append(field_name)
+    steps = properties.get("steps")
+    if isinstance(steps, dict):
+        steps["description"] = (
+            "Your step plan for this run. On the first decision, list every step the "
+            "request actually needs: a stable `key`, an `intent`, and the `tool` that "
+            "step requires (empty for a reasoning-only step). The run cannot finish "
+            "while a step is pending, and a step naming a tool is discharged only when "
+            "that tool returns data. To drop a step, resubmit it with an "
+            "`abandon_reason`. Return [] only when the request genuinely needs no steps."
+        )
     plan = properties.get("plan")
     if isinstance(plan, dict):
         plan["description"] = (

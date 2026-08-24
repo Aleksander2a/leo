@@ -128,7 +128,14 @@ class _CountingQuoteModel:
 
 
 class _SecRouteModel:
-    def __init__(self, *, complete_if_called_again: bool = False) -> None:
+    """A child that reads the filing, then writes its answer from what it read.
+
+    The `complete_if_called_again` flag existed because a gateway used to finish
+    constrained child reads itself, so being called a second time meant something
+    had gone wrong. The child model is now always the author of its own answer.
+    """
+
+    def __init__(self, *, complete_if_called_again: bool = True) -> None:
         self.calls = 0
         self.complete_if_called_again = complete_if_called_again
 
@@ -146,7 +153,12 @@ class _SecRouteModel:
             )
         elif self.complete_if_called_again:
             observation = request.observations[-1]
-            statement = "NVDA filed form 8-K on 2026-08-17 under accession 0001045810-26-000069."
+            statement = (
+                "NVDA filed form 8-K on 2026-08-17 under accession "
+                "0001045810-26-000069. Document URL: "
+                "https://www.sec.gov/Archives/edgar/data/1045810/"
+                "000104581026000069/nvda-20260817.htm"
+            )
             decision = CompletionProposal(
                 answer=statement,
                 claims=(
@@ -158,7 +170,7 @@ class _SecRouteModel:
                 ),
             )
         else:
-            raise AssertionError("fresh constrained evidence must use the canonical child path")
+            raise AssertionError("the child model must be given its synthesis turn")
         return ModelTurnResult(
             decision=decision,
             provider="fixture",
@@ -276,9 +288,7 @@ async def test_ephemeral_child_exports_only_harness_verified_source_claims() -> 
 
 
 @pytest.mark.asyncio
-async def test_sec_child_canonicalizes_fresh_constrained_evidence_without_second_model_call() -> (
-    None
-):
+async def test_sec_child_binds_its_answer_to_the_exact_document_url() -> None:
     clock = FixedClock(NOW)
     model = _SecRouteModel()
     sec = _FixedSecTool(clock)
@@ -311,7 +321,9 @@ async def test_sec_child_canonicalizes_fresh_constrained_evidence_without_second
     )
 
     assert isinstance(outcome, ToolSuccess)
-    assert model.calls == 1
+    # Two turns: read the filing, then answer from it. The gateway that made
+    # this one turn wrote the child's answer for it.
+    assert model.calls == 2
     assert sec.calls == 1
     evidence = parse_child_evidence_envelope(outcome.data)
     expected = (

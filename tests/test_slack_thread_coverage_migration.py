@@ -53,17 +53,34 @@ def test_model_call_transcripts_migration_chains_from_embeddings() -> None:
     assert revision.down_revision == "20260823_0028"
 
 
-def test_task_scratchpad_migration_is_the_single_forward_head() -> None:
-    """The ReAct working-memory column is the current head of a linear history."""
+def test_task_scratchpad_migration_chains_from_transcripts() -> None:
+    """The ReAct working-memory column extends the linear history."""
 
     config = Config(ROOT / "alembic.ini")
     config.set_main_option("script_location", str(ROOT / "migrations"))
     scripts = ScriptDirectory.from_config(config)
     revision = scripts.get_revision("20260824_0030")
 
-    assert scripts.get_current_head() == "20260824_0030"
     assert revision is not None
     assert revision.down_revision == "20260823_0029"
+
+
+def test_task_step_plan_migration_is_the_single_forward_head() -> None:
+    """The committed step plan is the current head of a linear history.
+
+    The plan is durable because completion is gated on it: a resumed run has to
+    know what it already promised to do, or it would answer as though the work
+    had never been planned.
+    """
+
+    config = Config(ROOT / "alembic.ini")
+    config.set_main_option("script_location", str(ROOT / "migrations"))
+    scripts = ScriptDirectory.from_config(config)
+    revision = scripts.get_revision("20260824_0031")
+
+    assert scripts.get_current_head() == "20260824_0031"
+    assert revision is not None
+    assert revision.down_revision == "20260824_0030"
 
 
 def test_model_call_transcripts_migration_has_client_deny() -> None:

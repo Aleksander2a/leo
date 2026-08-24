@@ -1,6 +1,6 @@
 {
   "version": "postgres-reliability-evidence-v1",
-  "alembic_head": "20260824_0030",
+  "alembic_head": "20260824_0031",
   "rollback_safe": true,
   "event_recovery": {
     "version": "durable-recovery-v1",
@@ -11,8 +11,8 @@
         "id": "stale-cas",
         "boundary": "run_store_commit",
         "outcome": "rejected_safe",
-        "observed_before_digest": "68f007cc4e99de8ee289a6c007077b7535c4e71ae6c6cdf8d349880f22b3f7e1",
-        "observed_after_digest": "68f007cc4e99de8ee289a6c007077b7535c4e71ae6c6cdf8d349880f22b3f7e1",
+        "observed_before_digest": "2f137e79400f5f2d268c7ff121213a00f6ba03cd79cd3d8747021f91a76fb0bc",
+        "observed_after_digest": "2f137e79400f5f2d268c7ff121213a00f6ba03cd79cd3d8747021f91a76fb0bc",
         "mutation_applied": false,
         "duplicate_committed": false,
         "terminal_success": false,
@@ -22,8 +22,8 @@
         "id": "duplicate-event-sequence",
         "boundary": "run_event_unique_sequence",
         "outcome": "rejected_safe",
-        "observed_before_digest": "68f007cc4e99de8ee289a6c007077b7535c4e71ae6c6cdf8d349880f22b3f7e1",
-        "observed_after_digest": "68f007cc4e99de8ee289a6c007077b7535c4e71ae6c6cdf8d349880f22b3f7e1",
+        "observed_before_digest": "2f137e79400f5f2d268c7ff121213a00f6ba03cd79cd3d8747021f91a76fb0bc",
+        "observed_after_digest": "2f137e79400f5f2d268c7ff121213a00f6ba03cd79cd3d8747021f91a76fb0bc",
         "mutation_applied": false,
         "duplicate_committed": false,
         "terminal_success": false,
@@ -33,8 +33,8 @@
         "id": "restart-replay",
         "boundary": "run_store_reload",
         "outcome": "reload_exact",
-        "observed_before_digest": "0f8af30d2bd13a97ab366c9e97cfa47d4bf12f6e0d4d497b74db144bb0c33798",
-        "observed_after_digest": "0f8af30d2bd13a97ab366c9e97cfa47d4bf12f6e0d4d497b74db144bb0c33798",
+        "observed_before_digest": "e7a8f270e6118674453902eb8b70271d717126c5bdcb43e8f2e59c92d7876261",
+        "observed_after_digest": "e7a8f270e6118674453902eb8b70271d717126c5bdcb43e8f2e59c92d7876261",
         "mutation_applied": false,
         "duplicate_committed": false,
         "terminal_success": false,
@@ -44,8 +44,8 @@
         "id": "operator-export",
         "boundary": "failure_event_source",
         "outcome": "exported",
-        "observed_before_digest": "008c293a83dea2aaeec20e5c395112f671312f2dc8f02e0ffa86177a84dd6a56",
-        "observed_after_digest": "ba8c3391b0bc28070b10c4afd3785d549766c36bd6a3d2d3bf03b1f8e90270ad",
+        "observed_before_digest": "fec05481dc77459ed0da10a5806a282fb3fca9426a953dfb20efef5e591eaae3",
+        "observed_after_digest": "078133973ff6f681562a31258c0cd0994085d4add34fe1e33dd340ff93da71b9",
         "mutation_applied": true,
         "duplicate_committed": false,
         "terminal_success": false,
@@ -55,7 +55,7 @@
     "case_count": 4,
     "duplicate_commit_count": 0,
     "false_success_count": 0,
-    "digest": "f19f11087860682ac16b6b15908cd05fb27b2c070251086eedc04eda9904243c"
+    "digest": "3e3ddf0d0ca34e86279caf23eeced38fab406f04be45be1b3264e73f5c6cb1c1"
   },
   "plan_recovery": {
     "version": "durable-recovery-v1",
@@ -66,8 +66,8 @@
         "id": "running-child-reload",
         "boundary": "plan_store_replay",
         "outcome": "reload_exact",
-        "observed_before_digest": "b22e1db47ce9f2edb9c0381ed5d38b40060a6d59338c4a70388c060e9548cb92",
-        "observed_after_digest": "b22e1db47ce9f2edb9c0381ed5d38b40060a6d59338c4a70388c060e9548cb92",
+        "observed_before_digest": "bf74b6b3eb7f24297702595cf61a824886579114ebf06440d9479f0e98c938e0",
+        "observed_after_digest": "bf74b6b3eb7f24297702595cf61a824886579114ebf06440d9479f0e98c938e0",
         "mutation_applied": false,
         "duplicate_committed": false,
         "terminal_success": false,
@@ -77,8 +77,8 @@
         "id": "expired-child-reclaim",
         "boundary": "plan_node_lease",
         "outcome": "reclaimed",
-        "observed_before_digest": "7600185842eb82bed448b677071cbc3b6df590aeab0c599fa078d57b8aabd373",
-        "observed_after_digest": "4c7dd478a6f8b09a59b1537f9f48f911d5803691edb908939c68665f0f08a1c3",
+        "observed_before_digest": "e549ede5d501c403c61de7cc201452467b55a1058e73262bad063b928a372a0c",
+        "observed_after_digest": "c98bd993e764931cea07942bf776f71ff89896701096ac0e2cbf3fd7eed5966b",
         "mutation_applied": true,
         "duplicate_committed": false,
         "terminal_success": false,
@@ -88,8 +88,8 @@
         "id": "stale-child-fenced",
         "boundary": "plan_node_claim",
         "outcome": "fenced",
-        "observed_before_digest": "143d02aec8170a4e65ee4717f637786d4147963a51a97a5f6a58b5657fb61888",
-        "observed_after_digest": "143d02aec8170a4e65ee4717f637786d4147963a51a97a5f6a58b5657fb61888",
+        "observed_before_digest": "9e0bfee22063e6dd8009133d55bb87aef62e02f7f2a9e94f0bb0fd536ffaeb37",
+        "observed_after_digest": "9e0bfee22063e6dd8009133d55bb87aef62e02f7f2a9e94f0bb0fd536ffaeb37",
         "mutation_applied": false,
         "duplicate_committed": false,
         "terminal_success": false,
@@ -99,8 +99,8 @@
         "id": "terminal-plan-reload",
         "boundary": "plan_store_reload",
         "outcome": "reload_exact",
-        "observed_before_digest": "4245b096c489d8e9e6a921918c698d44a7c9d6a84d47e443d300bcf1ced5b9ea",
-        "observed_after_digest": "4245b096c489d8e9e6a921918c698d44a7c9d6a84d47e443d300bcf1ced5b9ea",
+        "observed_before_digest": "4457e1e4e84c07a95d1bd47b00c5b01c6009f7a475ce3a2f8c39c87745d3d3f5",
+        "observed_after_digest": "4457e1e4e84c07a95d1bd47b00c5b01c6009f7a475ce3a2f8c39c87745d3d3f5",
         "mutation_applied": false,
         "duplicate_committed": false,
         "terminal_success": false,
@@ -110,77 +110,77 @@
     "case_count": 4,
     "duplicate_commit_count": 0,
     "false_success_count": 0,
-    "digest": "7eecdaca933e3c37946249dc3b0161fdaea17213d55cb938abd01df78254003e"
+    "digest": "a9e4bb9747a35e1f93f50b0f420d9dd013964ccc38d171b65a5f8cfe0ef0450b"
   },
   "failure_bundle": {
     "version": "bundle-v2",
     "failure": {
       "version": "failure-v2",
-      "run_id": "run-5e359eb6d980",
+      "run_id": "run-1d046042dc6e",
       "root_code": "m5_synthetic_timeout",
       "failure_class": "budget_deadline_cancel",
       "boundary": "run_timed_out",
       "terminal_reason": "m5_synthetic_timeout",
       "event_ids": [
-        "evt-f5955829-5681-433c-9544-bf3498156570",
-        "evt-5633b363-cbf9-4554-88e3-5fa93802abf1",
-        "evt-01440917-611f-4a3b-b6e4-482b2282786b"
+        "evt-5485ac24-1a30-4fc3-ad3f-b5afbc6af47b",
+        "evt-edf1562f-7284-4dcd-9b9c-42128a7bf221",
+        "evt-09596954-f4aa-4d85-a749-1bde392beea6"
       ],
       "recording_ids": [],
-      "reproduction_command": "leo replay run-5e359eb6d980"
+      "reproduction_command": "leo replay run-1d046042dc6e"
     },
     "sanitized_config": {
-      "alembic_head": "20260824_0030",
+      "alembic_head": "20260824_0031",
       "source": "rollback-safe-postgres"
     },
     "sanitized_events": [
       {
         "causation_id": null,
-        "correlation_id": "run-5e359eb6d980",
-        "event_id": "evt-f5955829-5681-433c-9544-bf3498156570",
+        "correlation_id": "run-1d046042dc6e",
+        "event_id": "evt-5485ac24-1a30-4fc3-ad3f-b5afbc6af47b",
         "kind": "lifecycle",
         "occurred_at": "2026-08-20T12:00:00+00:00",
         "payload": {
           "status": "task_started"
         },
-        "run_id": "run-5e359eb6d980",
+        "run_id": "run-1d046042dc6e",
         "schema_version": "v2",
         "sequence": 1,
-        "task_id": "task-5e359eb6d980"
+        "task_id": "task-1d046042dc6e"
       },
       {
-        "causation_id": "evt-f5955829-5681-433c-9544-bf3498156570",
-        "correlation_id": "run-5e359eb6d980",
-        "event_id": "evt-5633b363-cbf9-4554-88e3-5fa93802abf1",
+        "causation_id": "evt-5485ac24-1a30-4fc3-ad3f-b5afbc6af47b",
+        "correlation_id": "run-1d046042dc6e",
+        "event_id": "evt-edf1562f-7284-4dcd-9b9c-42128a7bf221",
         "kind": "model_called",
         "occurred_at": "2026-08-20T12:00:00+00:00",
         "payload": {
           "provider": "offline",
           "status": "model_called"
         },
-        "run_id": "run-5e359eb6d980",
+        "run_id": "run-1d046042dc6e",
         "schema_version": "v2",
         "sequence": 2,
-        "task_id": "task-5e359eb6d980"
+        "task_id": "task-1d046042dc6e"
       },
       {
-        "causation_id": "evt-5633b363-cbf9-4554-88e3-5fa93802abf1",
-        "correlation_id": "run-5e359eb6d980",
-        "event_id": "evt-01440917-611f-4a3b-b6e4-482b2282786b",
+        "causation_id": "evt-edf1562f-7284-4dcd-9b9c-42128a7bf221",
+        "correlation_id": "run-1d046042dc6e",
+        "event_id": "evt-09596954-f4aa-4d85-a749-1bde392beea6",
         "kind": "terminal",
         "occurred_at": "2026-08-20T12:00:00+00:00",
         "payload": {
           "reason": "m5_synthetic_timeout",
           "status": "run_timed_out"
         },
-        "run_id": "run-5e359eb6d980",
+        "run_id": "run-1d046042dc6e",
         "schema_version": "v2",
         "sequence": 3,
-        "task_id": "task-5e359eb6d980"
+        "task_id": "task-1d046042dc6e"
       }
     ],
     "fixture_id": "durable-run-failure-v1",
-    "digest": "6ec58872976404ab00eff919bd4d93c8ec0a3e55ded2faef98ae9428a98cc228"
+    "digest": "8c6f1445686b05249323485f700bd2c0afe96bf3f8c54279a1ede2f5eaa25920"
   },
-  "digest": "3b7ced17c754bb453edc3e2c42b7c45054bc052e6bb7e60d9dfe61b296d5f629"
+  "digest": "f750ff6ceaac142bd1a0de9c8a7205152cd5c14af868b5f332d54c00b3504868"
 }

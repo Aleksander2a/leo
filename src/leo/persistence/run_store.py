@@ -19,6 +19,7 @@ from leo.harness.models import (
     EventType,
     Observation,
     OriginRef,
+    PlannedStep,
     ReasoningStep,
     Run,
     RunBundle,
@@ -441,6 +442,7 @@ def _task_row(task: Task) -> TaskRow:
         observation_ids=list(task.observation_ids),
         verifier_feedback=list(task.verifier_feedback),
         scratchpad=[step.model_dump(mode="json") for step in task.scratchpad],
+        step_plan=[step.model_dump(mode="json") for step in task.step_plan],
         final_output=task.final_output,
         version=task.version,
     )
@@ -504,6 +506,7 @@ def _apply_task(row: TaskRow, task: Task) -> None:
     row.observation_ids = list(task.observation_ids)
     row.verifier_feedback = list(task.verifier_feedback)
     row.scratchpad = [step.model_dump(mode="json") for step in task.scratchpad]
+    row.step_plan = [step.model_dump(mode="json") for step in task.step_plan]
     row.final_output = task.final_output
     row.parent_task_id = task.parent_task_id
     row.continuation_kind = task.continuation_kind
@@ -637,6 +640,7 @@ def _task_model(row: TaskRow) -> Task:
         observation_ids=tuple(row.observation_ids),
         verifier_feedback=tuple(row.verifier_feedback),
         scratchpad=tuple(ReasoningStep.model_validate(item) for item in (row.scratchpad or ())),
+        step_plan=tuple(PlannedStep.model_validate(item) for item in (row.step_plan or ())),
         final_output=row.final_output,
         version=row.version,
     )

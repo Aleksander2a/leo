@@ -511,9 +511,24 @@ async def test_live_shaped_short_prompt_format_failure_repairs_in_coordinator_lo
 
 
 @pytest.mark.asyncio
-async def test_repeated_names_format_failure_is_repaired_without_another_model_call() -> None:
+async def test_a_format_mismatch_is_corrected_by_the_model_after_feedback() -> None:
+    """Format is fixed by telling the model, not by the harness rewriting it.
+
+    Two tests here used to assert that a numbered list was silently reformatted
+    into plain names "without another model call". That reformatter has been
+    removed along with the rest of the harness-authored-answer machinery: it sat
+    on a repeat-detection path that also pasted scraped page text over model
+    decisions, and it is not the harness's job to rewrite the reply.
+
+    What remains is the ordinary loop -- the verifier reports the format problem,
+    and the model produces the requested shape itself.
+    """
+
     delegate = _RepairingGateway(
-        ("Here are three friendly code names:\n1. Beacon\n2. Verity\n3. SignalPath",) * 3
+        (
+            "Here are three friendly code names:\n1. Beacon\n2. Verity\n3. SignalPath",
+            NAMES_ANSWER,
+        )
     )
     model = ElasticDeliberationGateway(
         delegate,
@@ -528,33 +543,10 @@ async def test_repeated_names_format_failure_is_repaired_without_another_model_c
 
     assert result.run.status is RunStatus.COMPLETED
     assert result.run.final_output == NAMES_ANSWER
+    # Two turns: the mismatched attempt, then the model's own correction.
     assert result.run.usage.model_calls == 2
-
-
-@pytest.mark.asyncio
-async def test_names_format_recovery_handles_different_invalid_retries() -> None:
-    delegate = _RepairingGateway(
-        (
-            "Here are three friendly code names:\n1. Beacon\n2. Verity\n3. SignalPath",
-            "Beacon, Verity, SignalPath",
-            "- Beacon\n- Verity\n- SignalPath",
-        )
-    )
-    model = ElasticDeliberationGateway(
-        delegate,
-        ElasticDeliberationPolicy().assess(NAMES_OBJECTIVE),
-        max_no_progress_turns=2,
-    )
-
-    result = await run_conversation_smoke(
-        model=model,
-        objective=NAMES_OBJECTIVE,
-        limits=BudgetLimits(max_iterations=5, max_model_calls=5, max_tool_calls=0),
-    )
-
-    assert result.run.status is RunStatus.COMPLETED
-    assert result.run.final_output == NAMES_ANSWER
-    assert result.run.usage.model_calls == 4
+    assert len(delegate.requests) == 2
+    assert delegate.requests[1].verifier_feedback
 
 
 @pytest.mark.asyncio
@@ -713,7 +705,11 @@ async def test_repeated_preamble_only_answer_delivers_best_effort_fallback() -> 
     is safe to hand back as a best-effort completion instead of a terminal error.
     """
 
-    delegate = _RepairingGateway((LIVE_PREAMBLE_ONLY_ANSWER, LIVE_PREAMBLE_ONLY_ANSWER))
+    honest_preamble = (
+        "Here are a couple of buckets to consider, drawing on general knowledge rather "
+        "than live data. (Note: I don't have your risk tolerance or time horizon yet.)"
+    )
+    delegate = _RepairingGateway((honest_preamble, honest_preamble))
     model = ElasticDeliberationGateway(
         delegate,
         ElasticDeliberationPolicy().assess(RECOMMENDATION_OBJECTIVE),
@@ -727,7 +723,7 @@ async def test_repeated_preamble_only_answer_delivers_best_effort_fallback() -> 
 
     assert len(delegate.requests) == 2
     assert result.run.status is RunStatus.COMPLETED
-    assert result.run.final_output == LIVE_PREAMBLE_ONLY_ANSWER
+    assert result.run.final_output == honest_preamble
     assert sum(event.type is EventType.VERIFICATION_FAILED for event in result.events) == 1
     fallback = next(
         check
@@ -737,6 +733,33 @@ async def test_repeated_preamble_only_answer_delivers_best_effort_fallback() -> 
         if check["name"] == "best_effort_fallback"
     )
     assert fallback["passed"] is True
+
+
+@pytest.mark.asyncio
+async def test_a_false_claim_of_retrieved_data_is_never_delivered_as_best_effort() -> None:
+    """The best-effort path has a floor, and this answer is below it.
+
+    LIVE_PREAMBLE_ONLY_ANSWER says it is built on "current market data I pulled"
+    while the run retrieved nothing at all. Delivering it unverified would hand
+    the user a fabricated sourcing claim under a best-effort label, which is
+    worse than the run failing: the label explains that verification was skipped,
+    not that the content is false. So this run has no deliverable answer.
+    """
+
+    delegate = _RepairingGateway((LIVE_PREAMBLE_ONLY_ANSWER, LIVE_PREAMBLE_ONLY_ANSWER))
+    model = ElasticDeliberationGateway(
+        delegate,
+        ElasticDeliberationPolicy().assess(RECOMMENDATION_OBJECTIVE),
+    )
+
+    result = await run_conversation_smoke(
+        model=model,
+        objective=RECOMMENDATION_OBJECTIVE,
+        limits=BudgetLimits(max_iterations=4, max_model_calls=4, max_tool_calls=0),
+    )
+
+    assert result.run.status is not RunStatus.COMPLETED
+    assert result.run.final_output is None
 
 
 @pytest.mark.asyncio
