@@ -1,70 +1,54 @@
 import { FilterBar } from "@/components/dashboard/filter-bar";
 import { RunsTable } from "@/components/dashboard/runs-table";
+import { SearchBox } from "@/components/dashboard/search-box";
 import { Pager } from "@/components/ui/pager";
-import { listRuns } from "@/lib/api";
+import { listRuns, listScopes } from "@/lib/api";
 
-const RUN_STATUSES = [
-  "queued",
-  "running",
-  "requires_action",
-  "completed",
-  "failed",
-  "cancelled",
-  "timed_out",
-  "budget_exhausted",
-];
-const RUN_PHASES = ["research", "proposal", "policy", "approval", "execution", "verification"];
-const TASK_STATUSES = ["queued", "active", "requires_action", "completed", "failed", "cancelled"];
-
+const RUN_STATUSES = ["answered", "failed", "running"];
 const LIMIT = 25;
 
-export default async function RunsPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
-  const params = await searchParams;
+export default async function RunsPage(props: PageProps<"/runs">) {
+  const params = await props.searchParams;
   const status = firstValue(params.status);
-  const phase = firstValue(params.phase);
-  const taskStatus = firstValue(params.task_status);
+  const scopeKey = firstValue(params.scope_key);
+  const q = firstValue(params.q);
   const offset = Number(firstValue(params.offset) ?? "0") || 0;
 
-  const page = await listRuns({
-    status,
-    phase,
-    task_status: taskStatus,
-    limit: LIMIT,
-    offset,
-  });
+  const [page, scopes] = await Promise.all([
+    listRuns({ status, scope_key: scopeKey, q, limit: LIMIT, offset }),
+    listScopes(),
+  ]);
 
   return (
     <div className="space-y-4">
       <div>
         <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Runs</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Every task attempt Leo&apos;s harness has executed, most recent first.
+          Every question Leo has handled, most recent first. Open one to see the full
+          reason-act trace.
         </p>
       </div>
 
-      <FilterBar
-        filters={[
-          {
-            param: "status",
-            label: "Run status",
-            options: RUN_STATUSES.map((value) => ({ value, label: value.replaceAll("_", " ") })),
-          },
-          {
-            param: "phase",
-            label: "Phase",
-            options: RUN_PHASES.map((value) => ({ value, label: value })),
-          },
-          {
-            param: "task_status",
-            label: "Task status",
-            options: TASK_STATUSES.map((value) => ({ value, label: value.replaceAll("_", " ") })),
-          },
-        ]}
-      />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <FilterBar
+          filters={[
+            {
+              param: "status",
+              label: "Status",
+              options: RUN_STATUSES.map((value) => ({ value, label: value })),
+            },
+            {
+              param: "scope_key",
+              label: "Conversation",
+              options: scopes.items.map((scope) => ({
+                value: scope.scope_key,
+                label: `${scope.label} (${scope.kind})`,
+              })),
+            },
+          ]}
+        />
+        <SearchBox placeholder="Search questions and answers…" />
+      </div>
 
       <RunsTable runs={page.items} />
 
@@ -73,7 +57,7 @@ export default async function RunsPage({
         limit={page.limit}
         offset={page.offset}
         basePath="/runs"
-        searchParams={{ status, phase, task_status: taskStatus }}
+        searchParams={{ status, scope_key: scopeKey, q }}
       />
     </div>
   );

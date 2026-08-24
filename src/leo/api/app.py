@@ -1,4 +1,7 @@
-"""Minimal read-only API surface; Slack Socket Mode runs as a separate entry point."""
+"""The read-only HTTP surface: health, plus the observability dashboard API.
+
+Slack runs as its own process (`leo slack`); this one only reads.
+"""
 
 from __future__ import annotations
 
@@ -7,60 +10,50 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
-from leo.api.dashboard.router import dashboard_router
+from leo.agent.db import create_engine, create_sessions
+from leo.api.dashboard import router as dashboard_router
 from leo.config import Settings
-from leo.health import config_snapshot, deep_health_snapshot
-from leo.persistence.database import create_database_engine, create_session_factory
 
-_DASHBOARD_DEV_ORIGINS = ("http://localhost:3000", "http://127.0.0.1:3000")
+_DEV_ORIGINS = ("http://localhost:3000", "http://127.0.0.1:3000")
 
 
-def _dashboard_cors_origins(settings: Settings) -> list[str]:
-    configured = tuple(
+def _cors_origins(settings: Settings) -> list[str]:
+    configured = (
         origin.strip()
         for origin in settings.leo_dashboard_cors_origins.split(",")
         if origin.strip()
     )
-    return list(dict.fromkeys((*_DASHBOARD_DEV_ORIGINS, *configured)))
+    return list(dict.fromkeys((*_DEV_ORIGINS, *configured)))
 
 
 def create_app(
     settings: Settings | None = None,
     *,
     sessions: async_sessionmaker[AsyncSession] | None = None,
-    health_probe_timeout_seconds: float = 2.0,
 ) -> FastAPI:
     runtime_settings = settings or Settings()
-    if health_probe_timeout_seconds <= 0:
-        raise ValueError("health probe timeout must be positive")
 
     @asynccontextmanager
-    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        """Own one dashboard read session factory for the process lifetime.
-
-        Reuses the caller-supplied ``sessions`` factory when present (tests, or a shared
-        engine from an outer process) instead of opening a second pool against the same
-        database.
-        """
-
-        dashboard_sessions = sessions
-        engine: AsyncEngine | None = None
-        if dashboard_sessions is None and runtime_settings.database_url is not None:
-            engine = create_database_engine(runtime_settings.database_url.get_secret_value())
-            dashboard_sessions = create_session_factory(engine)
-        app.state.dashboard_sessions = dashboard_sessions
+    async def lifespan(application: FastAPI) -> AsyncIterator[None]:
+        owned: AsyncEngine | None = None
+        factory = sessions
+        if factory is None and runtime_settings.database_url is not None:
+            owned = create_engine(runtime_settings.database_url.get_secret_value())
+            factory = create_sessions(owned)
+        application.state.sessions = factory
         try:
             yield
         finally:
-            if engine is not None:
-                await engine.dispose()
+            if owned is not None:
+                await owned.dispose()
 
-    application = FastAPI(title="Leo API", version="0.1.0", lifespan=lifespan)
+    application = FastAPI(title="Leo API", version="1.0.0", lifespan=lifespan)
     application.add_middleware(
         CORSMiddleware,
-        allow_origins=_dashboard_cors_origins(runtime_settings),
+        allow_origins=_cors_origins(runtime_settings),
         allow_methods=["GET"],
         allow_headers=["*"],
     )
@@ -68,27 +61,31 @@ def create_app(
 
     @application.get("/health")
     async def health(deep: bool = False) -> dict[str, object]:
-        if not deep or runtime_settings.database_url is None:
-            return config_snapshot(runtime_settings).model_dump(mode="json")
-        if sessions is not None:
-            snapshot = await deep_health_snapshot(
-                runtime_settings,
-                sessions,
-                timeout_seconds=health_probe_timeout_seconds,
-            )
-            return snapshot.model_dump(mode="json")
-
-        engine = create_database_engine(runtime_settings.database_url.get_secret_value())
-        transient_sessions = create_session_factory(engine)
-        try:
-            snapshot = await deep_health_snapshot(
-                runtime_settings,
-                transient_sessions,
-                timeout_seconds=health_probe_timeout_seconds,
-            )
-            return snapshot.model_dump(mode="json")
-        finally:
-            await engine.dispose()
+        configured = {
+            "model": bool(runtime_settings.leo_model),
+            "openrouter": runtime_settings.openrouter_api_key is not None,
+            "database": runtime_settings.database_url is not None,
+            "slack": runtime_settings.slack_bot_token is not None
+            and runtime_settings.slack_app_token is not None,
+        }
+        payload: dict[str, object] = {
+            "status": "ok" if all(configured.values()) else "degraded",
+            "environment": runtime_settings.leo_env.value,
+            "configured": configured,
+        }
+        if deep:
+            factory = getattr(application.state, "sessions", None)
+            if factory is None:
+                payload["database_reachable"] = False
+            else:
+                try:
+                    async with factory() as session:
+                        await session.execute(text("select 1"))
+                    payload["database_reachable"] = True
+                except Exception as exc:
+                    payload["database_reachable"] = False
+                    payload["database_error"] = type(exc).__name__
+        return payload
 
     return application
 

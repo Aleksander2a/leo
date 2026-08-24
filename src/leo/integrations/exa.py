@@ -18,11 +18,8 @@ from datetime import timedelta
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
-from leo.harness.exa_search import (
-    canonical_exa_highlight_statement,
-    normalize_complete_exa_result,
-)
-from leo.harness.models import (
+from leo.agent.contracts import (
+    Clock,
     RunPhase,
     SourceRef,
     ToolEffect,
@@ -33,11 +30,14 @@ from leo.harness.models import (
     ToolSpec,
     ToolSuccess,
 )
-from leo.harness.ports import Clock
 from leo.integrations.provider_runtime import (
     ProviderCallGate,
     ProviderGateRejected,
     bounded_retry_after,
+)
+from leo.providers.exa_search import (
+    canonical_exa_highlight_statement,
+    normalize_complete_exa_result,
 )
 
 _EXA_SEARCH_URL = "https://api.exa.ai/search"

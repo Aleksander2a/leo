@@ -1,64 +1,66 @@
 "use client";
 
-import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/ui/data-table";
-import { SourceTypeBadge } from "@/components/ui/source-type-badge";
 import { StatusPill } from "@/components/ui/status-pill";
-import { formatDateTime, truncate } from "@/lib/utils";
-import type { MemoryRecordSummary } from "@/lib/types";
+import type { MemorySummary } from "@/lib/types";
+import { formatRelative, scopeLabel, truncate } from "@/lib/utils";
+import type { ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
 
-const columns: ColumnDef<MemoryRecordSummary, unknown>[] = [
-  { accessorKey: "kind", header: "Kind" },
+const columns: ColumnDef<MemorySummary, unknown>[] = [
   {
-    accessorKey: "visibility",
-    header: "Isolation boundary",
-    cell: (info) => {
-      const record = info.row.original;
-      return (
-        <div>
-          <span className="text-xs">{record.visibility.replaceAll("_", " ")}</span>
-          <p className="text-xs text-gray-400">{record.scope_label}</p>
-        </div>
-      );
-    },
-  },
-  {
-    accessorKey: "source_type",
-    header: "Added",
-    cell: (info) => {
-      const value = info.getValue() as string | null;
-      return value ? <SourceTypeBadge sourceType={value} /> : <span className="text-xs text-gray-400">—</span>;
-    },
-  },
-  {
-    accessorKey: "status",
-    header: "Status",
+    accessorKey: "kind",
+    header: "Kind",
     cell: (info) => <StatusPill status={info.getValue() as string} />,
   },
   {
-    accessorKey: "content_preview",
-    header: "Latest content",
+    accessorKey: "subject",
+    header: "Subject",
+    cell: (info) => (info.getValue() as string) || "—",
+  },
+  {
+    accessorKey: "content",
+    header: "Content",
     cell: (info) => (
-      <span className="block max-w-md truncate">{truncate((info.getValue() as string | null) ?? "", 100)}</span>
+      <span className="block max-w-lg truncate">{truncate(info.getValue() as string, 110)}</span>
     ),
   },
-  { accessorKey: "current_revision", header: "Rev" },
   {
-    accessorKey: "last_recorded_at",
-    header: "Last written",
-    cell: (info) => formatDateTime(info.getValue() as string | null),
+    accessorKey: "scope_key",
+    header: "Conversation",
+    cell: (info) => (
+      <span className="font-mono text-xs text-gray-500" title={info.getValue() as string}>
+        {scopeLabel(info.getValue() as string)}
+      </span>
+    ),
+  },
+  {
+    accessorKey: "importance",
+    header: "Importance",
+    cell: (info) => "★".repeat(info.getValue() as number),
+  },
+  {
+    accessorKey: "active",
+    header: "State",
+    cell: (info) => (
+      <StatusPill status={(info.getValue() as boolean) ? "active" : "superseded"} />
+    ),
+  },
+  {
+    accessorKey: "updated_at",
+    header: "Updated",
+    cell: (info) => formatRelative(info.getValue() as string | null),
   },
 ];
 
-export function MemoryTable({ records }: { records: MemoryRecordSummary[] }) {
+export function MemoryTable({ memories }: { memories: MemorySummary[] }) {
   const router = useRouter();
   return (
     <DataTable
       columns={columns}
-      data={records}
-      onRowClick={(record) => router.push(`/memory/${record.id}`)}
-      emptyMessage="No memory records match these filters."
+      data={memories}
+      onRowClick={(memory) => router.push(`/memory/${encodeURIComponent(memory.id)}`)}
+      emptyMessage="No memories match these filters."
     />
   );
 }

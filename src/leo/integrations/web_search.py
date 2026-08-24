@@ -11,7 +11,8 @@ from urllib.parse import quote_plus, urlsplit
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
-from leo.harness.models import (
+from leo.agent.contracts import (
+    Clock,
     RunPhase,
     SourceRef,
     ToolEffect,
@@ -22,7 +23,6 @@ from leo.harness.models import (
     ToolSpec,
     ToolSuccess,
 )
-from leo.harness.ports import Clock
 
 # Wikimedia's robot policy requires a descriptive User-Agent with contact info.
 DEFAULT_WEB_SEARCH_USER_AGENT = "LeoResearchAgent/1.0 (https://github.com/Aleksander2a/leo)"

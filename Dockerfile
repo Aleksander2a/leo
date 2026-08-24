@@ -9,10 +9,8 @@ WORKDIR /app
 COPY pyproject.toml uv.lock README.md LICENSE alembic.ini ./
 COPY src ./src
 COPY migrations ./migrations
-COPY resources ./resources
-COPY evals/scenarios ./evals/scenarios
 COPY scripts ./scripts
 
 RUN pip install .
 
-CMD ["python", "-m", "leo", "slack-live"]
+CMD ["python", "-m", "leo", "slack"]

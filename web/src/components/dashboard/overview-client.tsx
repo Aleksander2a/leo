@@ -1,12 +1,14 @@
 "use client";
 
-import { KpiCard } from "@/components/ui/kpi-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getIntegrations, getOverview } from "@/lib/api";
-import { formatCost, formatNumber, formatPercent, formatSeconds } from "@/lib/utils";
-import type { IntegrationsResponse, OverviewResponse } from "@/lib/types";
+import { KpiCard } from "@/components/ui/kpi-card";
+import { getOverview } from "@/lib/api";
+import type { OverviewResponse } from "@/lib/types";
+import { formatCost, formatMs, formatNumber, formatPercent, formatSeconds } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import {
+  Area,
+  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
@@ -21,153 +23,280 @@ import {
 } from "recharts";
 
 const STATUS_COLORS: Record<string, string> = {
-  completed: "#10b981",
+  answered: "#10b981",
   failed: "#ef4444",
-  cancelled: "#f59e0b",
-  timed_out: "#f59e0b",
-  budget_exhausted: "#f59e0b",
   running: "#3b82f6",
-  queued: "#94a3b8",
-  requires_action: "#8b5cf6",
 };
 
-function toChartData(counts: Record<string, number>) {
-  return Object.entries(counts).map(([key, value]) => ({ name: key.replaceAll("_", " "), key, value }));
-}
-
-export function OverviewClient({
-  initialOverview,
-  initialIntegrations,
-}: {
-  initialOverview: OverviewResponse;
-  initialIntegrations: IntegrationsResponse;
-}) {
-  const overviewQuery = useQuery({
+export function OverviewClient({ initial }: { initial: OverviewResponse }) {
+  const { data: overview } = useQuery({
     queryKey: ["overview"],
-    queryFn: getOverview,
-    initialData: initialOverview,
+    queryFn: () => getOverview(),
+    initialData: initial,
     refetchInterval: 15_000,
   });
-  const integrationsQuery = useQuery({
-    queryKey: ["integrations"],
-    queryFn: getIntegrations,
-    initialData: initialIntegrations,
-    refetchInterval: 30_000,
-  });
 
-  const overview = overviewQuery.data;
-  const integrations = integrationsQuery.data;
+  const statusData = Object.entries(overview.run_status_counts).map(([key, value]) => ({
+    key,
+    name: key.replaceAll("_", " "),
+    value,
+  }));
 
-  const runStatusData = toChartData(overview.run_status_counts);
-  const providerData = integrations.providers.map((provider) => ({
-    name: provider.display_name,
-    total: provider.total,
-    successRate: provider.success_rate,
+  const activity = overview.activity.map((point) => ({
+    day: point.day ? new Date(point.day).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "",
+    runs: point.runs,
+    answered: point.answered,
+  }));
+
+  const tools = overview.tool_usage.slice(0, 12).map((tool) => ({
+    name: tool.name,
+    calls: tool.calls,
+    failed: tool.failed,
   }));
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
         <KpiCard
-          label="Tool call success rate"
-          value={formatPercent(overview.tool_call_success_rate)}
-          hint={`${formatNumber(overview.tool_calls.completed)} of ${formatNumber(
-            overview.tool_calls.completed + overview.tool_calls.failed,
-          )} finished calls`}
+          label="Answer rate"
+          value={formatPercent(overview.answer_rate)}
+          hint={`${formatNumber(overview.answered_runs)} of ${formatNumber(overview.total_runs)} runs`}
           tone={
-            overview.tool_call_success_rate === null
+            overview.answer_rate === null
               ? "default"
-              : overview.tool_call_success_rate >= 0.9
+              : overview.answer_rate >= 0.95
                 ? "good"
-                : overview.tool_call_success_rate < 0.7
+                : overview.answer_rate < 0.8
                   ? "bad"
                   : "default"
           }
         />
         <KpiCard
-          label="Model calls"
-          value={formatNumber(overview.total_model_calls)}
+          label="Tool calls"
+          value={formatNumber(overview.total_tool_calls)}
+          hint={`${formatNumber(overview.total_model_turns)} model turns`}
+        />
+        <KpiCard
+          label="Median run"
+          value={formatSeconds(overview.p50_run_seconds)}
+          hint={`p95 ${formatSeconds(overview.p95_run_seconds)}`}
+        />
+        <KpiCard
+          label="Total cost"
+          value={formatCost(overview.total_cost)}
           hint={`${formatNumber(overview.total_tokens)} tokens`}
         />
-        <KpiCard label="Total cost" value={formatCost(overview.total_cost)} hint="cumulative, all runs" />
         <KpiCard
-          label="Avg run latency"
-          value={formatSeconds(overview.avg_run_latency_seconds)}
-          hint="terminal runs only"
+          label="Conversations"
+          value={formatNumber(overview.conversations)}
+          hint={`${formatNumber(overview.messages)} messages`}
         />
         <KpiCard
-          label="Memory writes"
-          value={formatNumber(overview.memory_writes_total)}
-          hint={`${formatNumber(overview.memory_pages_referenced_total)} pages referenced`}
+          label="Memories"
+          value={formatNumber(overview.active_memories)}
+          hint="active, across all scopes"
         />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Run outcomes</CardTitle>
+            <CardTitle>Runs per day</CardTitle>
           </CardHeader>
           <CardContent className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={runStatusData}
-                  dataKey="value"
-                  nameKey="name"
-                  innerRadius={50}
-                  outerRadius={80}
-                  paddingAngle={2}
-                >
-                  {runStatusData.map((entry) => (
-                    <Cell key={entry.key} fill={STATUS_COLORS[entry.key] ?? "#9ca3af"} />
-                  ))}
-                </Pie>
-                <Legend layout="vertical" verticalAlign="middle" align="right" />
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+            {activity.length === 0 ? (
+              <Empty>No runs in this window.</Empty>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={activity} margin={{ left: -16, right: 8, top: 8 }}>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    className="stroke-gray-200 dark:stroke-gray-800"
+                  />
+                  <XAxis dataKey="day" tick={{ fontSize: 12 }} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                  <Tooltip />
+                  <Legend />
+                  <Area
+                    type="monotone"
+                    dataKey="runs"
+                    name="runs"
+                    stroke="#6366f1"
+                    fill="#6366f1"
+                    fillOpacity={0.15}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="answered"
+                    name="answered"
+                    stroke="#10b981"
+                    fill="#10b981"
+                    fillOpacity={0.2}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Calls per integration</CardTitle>
+            <CardTitle>Run outcomes</CardTitle>
           </CardHeader>
           <CardContent className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={providerData} layout="vertical" margin={{ left: 24 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} className="stroke-gray-200 dark:stroke-gray-800" />
-                <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12 }} />
-                <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 12 }} />
-                <Tooltip />
-                <Bar dataKey="total" fill="#6366f1" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            {statusData.length === 0 ? (
+              <Empty>No runs recorded.</Empty>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={statusData}
+                    dataKey="value"
+                    nameKey="name"
+                    innerRadius={45}
+                    outerRadius={75}
+                    paddingAngle={2}
+                  >
+                    {statusData.map((entry) => (
+                      <Cell key={entry.key} fill={STATUS_COLORS[entry.key] ?? "#9ca3af"} />
+                    ))}
+                  </Pie>
+                  <Legend />
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Most-used tools</CardTitle>
+          </CardHeader>
+          <CardContent className="h-72">
+            {tools.length === 0 ? (
+              <Empty>No tool calls yet.</Empty>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={tools} layout="vertical" margin={{ left: 60 }}>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    horizontal={false}
+                    className="stroke-gray-200 dark:stroke-gray-800"
+                  />
+                  <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12 }} />
+                  <YAxis type="category" dataKey="name" width={170} tick={{ fontSize: 11 }} />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="calls" name="calls" fill="#6366f1" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="failed" name="failed" fill="#ef4444" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Tool failures by code</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {overview.tool_errors.length === 0 ? (
+              <p className="py-8 text-center text-sm text-gray-400">
+                No tool call has failed.
+              </p>
+            ) : (
+              <>
+                <p className="mb-3 text-xs text-gray-400">
+                  A failed tool call is returned to the model as a message, not treated as a
+                  run failure — these are recoveries, not outages.
+                </p>
+                <ul className="divide-y divide-gray-100 dark:divide-gray-800">
+                  {overview.tool_errors.map((error) => (
+                    <li
+                      key={error.code}
+                      className="flex items-center justify-between py-2 text-sm"
+                    >
+                      <span className="font-mono text-xs text-gray-700 dark:text-gray-300">
+                        {error.code}
+                      </span>
+                      <span className="font-medium text-gray-900 tabular-nums dark:text-gray-100">
+                        {error.count}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Top failure reasons</CardTitle>
+          <CardTitle>Tool reliability</CardTitle>
         </CardHeader>
-        <CardContent>
-          {overview.failure_reasons.length === 0 ? (
-            <p className="text-sm text-gray-400">No failed runs recorded.</p>
-          ) : (
-            <ul className="divide-y divide-gray-100 dark:divide-gray-800">
-              {overview.failure_reasons.map((reason) => (
-                <li key={reason.key} className="flex items-center justify-between py-2 text-sm">
-                  <span className="text-gray-700 dark:text-gray-300">{reason.key}</span>
-                  <span className="font-medium tabular-nums text-gray-900 dark:text-gray-100">
-                    {reason.count}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-800">
+              <thead className="bg-gray-50 dark:bg-gray-900">
+                <tr>
+                  <Th>Tool</Th>
+                  <Th>Calls</Th>
+                  <Th>Failed</Th>
+                  <Th>Success</Th>
+                  <Th>Avg latency</Th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                {overview.tool_usage.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                      No tool calls recorded.
+                    </td>
+                  </tr>
+                ) : (
+                  overview.tool_usage.map((tool) => (
+                    <tr key={tool.name}>
+                      <td className="px-4 py-2 font-mono text-xs text-gray-700 dark:text-gray-300">
+                        {tool.name}
+                      </td>
+                      <td className="px-4 py-2 tabular-nums">{formatNumber(tool.calls)}</td>
+                      <td className="px-4 py-2 tabular-nums">
+                        {tool.failed > 0 ? (
+                          <span className="text-red-600 dark:text-red-400">{tool.failed}</span>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td className="px-4 py-2 tabular-nums">
+                        {formatPercent(tool.calls ? tool.succeeded / tool.calls : null)}
+                      </td>
+                      <td className="px-4 py-2 tabular-nums">{formatMs(tool.avg_ms)}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function Th({ children }: { children: React.ReactNode }) {
+  return (
+    <th className="px-4 py-2 text-left text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">
+      {children}
+    </th>
+  );
+}
+
+function Empty({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex h-full items-center justify-center text-sm text-gray-400">{children}</div>
   );
 }

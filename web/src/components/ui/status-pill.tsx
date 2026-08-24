@@ -1,30 +1,35 @@
 import { cn } from "@/lib/utils";
 
-type Tone = "green" | "blue" | "amber" | "red" | "gray";
+type Tone = "green" | "blue" | "amber" | "red" | "violet" | "gray";
 
 const STATUS_TONES: Record<string, Tone> = {
-  completed: "green",
-  delivered: "green",
-  retrieved: "green",
-  active: "green",
-  verified: "green",
-  queued: "blue",
+  // Run outcomes
+  answered: "green",
   running: "blue",
-  pending: "blue",
-  leased: "blue",
-  requires_action: "amber",
-  retry: "amber",
-  stale: "amber",
-  timed_out: "amber",
-  budget_exhausted: "amber",
-  superseded: "amber",
   failed: "red",
-  rejected: "red",
-  dead: "red",
-  unknown_effect: "red",
-  cancelled: "red",
-  retracted: "red",
-  contested: "red",
+  // Step outcomes
+  ok: "green",
+  error: "red",
+  // Trace step kinds
+  tool: "violet",
+  model: "blue",
+  // Message roles
+  user: "gray",
+  assistant: "blue",
+  // Memory kinds
+  fact: "blue",
+  preference: "violet",
+  decision: "green",
+  context: "gray",
+  task: "amber",
+  // Memory lifecycle
+  active: "green",
+  superseded: "amber",
+  inactive: "gray",
+  // Conversation kinds
+  dm: "violet",
+  channel: "blue",
+  cli: "gray",
 };
 
 const TONE_CLASSES: Record<Tone, string> = {
@@ -34,16 +39,24 @@ const TONE_CLASSES: Record<Tone, string> = {
   amber:
     "bg-amber-50 text-amber-700 ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-400 dark:ring-amber-500/30",
   red: "bg-red-50 text-red-700 ring-red-600/20 dark:bg-red-500/10 dark:text-red-400 dark:ring-red-500/30",
+  violet:
+    "bg-violet-50 text-violet-700 ring-violet-600/20 dark:bg-violet-500/10 dark:text-violet-400 dark:ring-violet-500/30",
   gray: "bg-gray-100 text-gray-600 ring-gray-500/20 dark:bg-gray-500/10 dark:text-gray-400 dark:ring-gray-500/30",
 };
 
-export function StatusPill({ status, className }: { status: string | null | undefined; className?: string }) {
+export function StatusPill({
+  status,
+  className,
+}: {
+  status: string | null | undefined;
+  className?: string;
+}) {
   const key = (status ?? "unknown").toLowerCase();
   const tone = STATUS_TONES[key] ?? "gray";
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset whitespace-nowrap",
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ring-1 ring-inset",
         TONE_CLASSES[tone],
         className,
       )}

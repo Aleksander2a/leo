@@ -6,8 +6,8 @@ import {
   Brain,
   Gauge,
   MessagesSquare,
-  Plug,
   PlayCircle,
+  Wrench,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -17,10 +17,10 @@ import { ThemeToggle } from "@/components/layout/theme-toggle";
 const NAV_ITEMS = [
   { href: "/", label: "Overview", icon: Gauge },
   { href: "/runs", label: "Runs", icon: PlayCircle },
-  { href: "/memory", label: "Memory", icon: Brain },
-  { href: "/integrations", label: "Integrations", icon: Plug },
-  { href: "/failures", label: "Failures", icon: AlertTriangle },
   { href: "/conversations", label: "Conversations", icon: MessagesSquare },
+  { href: "/memory", label: "Memory", icon: Brain },
+  { href: "/tools", label: "Tools", icon: Wrench },
+  { href: "/failures", label: "Failures", icon: AlertTriangle },
 ];
 
 export function Sidebar() {

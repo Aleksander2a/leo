@@ -13,13 +13,8 @@ from typing import cast
 import httpx
 from pydantic import JsonValue
 
-from leo.harness.equity_market import (
-    canonical_equity_profile_statements,
-    canonical_equity_quote_statement,
-    canonical_equity_search_statements,
-    equity_query_hash,
-)
-from leo.harness.models import (
+from leo.agent.contracts import (
+    Clock,
     RunPhase,
     SourceRef,
     ToolEffect,
@@ -30,8 +25,6 @@ from leo.harness.models import (
     ToolSpec,
     ToolSuccess,
 )
-from leo.harness.ports import Clock
-from leo.harness.provider_health import ProviderHealthSnapshot
 from leo.integrations.equity_market import (
     EquityProfileArguments,
     EquitySearchArguments,
@@ -44,6 +37,13 @@ from leo.integrations.provider_runtime import (
     ProviderGateRejected,
     bounded_retry_after,
 )
+from leo.providers.equity import (
+    canonical_equity_profile_statements,
+    canonical_equity_quote_statement,
+    canonical_equity_search_statements,
+    equity_query_hash,
+)
+from leo.providers.health import ProviderHealthSnapshot
 
 _DEFAULT_BASE_URL = "https://api.massive.com"
 _MAX_RESPONSE_BYTES = 1_048_576

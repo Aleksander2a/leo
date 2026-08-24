@@ -7,7 +7,8 @@ from datetime import timedelta
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
-from leo.harness.models import (
+from leo.agent.contracts import (
+    Clock,
     RunPhase,
     SourceRef,
     ToolEffect,
@@ -17,7 +18,6 @@ from leo.harness.models import (
     ToolSpec,
     ToolSuccess,
 )
-from leo.harness.ports import Clock
 from leo.integrations.safe_fetch import FetchPolicy, FetchPolicyError, fetch_public_text
 
 

@@ -16,7 +16,8 @@ from urllib.parse import urlsplit
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator, model_validator
 
-from leo.harness.models import (
+from leo.agent.contracts import (
+    Clock,
     RunPhase,
     SourceRef,
     ToolEffect,
@@ -27,13 +28,12 @@ from leo.harness.models import (
     ToolSpec,
     ToolSuccess,
 )
-from leo.harness.ports import Clock
-from leo.harness.provider_health import ProviderHealthSnapshot
 from leo.integrations.provider_runtime import (
     ProviderCallGate,
     ProviderGateRejected,
     bounded_retry_after,
 )
+from leo.providers.health import ProviderHealthSnapshot
 from leo.url_policy import is_public_https_url
 
 _TAVILY_SEARCH_URL = "https://api.tavily.com/search"

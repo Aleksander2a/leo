@@ -34,7 +34,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator
 
-from leo.harness.models import (
+from leo.agent.contracts import (
+    Clock,
     RunPhase,
     SourceRef,
     ToolEffect,
@@ -45,7 +46,6 @@ from leo.harness.models import (
     ToolSpec,
     ToolSuccess,
 )
-from leo.harness.ports import Clock
 from leo.integrations.mcp_client import McpToolCallError, call_mcp_tool
 from leo.integrations.provider_runtime import ProviderCallGate, ProviderGateRejected
 

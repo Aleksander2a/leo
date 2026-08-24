@@ -16,8 +16,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Literal
 
-from leo.harness.ports import Clock
-from leo.harness.provider_health import ProviderHealthProjection, ProviderHealthSnapshot
+from leo.agent.contracts import Clock
+from leo.providers.health import ProviderHealthProjection, ProviderHealthSnapshot
 
 
 class ProviderGateRejected(RuntimeError):
